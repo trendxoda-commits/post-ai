@@ -94,8 +94,8 @@ export function PostCard({ post }: PostCardProps) {
                     src={post.mediaUrl}
                     controls
                     className="w-full h-full object-cover"
-                    // For Facebook videos that might not play directly due to token issues
-                    poster={post.accountPlatform === 'Facebook' ? post.mediaUrl : undefined}
+                    // The poster can be a thumbnail, especially useful for FB
+                    poster={post.accountPlatform === 'Facebook' && !post.mediaUrl.includes('mp4') ? post.mediaUrl : undefined}
                 >
                     Your browser does not support the video tag.
                 </video>
@@ -105,6 +105,7 @@ export function PostCard({ post }: PostCardProps) {
                     alt="Post content"
                     fill
                     className="object-cover"
+                    unoptimized // Added for external URLs like from Facebook CDN
                 />
             )}
           </div>
@@ -119,7 +120,7 @@ export function PostCard({ post }: PostCardProps) {
           <MessageCircle className="h-4 w-4" />
           <span>{post.comments.toLocaleString()}</span>
         </div>
-        {post.views !== undefined && (
+        {post.views !== undefined && post.views > 0 && (
           <div className="flex items-center gap-1.5">
             <Eye className="h-4 w-4" />
             <span>{(post.views || 0).toLocaleString()}</span>

@@ -265,6 +265,8 @@ const FacebookPostObjectSchema = z.object({
             total_count: z.number()
         })
     }).optional(),
+    // Added for video views
+    video_insights: z.any().optional(),
 });
 
 const GetFacebookPostsOutputSchema = z.object({
@@ -281,7 +283,8 @@ const getFacebookPostsFlow = ai.defineFlow(
   },
   async ({ facebookPageId, pageAccessToken }) => {
     // Replaced 'full_picture' with 'attachments' which is the modern way to get media.
-    const fields = 'id,message,created_time,permalink_url,attachments,likes.summary(true),comments.summary(true)';
+    // Also requesting 'source' for video URLs and 'video_insights' for views.
+    const fields = 'id,message,created_time,permalink_url,attachments{media,type,url},likes.summary(true),comments.summary(true),video_insights.metric(total_video_views)';
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);

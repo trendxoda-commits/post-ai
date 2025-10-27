@@ -92,7 +92,14 @@ export function Feed() {
             .filter(item => item.attachments?.data?.[0]?.media?.image?.src) // Ensure there's media to display
             .map((item): FeedPost => {
                 const attachment = item.attachments.data[0];
-                const isVideo = attachment.type === 'video_inline' || attachment.type === 'video';
+                const isVideo = attachment.type === 'video_inline' || attachment.type === 'video' || attachment.media.source;
+                const mediaUrl = isVideo ? attachment.media.source : attachment.media.image.src;
+
+                // Extract video views
+                let views = 0;
+                if (isVideo && item.video_insights?.data?.[0]?.values?.[0]?.value) {
+                    views = item.video_insights.data[0].values[0].value;
+                }
                 
                 return {
                     id: item.id,
@@ -101,10 +108,11 @@ export function Feed() {
                     accountAvatar: account.avatar,
                     accountPlatform: 'Facebook',
                     content: item.message,
-                    mediaUrl: attachment.media.image.src,
+                    mediaUrl: mediaUrl,
                     mediaType: isVideo ? 'VIDEO' : 'IMAGE',
                     likes: item.likes?.summary.total_count ?? 0,
                     comments: item.comments?.summary.total_count ?? 0,
+                    views: views,
                     timestamp: item.created_time,
                     permalink: item.permalink_url,
                 }

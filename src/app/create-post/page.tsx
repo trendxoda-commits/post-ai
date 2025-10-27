@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Calendar as CalendarIcon,
   Clock,
-  Wand2,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
@@ -18,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram, generatePostCaption } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,9 +35,6 @@ export default function CreatePostPage() {
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleDate, setScheduleDate] = useState<Date>();
   const [scheduleTime, setScheduleTime] = useState('10:00');
-  const [captionTopic, setCaptionTopic] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -67,32 +63,6 @@ export default function CreatePostPage() {
     setSelectedAccountIds([]);
     setScheduleDate(undefined);
     setScheduleTime('10:00');
-    setCaptionTopic('');
-  };
-
-  const handleGenerateCaption = async () => {
-    if (!captionTopic) {
-      toast({
-        variant: 'destructive',
-        title: 'Topic is empty',
-        description: 'Please enter a topic to generate a caption.',
-      });
-      return;
-    }
-    setIsGenerating(true);
-    try {
-      const { caption } = await generatePostCaption({ topic: captionTopic });
-      setContent(caption);
-    } catch (error: any) {
-      console.error('Failed to generate caption:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Generate Caption',
-        description: error.message || 'There was a problem with the AI service.',
-      });
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   const handlePostNow = async () => {
@@ -294,23 +264,9 @@ export default function CreatePostPage() {
           <Card>
             <CardHeader>
               <CardTitle>2. Craft Your Post</CardTitle>
-              <CardDescription>Write your content and add a link to your media. Use the AI assistant to generate captions.</CardDescription>
+              <CardDescription>Write your content and add a link to your media.</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
-                 <div className="space-y-2">
-                  <Label>AI Caption Assistant</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      placeholder="Enter a topic, e.g., 'a beautiful sunset'"
-                      value={captionTopic}
-                      onChange={(e) => setCaptionTopic(e.target.value)}
-                    />
-                    <Button variant="outline" onClick={handleGenerateCaption} disabled={isGenerating}>
-                      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                      <span className="sr-only">Generate Caption</span>
-                    </Button>
-                  </div>
-                </div>
               <Textarea
                 id="content"
                 placeholder="What's on your mind?"

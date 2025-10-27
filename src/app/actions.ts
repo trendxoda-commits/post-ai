@@ -35,11 +35,6 @@ import {
   type GetAccountAnalyticsInput,
   type AnalyticsOutput,
 } from '@/ai/flows/social-media-actions';
-import {
-  generatePostCaption as generatePostCaptionFlow,
-  type GeneratePostCaptionInput,
-  type GeneratePostCaptionOutput,
-} from '@/ai/flows/generate-post-caption';
 import type { z } from 'zod';
 
 // --- Trending Hashtags ---
@@ -80,12 +75,6 @@ export async function postToFacebook(
   input: PostToFacebookInput
 ): Promise<PostToFacebookOutput> {
   return postToFacebookFlow(input);
-}
-
-export async function generatePostCaption(
-  input: GeneratePostCaptionInput
-): Promise<GeneratePostCaptionOutput> {
-  return generatePostCaptionFlow(input);
 }
 
 

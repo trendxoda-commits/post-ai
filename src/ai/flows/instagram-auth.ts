@@ -14,6 +14,17 @@ import { z } from 'zod';
 import { URLSearchParams } from 'url';
 import crypto from 'crypto';
 
+// Helper to construct the redirect URI consistently
+const getRedirectUri = () => {
+    if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
+        throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
+    }
+    // Clean up potential double slashes
+    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
+    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
+    return `${baseUrl}${path}`;
+}
+
 
 // #################### Get Auth URL Flow ####################
 const GetInstagramAuthUrlInputSchema = z.object({
@@ -34,13 +45,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     outputSchema: GetInstagramAuthUrlOutputSchema,
   },
   async ({ clientId, userId }) => {
-    if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
-        throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
-    }
-    // Clean up potential double slashes
-    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
-    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
-    const redirectUri = `${baseUrl}${path}`;
+    const redirectUri = getRedirectUri();
     
     const params = new URLSearchParams({
         client_id: clientId,
@@ -79,13 +84,7 @@ const getInstagramAccessTokenFlow = ai.defineFlow({
     inputSchema: GetInstagramAccessTokenInputSchema,
     outputSchema: GetInstagramAccessTokenOutputSchema,
 }, async ({ code, clientId, clientSecret }) => {
-    if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
-        throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
-    }
-    // Clean up potential double slashes
-    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
-    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
-    const redirectUri = `${baseUrl}${path}`;
+    const redirectUri = getRedirectUri();
 
     const url = `https://graph.facebook.com/v20.0/oauth/access_token`;
     const params = new URLSearchParams({

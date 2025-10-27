@@ -8,7 +8,7 @@ import {
   getLongLivedToken,
   getIgUserDetails,
 } from '@/app/actions';
-import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';

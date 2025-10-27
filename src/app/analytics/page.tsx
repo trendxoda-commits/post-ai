@@ -21,6 +21,7 @@ export interface AccountStats {
   followers: number;
   avgLikes: number;
   avgComments: number;
+  avgViews: number; // Added for video views
 }
 
 function AccountPerformance() {
@@ -59,14 +60,16 @@ function AccountPerformance() {
             accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
           });
 
+          const postCount = analytics.postCount > 0 ? analytics.postCount : 1; // Avoid division by zero
           return {
             id: account.id,
             displayName: account.displayName,
             avatar: account.avatar,
             platform: account.platform,
             followers: analytics.followers,
-            avgLikes: analytics.postCount > 0 ? Math.round(analytics.totalLikes / analytics.postCount) : 0,
-            avgComments: analytics.postCount > 0 ? Math.round(analytics.totalComments / analytics.postCount) : 0,
+            avgLikes: Math.round(analytics.totalLikes / postCount),
+            avgComments: Math.round(analytics.totalComments / postCount),
+            avgViews: Math.round(analytics.totalViews / postCount),
           };
         } catch (error) {
           console.error(`Failed to fetch stats for ${account.displayName}`, error);
@@ -129,6 +132,12 @@ function AccountPerformance() {
                 <p className="font-semibold">{account.avgComments.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Avg. Comments</p>
               </div>
+              {account.platform === 'Instagram' && (
+                <div className="text-right">
+                  <p className="font-semibold">{account.avgViews.toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">Avg. Views</p>
+                </div>
+              )}
             </div>
           ))
         ) : (

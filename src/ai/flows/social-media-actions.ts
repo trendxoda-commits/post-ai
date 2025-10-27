@@ -27,6 +27,7 @@ const AnalyticsOutputSchema = z.object({
     followers: z.number(),
     totalLikes: z.number(),
     totalComments: z.number(),
+    totalViews: z.number(),
     postCount: z.number(),
 });
 export type AnalyticsOutput = z.infer<typeof AnalyticsOutputSchema>;
@@ -42,6 +43,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let followers = 0;
         let totalLikes = 0;
         let totalComments = 0;
+        let totalViews = 0;
         let postCount = 0;
 
         if (platform === 'Instagram') {
@@ -53,7 +55,8 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 },
                 {
                     method: 'GET',
-                    relative_url: `${accountId}/media?fields=like_count,comments_count&limit=25`, // Get recent 25 posts
+                    // For videos, 'plays' is available via insights. We get it with like_count and comments_count
+                    relative_url: `${accountId}/media?fields=like_count,comments_count,media_type,insights.metric(plays)&limit=25`,
                 }
             ];
 
@@ -86,6 +89,10 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 mediaResponse.data.forEach((post: any) => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
+                    if (post.media_type === 'VIDEO' && post.insights?.data) {
+                        const playsInsight = post.insights.data.find((d: any) => d.name === 'plays');
+                        totalViews += playsInsight?.values[0]?.value || 0;
+                    }
                 });
             }
 
@@ -98,6 +105,8 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 },
                 {
                     method: 'GET',
+                    // Note: Facebook video views are harder to get in a simple batch and often require video-specific calls.
+                    // We will focus on likes and comments for FB for now.
                     relative_url: `${accountId}/posts?fields=likes.summary(true),comments.summary(true)&limit=25`,
                 }
             ];
@@ -140,6 +149,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             followers,
             totalLikes,
             totalComments,
+            totalViews,
             postCount,
         };
     }

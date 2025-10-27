@@ -31,12 +31,6 @@ import {
   getFacebookPosts as getFacebookPostsFlow,
 } from '@/ai/flows/social-media-actions';
 import type { z } from 'zod';
-import type {
-  GetInstagramMediaInputSchema,
-  GetInstagramMediaOutputSchema,
-  GetFacebookPostsInputSchema,
-  GetFacebookPostsOutputSchema,
-} from '@/ai/flows/social-media-actions';
 
 // --- Trending Hashtags ---
 export async function generateHashtags(
@@ -80,13 +74,13 @@ export async function postToFacebook(
 
 // --- Social Media Data Fetching ---
 export async function fetchInstagramMedia(
-  input: z.infer<typeof GetInstagramMediaInputSchema>
-): Promise<z.infer<typeof GetInstagramMediaOutputSchema>> {
+  input: any
+): Promise<any> {
   return getInstagramMediaFlow(input);
 }
 
 export async function fetchFacebookPosts(
-  input: z.infer<typeof GetFacebookPostsInputSchema>
-): Promise<z.infer<typeof GetFacebookPostsOutputSchema>> {
+  input: any
+): Promise<any> {
   return getFacebookPostsFlow(input);
 }

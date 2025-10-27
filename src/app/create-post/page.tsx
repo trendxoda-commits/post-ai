@@ -37,6 +37,7 @@ export default function CreatePostPage() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [openAccountSelector, setOpenAccountSelector] = useState(false);
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -212,11 +213,12 @@ export default function CreatePostPage() {
               <CardDescription>Choose which social media accounts you want to post to.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Popover>
+              <Popover open={openAccountSelector} onOpenChange={setOpenAccountSelector}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
+                    aria-expanded={openAccountSelector}
                     className="w-full justify-between"
                   >
                     {selectedAccountIds.length > 0
@@ -234,9 +236,9 @@ export default function CreatePostPage() {
                         {accounts?.map((account) => (
                           <CommandItem
                             key={account.id}
-                            value={account.displayName}
+                            value={account.id}
                             onSelect={(currentValue) => {
-                                 const accountId = accounts.find(acc => acc.displayName.toLowerCase() === currentValue.toLowerCase())?.id;
+                                const accountId = currentValue;
                                 if (!accountId) return;
 
                                 setSelectedAccountIds(prev =>

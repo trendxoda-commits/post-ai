@@ -99,11 +99,14 @@ export default function InstagramCallbackPage() {
           accessToken: longLivedToken,
         });
 
+        // **MODIFICATION**: Filter to only include Instagram accounts
+        const instagramAccounts = accounts.filter(acc => acc.platform === 'Instagram');
+
         // 6. Save the new accounts to Firestore, checking for duplicates.
         const socialAccountsRef = collection(firestore, 'users', user.uid, 'socialAccounts');
         let newAccountsCount = 0;
         
-        for (const account of accounts) {
+        for (const account of instagramAccounts) { // Use the filtered list
             const accountId = account.instagramId || account.facebookPageId;
             if (!accountId) continue;
             
@@ -132,7 +135,7 @@ export default function InstagramCallbackPage() {
         setStatus(Status.SUCCESS);
         toast({
           title: 'Connection Successful!',
-          description: `${newAccountsCount} new account(s) have been connected.`,
+          description: `${newAccountsCount} new Instagram account(s) have been connected.`,
         });
         
         // Redirect back to settings page

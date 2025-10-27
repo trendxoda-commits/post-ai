@@ -72,7 +72,8 @@ function AddAccountDialog() {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<'Instagram' | 'Facebook' | ''>('');
   const [displayName, setDisplayName] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [appId, setAppId] = useState('');
+  const [appSecret, setAppSecret] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { firestore } = useFirebase();
@@ -80,7 +81,7 @@ function AddAccountDialog() {
   const { toast } = useToast();
 
   const handleAddAccount = () => {
-    if (!user || !platform || !displayName || !apiKey) {
+    if (!user || !platform || !displayName || !appId || !appSecret) {
       toast({
         variant: "destructive",
         title: "Missing Information",
@@ -95,7 +96,8 @@ function AddAccountDialog() {
       userId: user.uid,
       platform,
       displayName,
-      apiKey,
+      appId,
+      appSecret,
       accountId: `acc-${Date.now()}`, // Simple unique ID
       avatar: `https://i.pravatar.cc/150?u=${displayName}`
     }).then(() => {
@@ -115,7 +117,8 @@ function AddAccountDialog() {
         setOpen(false);
         setPlatform('');
         setDisplayName('');
-        setApiKey('');
+        setAppId('');
+        setAppSecret('');
     });
   };
 
@@ -162,16 +165,28 @@ function AddAccountDialog() {
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="apiKey" className="text-right">
-              API Key
+            <Label htmlFor="appId" className="text-right">
+              App ID
             </Label>
             <Input
-              id="apiKey"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              id="appId"
+              value={appId}
+              onChange={(e) => setAppId(e.target.value)}
               className="col-span-3"
-              placeholder="Paste your API key here"
+              placeholder="Paste your App ID here"
+            />
+          </div>
+           <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="appSecret" className="text-right">
+              App Secret
+            </Label>
+            <Input
+              id="appSecret"
+              type="password"
+              value={appSecret}
+              onChange={(e) => setAppSecret(e.target.value)}
+              className="col-span-3"
+              placeholder="Paste your App Secret here"
             />
           </div>
         </div>

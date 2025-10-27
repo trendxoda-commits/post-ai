@@ -4,7 +4,8 @@ export type SocialAccount = {
   platform: 'Instagram' | 'Facebook';
   accountId: string;
   displayName: string;
-  apiKey: string;
+  appId: string;
+  appSecret: string;
   avatar?: string;
 };
 

@@ -55,9 +55,13 @@
           "type": "string",
           "description": "The display name of the account on the social media platform."
         },
-        "apiKey": {
+        "appId": {
           "type": "string",
-          "description": "API key used to access this account"
+          "description": "The App ID for the social media application."
+        },
+        "appSecret": {
+          "type": "string",
+          "description": "The App Secret for the social media application."
         }
       },
       "required": [
@@ -66,7 +70,8 @@
         "platform",
         "accountId",
         "displayName",
-        "apiKey"
+        "appId",
+        "appSecret"
       ]
     },
     "ScheduledPost": {

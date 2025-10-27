@@ -95,10 +95,13 @@ export function Feed() {
                 const isVideo = attachment.type === 'video_inline' || attachment.type === 'video' || !!attachment.media.source;
                 const mediaUrl = isVideo ? attachment.media.source : attachment.media.image.src;
 
-                // Extract video views
+                // Safely extract video views
                 let views = 0;
-                 if (isVideo && item.insights?.data?.[0]?.name === 'post_video_views') {
-                    views = item.insights.data[0].values[0].value;
+                 if (isVideo && item.insights?.data?.length > 0) {
+                    const viewsInsight = item.insights.data.find((insight: any) => insight.name === 'post_video_views');
+                    if (viewsInsight && viewsInsight.values?.length > 0) {
+                        views = viewsInsight.values[0].value;
+                    }
                 }
                 
                 return {

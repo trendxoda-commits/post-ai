@@ -29,6 +29,8 @@ import {
 import {
   getInstagramMedia as getInstagramMediaFlow,
   getFacebookPosts as getFacebookPostsFlow,
+  type GetInstagramMediaOutput,
+  type GetFacebookPostsOutput
 } from '@/ai/flows/social-media-actions';
 import type { z } from 'zod';
 
@@ -75,12 +77,12 @@ export async function postToFacebook(
 // --- Social Media Data Fetching ---
 export async function fetchInstagramMedia(
   input: any
-): Promise<any> {
+): Promise<GetInstagramMediaOutput> {
   return getInstagramMediaFlow(input);
 }
 
 export async function fetchFacebookPosts(
   input: any
-): Promise<any> {
+): Promise<GetFacebookPostsOutput> {
   return getFacebookPostsFlow(input);
 }

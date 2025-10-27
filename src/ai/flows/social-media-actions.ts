@@ -35,6 +35,9 @@ const GetInstagramMediaOutputSchema = z.object({
   media: z.array(InstagramMediaObjectSchema),
 });
 
+export type GetInstagramMediaOutput = z.infer<typeof GetInstagramMediaOutputSchema>;
+
+
 const getInstagramMediaFlow = ai.defineFlow(
   {
     name: 'getInstagramMediaFlow',
@@ -86,7 +89,7 @@ const getInstagramMediaFlow = ai.defineFlow(
   }
 );
 
-export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaInputSchema>): Promise<z.infer<typeof GetInstagramMediaOutputSchema>> {
+export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaInputSchema>): Promise<GetInstagramMediaOutput> {
     return getInstagramMediaFlow(input);
 }
 
@@ -119,6 +122,7 @@ const FacebookPostObjectSchema = z.object({
 const GetFacebookPostsOutputSchema = z.object({
   posts: z.array(FacebookPostObjectSchema),
 });
+export type GetFacebookPostsOutput = z.infer<typeof GetFacebookPostsOutputSchema>;
 
 
 const getFacebookPostsFlow = ai.defineFlow(
@@ -144,6 +148,6 @@ const getFacebookPostsFlow = ai.defineFlow(
   }
 );
 
-export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInputSchema>): Promise<z.infer<typeof GetFacebookPostsOutputSchema>> {
+export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInputSchema>): Promise<GetFacebookPostsOutput> {
     return getFacebookPostsFlow(input);
 }

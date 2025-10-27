@@ -42,7 +42,6 @@ const postToInstagramFlow = ai.defineFlow(
     }
 
     // Step 1: Create a media container.
-    // The caption is NOT sent in this step. It's sent during the publish step.
     const containerUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media`;
     
     const isVideo = mediaType === 'VIDEO';
@@ -58,9 +57,11 @@ const postToInstagramFlow = ai.defineFlow(
         params.append('image_url', mediaUrl);
     }
     
-    const containerResponse = await fetch(`${containerUrl}?${params.toString()}`, {
+    const containerResponse = await fetch(containerUrl, {
         method: 'POST',
+        body: params,
     });
+
 
     if (!containerResponse.ok) {
         const errorData: any = await containerResponse.json();
@@ -136,8 +137,9 @@ async function publishContainer(instagramUserId: string, creationId: string, pag
     }
 
     console.log(`Publishing container ${creationId}...`);
-    const publishResponse = await fetch(`${publishUrl}?${params.toString()}`, {
+    const publishResponse = await fetch(publishUrl, {
         method: 'POST',
+        body: params,
     });
 
     if (!publishResponse.ok) {

@@ -13,9 +13,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase, initiateEmailSignUp, initiateEmailSignIn } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
@@ -61,10 +65,10 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await auth.signInWithEmailAndPassword(loginEmail, loginPassword);
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
       toast({
         title: 'Login Successful',
-        description: "Welcome back!",
+        description: 'Welcome back!',
       });
     } catch (e) {
       handleAuthError(e as FirebaseError);
@@ -77,10 +81,10 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await auth.createUserWithEmailAndPassword(signupEmail, signupPassword);
+      await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
       toast({
         title: 'Signup Successful',
-        description: "Your account has been created.",
+        description: 'Your account has been created.',
       });
     } catch (e) {
       handleAuthError(e as FirebaseError);
@@ -88,7 +92,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-
 
   return (
     <Tabs defaultValue="login" className="w-full max-w-[400px]">
@@ -108,11 +111,24 @@ export default function LoginPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
-                <Input id="login-email" type="email" placeholder="m@example.com" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="login-password">Password</Label>
-                <Input id="login-password" type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                <Input
+                  id="login-password"
+                  type="password"
+                  required
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
               </div>
             </CardContent>
             <CardFooter>
@@ -129,18 +145,29 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle>Sign Up</CardTitle>
-              <CardDescription>
-                Create an account to get started.
-              </CardDescription>
+              <CardDescription>Create an account to get started.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="signup-email">Email</Label>
-                <Input id="signup-email" type="email" placeholder="m@example.com" required value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} />
+                <Input
+                  id="signup-email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={signupEmail}
+                  onChange={(e) => setSignupEmail(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input id="signup-password" type="password" required value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} />
+                <Input
+                  id="signup-password"
+                  type="password"
+                  required
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                />
               </div>
             </CardContent>
             <CardFooter>

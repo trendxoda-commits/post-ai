@@ -1,3 +1,52 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "avatar1",
+      "description": "User avatar 1",
+      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjE0Mzg3NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "avatar2",
+      "description": "User avatar 2",
+      "imageUrl": "https://images.unsplash.com/photo-1464746133101-a2c3f88e0dd9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxwZXJzb24lMjBuYXR1cmV8ZW58MHx8fHwxNzYxNDgyMTc5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person nature"
+    },
+    {
+      "id": "avatar3",
+      "description": "User avatar 3",
+      "imageUrl": "https://images.unsplash.com/photo-1697581581183-bfd1c5e3bb15?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwY2l0eXxlbnwwfHx8fDE3NjE0NTcyNjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person city"
+    },
+    {
+      "id": "post1",
+      "description": "A beautiful landscape",
+      "imageUrl": "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsYW5kc2NhcGUlMjBtb3VudGFpbnxlbnwwfHx8fDE3NjE0Mjc2NTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "landscape mountain"
+    },
+    {
+      "id": "post2",
+      "description": "A delicious meal",
+      "imageUrl": "https://images.unsplash.com/photo-1723906012573-6513af5a986c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmb29kJTIwcGFzdGF8ZW58MHx8fHwxNzYxNTMxMjQwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "food pasta"
+    },
+    {
+      "id": "post3",
+      "description": "A city skyline at night",
+      "imageUrl": "https://images.unsplash.com/photo-1588312744377-2adfb7b8578a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjaXR5JTIwbmlnaHR8ZW58MHx8fHwxNzYxNDc1NzE0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city night"
+    },
+    {
+      "id": "post4",
+      "description": "A cute pet",
+      "imageUrl": "https://images.unsplash.com/photo-1701532420861-d7e18a313dd0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxhbmltYWwlMjBkb2d8ZW58MHx8fHwxNzYxNDgyOTA5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "animal dog"
+    },
+    {
+      "id": "post5",
+      "description": "Abstract art",
+      "imageUrl": "https://images.unsplash.com/photo-1541661538396-53ba2d051eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGNvbG9yZnVsfGVufDB8fHx8MTc2MTUwNDcyNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract colorful"
+    }
+  ]
 }

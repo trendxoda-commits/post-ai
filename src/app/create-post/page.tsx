@@ -5,23 +5,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
-  Calendar as CalendarIcon,
-  Clock,
   Loader2,
   Link as LinkIcon,
   ChevronDown
 } from 'lucide-react';
-import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import type { SocialAccount, Post } from '@/lib/types';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { postToFacebook, postToInstagram } from '@/app/actions';
-import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,9 +27,6 @@ export default function CreatePostPage() {
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
-  const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
   const { toast } = useToast();
@@ -63,8 +54,6 @@ export default function CreatePostPage() {
     setMediaUrl('');
     setMediaType('IMAGE');
     setSelectedAccountIds([]);
-    setScheduledDate(undefined);
-    setScheduledTime('');
   };
 
   const handlePostNow = async () => {
@@ -132,49 +121,6 @@ export default function CreatePostPage() {
       resetForm();
     }
   };
-
-  const handleSchedule = () => {
-    if (!user || selectedAccountIds.length === 0 || !scheduledDate || !scheduledTime) {
-      toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Please fill out all fields before scheduling.",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    const [hours, minutes] = scheduledTime.split(':').map(Number);
-    const scheduledDateTime = new Date(scheduledDate);
-    scheduledDateTime.setHours(hours, minutes);
-
-    const postsCollection = collection(firestore, 'users', user.uid, 'scheduledPosts');
-    addDocumentNonBlocking(postsCollection, {
-      userId: user.uid,
-      content,
-      mediaUrl,
-      mediaType,
-      socialAccountIds: selectedAccountIds,
-      scheduledTime: scheduledDateTime.toISOString(),
-      createdAt: new Date().toISOString(),
-    }).then(() => {
-      toast({
-        title: 'Post Scheduled!',
-        description: 'Your post has been successfully scheduled for publishing.',
-      });
-      resetForm();
-    }).catch((error) => {
-      console.error("Error scheduling post: ", error);
-      toast({
-        variant: "destructive",
-        title: 'Error scheduling post',
-        description: 'There was an issue scheduling your post. Please try again.',
-      });
-    }).finally(() => {
-      setIsLoading(false);
-    });
-  };
   
     // Create a mock post object for the preview
   const previewPost: FeedPost = {
@@ -199,7 +145,7 @@ export default function CreatePostPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline">Create Post</h1>
         <p className="text-muted-foreground max-w-2xl">
-          Craft your message, add your media, and then post it now or schedule it for later.
+          Craft your message, add your media, and publish it to your connected accounts.
         </p>
       </div>
 
@@ -298,58 +244,13 @@ export default function CreatePostPage() {
           <Card>
             <CardHeader>
               <CardTitle>3. Publish</CardTitle>
-              <CardDescription>Post immediately or schedule for a later time.</CardDescription>
+              <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isLoading}>
+            <CardContent>
+              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
                 {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
               </Button>
-              <Separator />
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="date" className="font-semibold">Schedule Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !scheduledDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledDate ? format(scheduledDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledDate}
-                        onSelect={setScheduledDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time" className="font-semibold">Schedule Time</Label>
-                  <div className='relative'>
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="time"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
-                    />
-                  </div>
-                </div>
-              </div>
             </CardContent>
-            <CardFooter>
-              <Button onClick={handleSchedule} disabled={isLoading || isPosting || !scheduledDate || !scheduledTime} className="w-full">
-                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </div>

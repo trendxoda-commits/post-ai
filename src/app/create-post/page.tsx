@@ -9,6 +9,7 @@ import {
   Clock,
   Loader2,
   Link as LinkIcon,
+  ChevronDown
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -23,8 +24,8 @@ import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 
 export default function CreatePostPage() {
@@ -210,38 +211,50 @@ export default function CreatePostPage() {
               <CardTitle>1. Select Accounts</CardTitle>
               <CardDescription>Choose which social media accounts you want to post to.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {accounts && accounts.length > 0 ? (
-                accounts.map(account => (
-                    <div key={account.id} className="flex items-center space-x-4 p-3 rounded-md hover:bg-muted/50 transition-colors">
-                        <Checkbox
-                            id={`account-${account.id}`}
-                            checked={selectedAccountIds.includes(account.id)}
-                            onCheckedChange={(checked) => {
-                                setSelectedAccountIds(prev =>
-                                    checked
-                                    ? [...prev, account.id]
-                                    : prev.filter(id => id !== account.id)
-                                );
-                            }}
-                        />
-                        <Label htmlFor={`account-${account.id}`} className="flex items-center gap-3 cursor-pointer w-full">
-                           <Avatar className="h-9 w-9">
-                                <AvatarImage src={account.avatar} alt={account.displayName} />
-                                <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                                <p className="font-semibold">{account.displayName}</p>
-                                <p className="text-sm text-muted-foreground">{account.platform}</p>
-                            </div>
-                        </Label>
+            <CardContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span>
+                      {selectedAccountIds.length > 0
+                        ? `${selectedAccountIds.length} account(s) selected`
+                        : 'Select accounts to post to'}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                  <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {accounts && accounts.length > 0 ? (
+                    accounts.map(account => (
+                      <DropdownMenuCheckboxItem
+                        key={account.id}
+                        checked={selectedAccountIds.includes(account.id)}
+                        onSelect={(e) => e.preventDefault()} // Prevents dropdown from closing on select
+                        onCheckedChange={(checked) => {
+                          setSelectedAccountIds(prev =>
+                            checked
+                              ? [...prev, account.id]
+                              : prev.filter(id => id !== account.id)
+                          );
+                        }}
+                      >
+                        <Avatar className="h-6 w-6 mr-2">
+                          <AvatarImage src={account.avatar} alt={account.displayName} />
+                          <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold">{account.displayName}</span>
+                        <span className="ml-auto text-xs text-muted-foreground">{account.platform}</span>
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  ) : (
+                    <div className="p-2 text-sm text-center text-muted-foreground">
+                      No accounts connected.
                     </div>
-                ))
-              ) : (
-                <p className='text-sm text-muted-foreground text-center py-4'>
-                    No accounts connected. Please add one in settings.
-                </p>
-              )}
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardContent>
           </Card>
 

@@ -5,7 +5,7 @@ import type { SocialAccount } from '@/lib/types';
 import { PostCard } from './post-card';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { getInstagramMedia, getFacebookPosts } from '@/app/actions';
+import { fetchInstagramMedia, fetchFacebookPosts } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 
@@ -56,7 +56,7 @@ export function Feed() {
 
       for (const account of accounts) {
         if (account.platform === 'Instagram') {
-          const result = await getInstagramMedia({
+          const result = await fetchInstagramMedia({
             instagramUserId: account.accountId,
             accessToken: userAccessToken,
           });
@@ -78,7 +78,7 @@ export function Feed() {
           allPosts.push(...igPosts);
 
         } else if (account.platform === 'Facebook') {
-          const result = await getFacebookPosts({
+          const result = await fetchFacebookPosts({
             facebookPageId: account.accountId,
             pageAccessToken: account.pageAccessToken!,
           });

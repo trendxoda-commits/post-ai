@@ -16,23 +16,27 @@ import {
   type GetInstagramUserDetailsInput,
   type GetInstagramUserDetailsOutput,
 } from '@/ai/flows/instagram-auth';
-import { 
-    postToInstagram, 
-    type PostToInstagramInput, 
-    type PostToInstagramOutput 
+import {
+  postToInstagram as postToInstagramFlow,
+  type PostToInstagramInput,
+  type PostToInstagramOutput,
 } from '@/ai/flows/post-to-instagram';
-import { 
-    postToFacebook, 
-    type PostToFacebookInput, 
-    type PostToFacebookOutput 
+import {
+  postToFacebook as postToFacebookFlow,
+  type PostToFacebookInput,
+  type PostToFacebookOutput,
 } from '@/ai/flows/post-to-facebook';
-import { 
-    getInstagramMedia, 
-    getFacebookPosts 
+import {
+  getInstagramMedia as getInstagramMediaFlow,
+  getFacebookPosts as getFacebookPostsFlow,
 } from '@/ai/flows/social-media-actions';
 import type { z } from 'zod';
-import type { GetInstagramMediaInputSchema, GetInstagramMediaOutputSchema, GetFacebookPostsInputSchema, GetFacebookPostsOutputSchema } from '@/ai/flows/social-media-actions';
-
+import type {
+  GetInstagramMediaInputSchema,
+  GetInstagramMediaOutputSchema,
+  GetFacebookPostsInputSchema,
+  GetFacebookPostsOutputSchema,
+} from '@/ai/flows/social-media-actions';
 
 // --- Trending Hashtags ---
 export async function generateHashtags(
@@ -62,19 +66,27 @@ export async function getIgUserDetails(
 
 // --- Social Media Posting ---
 
-export async function postToInstagram(input: PostToInstagramInput): Promise<PostToInstagramOutput> {
-    return postToInstagram(input);
+export async function postToInstagram(
+  input: PostToInstagramInput
+): Promise<PostToInstagramOutput> {
+  return postToInstagramFlow(input);
 }
 
-export async function postToFacebook(input: PostToFacebookInput): Promise<PostToFacebookOutput> {
-    return postToFacebook(input);
+export async function postToFacebook(
+  input: PostToFacebookInput
+): Promise<PostToFacebookOutput> {
+  return postToFacebookFlow(input);
 }
 
 // --- Social Media Data Fetching ---
-export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaInputSchema>): Promise<z.infer<typeof GetInstagramMediaOutputSchema>> {
-    return getInstagramMedia(input);
+export async function fetchInstagramMedia(
+  input: z.infer<typeof GetInstagramMediaInputSchema>
+): Promise<z.infer<typeof GetInstagramMediaOutputSchema>> {
+  return getInstagramMediaFlow(input);
 }
 
-export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInputSchema>): Promise<z.infer<typeof GetFacebookPostsOutputSchema>> {
-    return getFacebookPosts(input);
+export async function fetchFacebookPosts(
+  input: z.infer<typeof GetFacebookPostsInputSchema>
+): Promise<z.infer<typeof GetFacebookPostsOutputSchema>> {
+  return getFacebookPostsFlow(input);
 }

@@ -235,12 +235,15 @@ export default function CreatePostPage() {
                           <CommandItem
                             key={account.id}
                             value={account.displayName}
-                            onSelect={() => {
-                              setSelectedAccountIds(prev =>
-                                prev.includes(account.id)
-                                  ? prev.filter(id => id !== account.id)
-                                  : [...prev, account.id]
-                              )
+                            onSelect={(currentValue) => {
+                                 const accountId = accounts.find(acc => acc.displayName.toLowerCase() === currentValue.toLowerCase())?.id;
+                                if (!accountId) return;
+
+                                setSelectedAccountIds(prev =>
+                                    prev.includes(accountId)
+                                    ? prev.filter(id => id !== accountId)
+                                    : [...prev, accountId]
+                                );
                             }}
                           >
                             <Check

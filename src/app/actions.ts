@@ -35,6 +35,10 @@ import {
   type GetAccountAnalyticsInput,
   type AnalyticsOutput,
 } from '@/ai/flows/social-media-actions';
+import {
+  executeScheduledPosts as executeScheduledPostsFlow,
+  type ExecuteScheduledPostsInput,
+} from '@/ai/flows/schedule-post-execution';
 import type { z } from 'zod';
 
 // --- Trending Hashtags ---
@@ -75,6 +79,11 @@ export async function postToFacebook(
   input: PostToFacebookInput
 ): Promise<PostToFacebookOutput> {
   return postToFacebookFlow(input);
+}
+
+// --- Post Scheduling ---
+export async function executeScheduledPosts(input: ExecuteScheduledPostsInput) {
+  return executeScheduledPostsFlow(input);
 }
 
 

@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { postToFacebook, postToInstagram, executeScheduledPosts } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -159,10 +159,13 @@ export default function CreatePostPage() {
         socialAccountIds: selectedAccountIds,
         createdAt: new Date().toISOString(),
       });
+      
+      // Fire-and-forget call to the scheduler agent
+      executeScheduledPosts({ userId: user.uid });
 
       toast({
         title: 'Post Scheduled!',
-        description: 'Your post has been successfully scheduled.',
+        description: 'Your post has been successfully scheduled and will be published automatically.',
       });
       resetForm();
     } catch (error: any) {
@@ -349,10 +352,9 @@ export default function CreatePostPage() {
                     className="pl-10"
                     />
                 </div>
-                 <p className="text-xs text-muted-foreground text-center">Note: Scheduling backend is not yet implemented. This will save the post but not publish it.</p>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full" onClick={handleSchedulePost} disabled={isScheduling || isPosting || true}>
+                  <Button className="w-full" onClick={handleSchedulePost} disabled={isScheduling || isPosting}>
                       {isScheduling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
                   </Button>
                 </CardFooter>

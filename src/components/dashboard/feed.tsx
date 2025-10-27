@@ -8,6 +8,8 @@ import { collection } from 'firebase/firestore';
 import { fetchInstagramMedia, fetchFacebookPosts } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 // A unified post type for the feed
 export interface FeedPost {
@@ -31,6 +33,7 @@ export function Feed() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'facebook' | 'instagram'>('all');
 
   const socialAccountsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
@@ -122,6 +125,11 @@ export function Feed() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accounts, userAccessToken]);
+  
+  const filteredPosts = posts.filter(post => {
+    if (filter === 'all') return true;
+    return post.accountPlatform.toLowerCase() === filter;
+  });
 
 
   if (isLoadingAccounts) {
@@ -139,7 +147,17 @@ export function Feed() {
 
   return (
     <div className="space-y-6">
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+             <Select onValueChange={(value: 'all' | 'facebook' | 'instagram') => setFilter(value)} defaultValue="all">
+              <SelectTrigger className='w-[180px]'>
+                <SelectValue placeholder="Filter by account" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Accounts</SelectItem>
+                <SelectItem value="facebook">Facebook</SelectItem>
+                <SelectItem value="instagram">Instagram</SelectItem>
+              </SelectContent>
+            </Select>
             <Button onClick={fetchPosts} disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Refresh Feed
@@ -154,13 +172,13 @@ export function Feed() {
          </div>
       )}
 
-      {posts.map((post) => (
+      {filteredPosts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}
       
-      {!isLoading && !error && posts.length === 0 && (
+      {!isLoading && !error && filteredPosts.length === 0 && (
          <div className="text-center py-10 border rounded-lg bg-card text-card-foreground">
-            <p className="text-muted-foreground">No posts found for your connected accounts.</p>
+            <p className="text-muted-foreground">No posts found for the selected filter.</p>
             <p className="text-sm text-muted-foreground">Once you post something, it will appear here.</p>
          </div>
        )}

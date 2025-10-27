@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2, Link as LinkIcon, Image as ImageIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -35,13 +35,14 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@/components/ui/radio-group"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
 
 export function SchedulePost() {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
   const [scheduledTime, setScheduledTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -61,67 +62,80 @@ export function SchedulePost() {
     setContent('');
     setMediaUrl('');
     setMediaType('IMAGE');
-    setSelectedAccountId('');
+    setSelectedAccountIds([]);
     setScheduledDate(undefined);
     setScheduledTime('');
   };
 
   const handlePostNow = async () => {
-    if (!selectedAccountId || !mediaUrl) {
+    if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please select an account and provide a media URL to post.",
+        description: "Please select at least one account and provide a media URL to post.",
       });
-      return;
-    }
-
-    const selectedAccount = accounts?.find(acc => acc.id === selectedAccountId);
-    if (!selectedAccount || !selectedAccount.pageAccessToken) {
-      toast({ variant: "destructive", title: "Error", description: "Selected account is invalid or missing permissions." });
       return;
     }
 
     setIsPosting(true);
-    try {
-      let result;
-      if (selectedAccount.platform === 'Facebook') {
-        result = await postToFacebook({
-          facebookPageId: selectedAccount.accountId,
-          mediaUrl,
-          caption: content,
-          pageAccessToken: selectedAccount.pageAccessToken,
-          mediaType,
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const accountId of selectedAccountIds) {
+        const selectedAccount = accounts?.find(acc => acc.id === accountId);
+        if (!selectedAccount || !selectedAccount.pageAccessToken) {
+          toast({ variant: "destructive", title: `Error with ${selectedAccount?.displayName}`, description: "Account is invalid or missing permissions." });
+          errorCount++;
+          continue;
+        }
+
+        try {
+          if (selectedAccount.platform === 'Facebook') {
+            await postToFacebook({
+              facebookPageId: selectedAccount.accountId,
+              mediaUrl,
+              caption: content,
+              pageAccessToken: selectedAccount.pageAccessToken,
+              mediaType,
+            });
+          } else { // Instagram
+            await postToInstagram({
+              instagramUserId: selectedAccount.accountId,
+              mediaUrl,
+              caption: content,
+              pageAccessToken: selectedAccount.pageAccessToken,
+              mediaType,
+            });
+          }
+          successCount++;
+        } catch (error: any) {
+          console.error(`Error posting to ${selectedAccount.displayName}:`, error);
+          toast({
+            variant: "destructive",
+            title: `Error Posting to ${selectedAccount.displayName}`,
+            description: error.message || 'There was an issue posting your content. Please try again.',
+          });
+          errorCount++;
+        }
+    }
+    
+    setIsPosting(false);
+    
+    if (successCount > 0) {
+        toast({
+            title: 'Post Successful!',
+            description: `${successCount} post(s) have been published.`,
         });
-      } else { // Instagram
-        result = await postToInstagram({
-          instagramUserId: selectedAccount.accountId,
-          mediaUrl,
-          caption: content,
-          pageAccessToken: selectedAccount.pageAccessToken,
-          mediaType,
-        });
-      }
-      toast({
-        title: 'Post Successful!',
-        description: `Your post has been published to ${selectedAccount.displayName}. Post ID: ${result.postId}`,
-      });
+    }
+
+    if (errorCount === 0) {
       setOpen(false);
       resetForm();
-    } catch (error: any) {
-      console.error("Error posting now:", error);
-      toast({
-        variant: "destructive",
-        title: 'Error Posting',
-        description: error.message || 'There was an issue posting your content. Please try again.',
-      });
-    } finally {
-      setIsPosting(false);
     }
   };
 
   const handleSchedule = () => {
-    if (!user || selectedAccounts.length === 0 || !scheduledDate || !scheduledTime) {
+    if (!user || selectedAccountIds.length === 0 || !scheduledDate || !scheduledTime) {
         toast({
             variant: "destructive",
             title: "Missing Information",
@@ -142,7 +156,7 @@ export function SchedulePost() {
       content,
       mediaUrl,
       mediaType,
-      socialAccountIds: [selectedAccountId],
+      socialAccountIds: selectedAccountIds,
       scheduledTime: scheduledDateTime.toISOString(),
       createdAt: new Date().toISOString(),
     }).then(() => {
@@ -181,19 +195,50 @@ export function SchedulePost() {
         </DialogHeader>
         <div className="grid gap-6 py-4">
            <div className="space-y-2">
-            <Label>Account</Label>
-            <Select onValueChange={setSelectedAccountId} value={selectedAccountId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an account to post to" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((account) => (
-                  <SelectItem key={account.id} value={account.id}>
-                    {account.displayName} ({account.platform})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Accounts</Label>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                    >
+                        {selectedAccountIds.length > 0
+                            ? `${selectedAccountIds.length} account(s) selected`
+                            : "Select accounts to post to..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0">
+                    <Command>
+                        <CommandInput placeholder="Search accounts..." />
+                        <CommandEmpty>No accounts found.</CommandEmpty>
+                        <CommandGroup>
+                            {accounts?.map((account) => (
+                                <CommandItem
+                                    key={account.id}
+                                    value={account.displayName}
+                                    onSelect={() => {
+                                        setSelectedAccountIds(prev => 
+                                            prev.includes(account.id)
+                                                ? prev.filter(id => id !== account.id)
+                                                : [...prev, account.id]
+                                        )
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {account.displayName} ({account.platform})
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </Command>
+                </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label htmlFor="content">Content / Caption</Label>

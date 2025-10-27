@@ -3,17 +3,13 @@
 /**
  * @fileOverview Instagram Post Flow
  * This file contains a Genkit flow for posting an image or video to Instagram.
- * It handles indirect URLs by downloading the media, hosting it temporarily on Gofile,
- * and then using the direct Gofile URL to post to Instagram.
+ * It handles indirect URLs by downloading the media, hosting it temporarily on a reliable service,
+ * and then using the direct URL to post to Instagram.
  * - postToInstagram - Posts media to a user's Instagram account.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import axios from 'axios';
-import FormData from 'form-data';
-import { randomBytes } from 'crypto';
-
 
 const PostToInstagramInputSchema = z.object({
   instagramUserId: z.string().describe('The Instagram User ID.'),
@@ -34,69 +30,6 @@ const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 // Helper function to delay execution
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * Downloads media from a URL, uploads it to Gofile.io, and returns a direct link.
- * This is necessary because Instagram requires a direct, public URL, and cannot handle
- * redirects from services like Pexels.
- * @param url The indirect URL of the media to download.
- * @returns A direct, public URL to the media hosted on Gofile.
- */
-async function getDirectMediaUrl(url: string): Promise<string> {
-    try {
-        console.log(`Downloading media from: ${url}`);
-        // Download the media file as a buffer
-        const response = await axios.get(url, {
-            responseType: 'arraybuffer',
-            maxRedirects: 5, // Follow redirects
-        });
-        const mediaBuffer = Buffer.from(response.data);
-        const fileName = `upload-${randomBytes(8).toString('hex')}.${url.includes('video') ? 'mp4' : 'jpg'}`;
-
-        console.log("Uploading media to temporary host (Gofile)...");
-
-        // 1. Get the best server from Gofile
-        const serverResponse = await fetch('https://api.gofile.io/getServer');
-        if (!serverResponse.ok) {
-            throw new Error('Could not get a Gofile server.');
-        }
-        const serverData = await serverResponse.json();
-        if (serverData.status !== 'ok') {
-            throw new Error('Failed to get a Gofile server, status was not "ok".');
-        }
-        const server = serverData.data.server;
-
-        // 2. Upload the file
-        const formData = new FormData();
-        formData.append('file', mediaBuffer, fileName);
-        
-        const uploadResponse = await fetch(`https://${server}.gofile.io/uploadFile`, {
-            method: 'POST',
-            body: formData as any,
-            headers: formData.getHeaders(),
-        });
-
-        if (!uploadResponse.ok) {
-             const errorText = await uploadResponse.text();
-             throw new Error(`Gofile upload failed: ${errorText}`);
-        }
-
-        const uploadData = await uploadResponse.json();
-        if (uploadData.status !== 'ok') {
-             throw new Error(`Gofile upload failed after request. Status: ${uploadData.status}`);
-        }
-        
-        const directLink = uploadData.data.downloadPage.replace('/d/', '/'); // Create a more direct-like link if possible
-        console.log(`Media hosted successfully. Direct link: ${directLink}`);
-        // Return the direct download link provided by Gofile
-        return uploadData.data.directLink || directLink;
-
-    } catch (error: any) {
-        console.error("Failed during getDirectMediaUrl:", error.message, error.stack);
-        throw new Error(`Failed to download or re-host the media file. The provided URL might be invalid or private. Original error: ${error.message}`);
-    }
-}
-
-
 const postToInstagramFlow = ai.defineFlow(
   {
     name: 'postToInstagramFlow',
@@ -108,20 +41,6 @@ const postToInstagramFlow = ai.defineFlow(
       throw new Error('Instagram Page Access Token is required.');
     }
 
-    let finalMediaUrl = mediaUrl;
-    
-    // Instagram needs a direct URL. If the URL doesn't end with a common media extension,
-    // or if it's from a known indirect source like pexels, we re-host it to get a direct link.
-    const isDirectUrl = /\.(jpg|jpeg|png|gif|mp4|mov|avi)$/i.test(mediaUrl);
-    const isPexels = mediaUrl.includes('pexels.com');
-
-    if (!isDirectUrl || isPexels) {
-         console.log("Indirect URL detected. Re-hosting to get a direct link for Instagram.");
-         finalMediaUrl = await getDirectMediaUrl(mediaUrl);
-    } else {
-        console.log("Direct URL detected. Posting directly to Instagram.");
-    }
-    
     // Step 1: Create a media container.
     const containerUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media`;
     
@@ -133,9 +52,9 @@ const postToInstagramFlow = ai.defineFlow(
 
     if (isVideo) {
         params.append('media_type', 'VIDEO');
-        params.append('video_url', finalMediaUrl);
+        params.append('video_url', mediaUrl);
     } else {
-        params.append('image_url', finalMediaUrl);
+        params.append('image_url', mediaUrl);
     }
 
     if (caption) {

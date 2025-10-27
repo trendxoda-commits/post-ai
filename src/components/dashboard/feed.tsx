@@ -89,15 +89,15 @@ export function Feed() {
           });
 
           const fbPosts = result.posts
-            .filter(item => item.attachments?.data?.[0]?.media?.image?.src) // Ensure there's media to display
+            .filter(item => item.attachments?.data?.[0]?.media?.image?.src || item.attachments?.data?.[0]?.media?.source) // Ensure there's media to display
             .map((item): FeedPost => {
                 const attachment = item.attachments.data[0];
-                const isVideo = attachment.type === 'video_inline' || attachment.type === 'video' || attachment.media.source;
+                const isVideo = attachment.type === 'video_inline' || attachment.type === 'video' || !!attachment.media.source;
                 const mediaUrl = isVideo ? attachment.media.source : attachment.media.image.src;
 
                 // Extract video views
                 let views = 0;
-                if (isVideo && item.video_insights?.data?.[0]?.values?.[0]?.value) {
+                 if (isVideo && item.video_insights?.data?.[0]?.name === 'total_video_views') {
                     views = item.video_insights.data[0].values[0].value;
                 }
                 

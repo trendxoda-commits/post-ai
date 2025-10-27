@@ -4,10 +4,16 @@ export type SocialAccount = {
   platform: 'Instagram' | 'Facebook';
   accountId: string;
   displayName: string;
-  appId: string;
-  appSecret: string;
   avatar?: string;
 };
+
+export type ApiCredential = {
+  id: string;
+  userId: string;
+  platform: 'Instagram' | 'Facebook';
+  appId: string;
+  appSecret: string;
+}
 
 export type Post = {
   id: string;

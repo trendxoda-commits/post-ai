@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,8 +31,10 @@ import {
 import { useState } from 'react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import type { SocialAccount } from '@/lib/types';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
@@ -68,12 +70,10 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   );
 };
 
-function AddAccountDialog() {
+function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<'Instagram' | 'Facebook' | ''>('');
   const [displayName, setDisplayName] = useState('');
-  const [appId, setAppId] = useState('');
-  const [appSecret, setAppSecret] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { firestore } = useFirebase();
@@ -81,7 +81,7 @@ function AddAccountDialog() {
   const { toast } = useToast();
 
   const handleAddAccount = () => {
-    if (!user || !platform || !displayName || !appId || !appSecret) {
+    if (!user || !platform || !displayName ) {
       toast({
         variant: "destructive",
         title: "Missing Information",
@@ -96,8 +96,6 @@ function AddAccountDialog() {
       userId: user.uid,
       platform,
       displayName,
-      appId,
-      appSecret,
       accountId: `acc-${Date.now()}`, // Simple unique ID
       avatar: `https://i.pravatar.cc/150?u=${displayName}`
     }).then(() => {
@@ -117,10 +115,10 @@ function AddAccountDialog() {
         setOpen(false);
         setPlatform('');
         setDisplayName('');
-        setAppId('');
-        setAppSecret('');
     });
   };
+
+  const hasNoCredentials = apiCredentials.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -134,67 +132,53 @@ function AddAccountDialog() {
         <DialogHeader>
           <DialogTitle>Connect a New Account</DialogTitle>
           <DialogDescription>
-            Enter the details for your social media account.
+            Enter a display name and select the platform for your new account.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="platform" className="text-right">
-              Platform
-            </Label>
-            <Select onValueChange={(value: 'Instagram' | 'Facebook') => setPlatform(value)}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a platform" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Instagram">Instagram</SelectItem>
-                <SelectItem value="Facebook">Facebook</SelectItem>
-              </SelectContent>
-            </Select>
+        {hasNoCredentials ? (
+           <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>No API Keys Found</AlertTitle>
+              <AlertDescription>
+                You need to add API keys for a platform before you can connect an account. Please go to the API Keys tab to add your credentials.
+              </AlertDescription>
+            </Alert>
+        ) : (
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="platform" className="text-right">
+                Platform
+              </Label>
+              <Select onValueChange={(value: 'Instagram' | 'Facebook') => setPlatform(value)}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select a platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  {apiCredentials.map(cred => (
+                     <SelectItem key={cred.id} value={cred.platform}>{cred.platform}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="displayName" className="text-right">
+                Display Name
+              </Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="col-span-3"
+                placeholder="e.g., My Personal Page"
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="displayName" className="text-right">
-              Display Name
-            </Label>
-            <Input
-              id="displayName"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="col-span-3"
-              placeholder="e.g., My Travel Blog"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="appId" className="text-right">
-              App ID
-            </Label>
-            <Input
-              id="appId"
-              value={appId}
-              onChange={(e) => setAppId(e.target.value)}
-              className="col-span-3"
-              placeholder="Paste your App ID here"
-            />
-          </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="appSecret" className="text-right">
-              App Secret
-            </Label>
-            <Input
-              id="appSecret"
-              type="password"
-              value={appSecret}
-              onChange={(e) => setAppSecret(e.target.value)}
-              className="col-span-3"
-              placeholder="Paste your App Secret here"
-            />
-          </div>
-        </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleAddAccount} disabled={isLoading}>
+          <Button onClick={handleAddAccount} disabled={isLoading || hasNoCredentials}>
             {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Adding...</> : 'Add Account'}
           </Button>
         </DialogFooter>
@@ -212,13 +196,20 @@ export function AccountConnections() {
     user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
     [firestore, user]
   );
-  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+  const { data: accounts, isLoading: isLoadingAccounts } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const apiCredentialsQuery = useMemoFirebase(() =>
+    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null,
+    [firestore, user]
+  );
+  const { data: apiCredentials, isLoading: isLoadingCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
+
+  const isLoading = isLoadingAccounts || isLoadingCredentials;
 
   const handleDisconnect = (accountId: string) => {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
-    // Optimistically update UI, then send request
     toast({
         title: "Account Disconnected",
         description: "The account is being disconnected."
@@ -231,7 +222,6 @@ export function AccountConnections() {
             description: "Could not disconnect account."
         });
         console.error("Error disconnecting account: ", error);
-        // Here you might want to add logic to revert the UI change if the delete fails
     });
   };
 
@@ -244,7 +234,7 @@ export function AccountConnections() {
             Manage your connected social media accounts.
           </CardDescription>
         </div>
-        <AddAccountDialog />
+        <AddAccountDialog apiCredentials={apiCredentials || []}/>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -285,6 +275,9 @@ export function AccountConnections() {
             ) : (
               <div className="text-center py-10">
                 <p className="text-muted-foreground">No accounts connected yet.</p>
+                <p className="text-sm text-muted-foreground">
+                  Add API keys and then connect your first account.
+                </p>
               </div>
             )}
           </div>

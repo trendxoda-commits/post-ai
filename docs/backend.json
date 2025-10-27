@@ -28,6 +28,41 @@
         "createdAt"
       ]
     },
+    "ApiCredential": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ApiCredential",
+      "type": "object",
+      "description": "Stores the API credentials for a specific platform for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the credential set."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns these credentials."
+        },
+        "platform": {
+          "type": "string",
+          "description": "The social media platform (e.g., 'Facebook', 'Instagram')."
+        },
+        "appId": {
+          "type": "string",
+          "description": "The App ID for the social media application."
+        },
+        "appSecret": {
+          "type": "string",
+          "description": "The App Secret for the social media application."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "platform",
+        "appId",
+        "appSecret"
+      ]
+    },
     "SocialAccount": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "SocialAccount",
@@ -54,14 +89,6 @@
         "displayName": {
           "type": "string",
           "description": "The display name of the account on the social media platform."
-        },
-        "appId": {
-          "type": "string",
-          "description": "The App ID for the social media application."
-        },
-        "appSecret": {
-          "type": "string",
-          "description": "The App Secret for the social media application."
         }
       },
       "required": [
@@ -69,9 +96,7 @@
         "userId",
         "platform",
         "accountId",
-        "displayName",
-        "appId",
-        "appSecret"
+        "displayName"
       ]
     },
     "ScheduledPost": {
@@ -162,13 +187,17 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profile information.  Path-based ownership ensures only the user can access their data.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
+          "description": "Stores user profile information. Path-based ownership ensures only the user can access their data."
+        }
+      },
+      {
+        "path": "/users/{userId}/apiCredentials/{credentialId}",
+        "definition": {
+          "entityName": "ApiCredential",
+          "schema": {
+            "$ref": "#/backend/entities/ApiCredential"
+          },
+          "description": "Stores a user's API credentials for a specific platform. Path-based ownership ensures credentials are secure."
         }
       },
       {
@@ -178,17 +207,7 @@
           "schema": {
             "$ref": "#/backend/entities/SocialAccount"
           },
-          "description": "Stores social media account information for a user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "socialAccountId",
-              "description": "The unique identifier of the social media account."
-            }
-          ]
+          "description": "Stores social media account information for a user. Path-based ownership ensures accounts are private."
         }
       },
       {
@@ -198,17 +217,7 @@
           "schema": {
             "$ref": "#/backend/entities/ScheduledPost"
           },
-          "description": "Stores scheduled posts for a user. Includes denormalized 'userId' for authorization independence.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "scheduledPostId",
-              "description": "The unique identifier of the scheduled post."
-            }
-          ]
+          "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
         }
       },
       {
@@ -218,16 +227,9 @@
           "schema": {
             "$ref": "#/backend/entities/TrendingHashtag"
           },
-          "description": "Stores trending hashtags for content aggregation. Globally readable.",
-          "params": [
-            {
-              "name": "trendingHashtagId",
-              "description": "The unique identifier of the trending hashtag."
-            }
-          ]
+          "description": "Stores trending hashtags for content aggregation. Globally readable."
         }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure authorization independence, support secure list operations (QAPs), and maintain data integrity. It leverages denormalization and structural segregation to achieve these goals.\n\n*   **Users:** User data is stored in `/users/{userId}`. This path-based ownership ensures only the user can access their data.\n*   **Social Accounts:** Social accounts, owned by users, are stored in `/users/{userId}/socialAccounts/{socialAccountId}`. This maintains the 1:N relationship between users and their social accounts. The `apiKey` for each social account is stored here, ensuring only the user who owns the account can access it.\n*   **Scheduled Posts:** Scheduled posts are stored in `/users/{userId}/scheduledPosts/{scheduledPostId}`.  This structure clearly associates each post with its owner. The `socialAccountIds` field allows linking to multiple social accounts. Crucially, the `userId` field is duplicated within the `ScheduledPost` document itself, ensuring Authorization Independence. This is vital for security rules because it avoids needing to perform a `get()` operation to verify the user's ID from a parent document when creating or modifying a `ScheduledPost`.\n*   **Trending Hashtags:** Trending hashtags are stored in the `/trendingHashtags/{trendingHashtagId}` collection.  These are globally accessible (readable). No user-specific access controls are applied.\n\n**Authorization Independence:**\nThe key to authorization independence is the duplication of the `userId` in the `SocialAccount` and `ScheduledPost` documents.  This denormalization allows security rules to validate ownership without needing to read parent documents. For instance, when a user creates a new `ScheduledPost`, the rule can directly check `request.auth.uid == resource.data.userId` without needing to fetch the user document.\n\n**QAPs (Rules are not Filters):**\nThe structure supports secure `list` operations by using path-based ownership for user-specific data and a separate collection for globally trending hashtags. This segregation ensures that listing operations can be scoped to a user's data or to the global trending hashtags, preventing unauthorized access.\n\nThis structure facilitates simple, robust, and easily debuggable security rules by prioritizing authorization independence and structural segregation."
+    ]
   }
 }

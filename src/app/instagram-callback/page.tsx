@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import {
@@ -28,8 +28,15 @@ export default function InstagramCallbackPage() {
 
   const [status, setStatus] = useState<Status>(Status.PENDING);
   const [error, setError] = useState<string | null>(null);
+  const hasRun = useRef(false); // Ref to prevent double execution in Strict Mode
 
   useEffect(() => {
+    // Prevent the effect from running twice in development with Strict Mode
+    if (process.env.NODE_ENV === 'development' && hasRun.current) {
+        return;
+    }
+    hasRun.current = true;
+      
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const errorParam = searchParams.get('error_description');

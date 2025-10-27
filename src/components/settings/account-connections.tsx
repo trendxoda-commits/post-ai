@@ -39,24 +39,31 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
     // ... (icon implementation remains the same)
 };
 
-const sampleAccounts = [
+// This is a placeholder for accounts that would be fetched from the Meta API
+const fetchedSampleAccounts = [
     {
       id: 'fb-page-123',
       displayName: 'My Awesome Page',
       platform: 'Facebook',
-      accountId: '100123456789'
+      accountId: '1001234567890'
     },
     {
       id: 'ig-profile-456',
-      displayName: 'my_insta_handle',
+      displayName: 'urban_explorer',
       platform: 'Instagram',
-      accountId: 'my_insta_handle'
+      accountId: 'urban_explorer_official'
     },
     {
       id: 'fb-page-456',
-      displayName: 'Another Business Page',
+      displayName: 'The Local Cafe',
       platform: 'Facebook',
-      accountId: '100987654321'
+      accountId: '1009876543210'
+    },
+     {
+      id: 'ig-profile-789',
+      displayName: 'foodie_adventures',
+      platform: 'Instagram',
+      accountId: 'foodie_adventures_live'
     }
 ];
 
@@ -65,7 +72,7 @@ function AddAccountDialog({ apiCredentials, existingAccounts }: { apiCredentials
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [fetchedAccounts, setFetchedAccounts] = useState<typeof sampleAccounts>([]);
+  const [fetchedAccounts, setFetchedAccounts] = useState<(typeof fetchedSampleAccounts)>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   
   const { firestore } = useFirebase();
@@ -80,13 +87,17 @@ function AddAccountDialog({ apiCredentials, existingAccounts }: { apiCredentials
         setIsFetching(true);
         const alreadyConnectedIds = existingAccounts.map(a => a.accountId);
         setTimeout(() => {
-            // Filter out accounts that are already connected
-            const availableAccounts = sampleAccounts.filter(sa => !alreadyConnectedIds.includes(sa.accountId));
+            // In a real app, this would be an API call. Here we filter our sample data.
+            const availableAccounts = fetchedSampleAccounts.filter(sa => !alreadyConnectedIds.includes(sa.accountId));
             setFetchedAccounts(availableAccounts);
             setIsFetching(false);
         }, 1500);
-    } else {
-        // Reset state on close
+    } else if (open && hasNoCredentials) {
+        // If dialog is opened without credentials, do nothing
+    }
+    
+    // Reset state on close
+    if (!open) {
         setIsFetching(false);
         setFetchedAccounts([]);
         setSelectedAccountIds([]);
@@ -101,32 +112,30 @@ function AddAccountDialog({ apiCredentials, existingAccounts }: { apiCredentials
     const accountsToConnect = fetchedAccounts.filter(acc => selectedAccountIds.includes(acc.id));
     const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
 
+    // Use a non-blocking approach for each document
+    const promises = accountsToConnect.map(account => {
+        return addDocumentNonBlocking(accountsCollection, {
+            userId: user.uid,
+            platform: account.platform,
+            displayName: account.displayName,
+            accountId: account.accountId,
+            // In a real app, you'd get the avatar URL from the API response
+            avatar: `https://picsum.photos/seed/${account.accountId}/40/40`
+        });
+    });
+
     try {
-        const promises = accountsToConnect.map(account => {
-            return addDocumentNonBlocking(accountsCollection, {
-                userId: user.uid,
-                platform: account.platform,
-                displayName: account.displayName,
-                accountId: account.accountId,
-            });
-        });
-
-        await Promise.all(promises);
-
-        toast({
-            title: `${accountsToConnect.length} Account(s) Connected!`,
-            description: `Successfully connected your accounts.`,
-        });
-    } catch (error) {
-        console.error("Error connecting accounts:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not connect one or more accounts. Please try again.",
-        });
+      await Promise.all(promises);
+      toast({
+        title: `${accountsToConnect.length} Account(s) Connected!`,
+        description: `Successfully connected your accounts.`,
+      });
+    } catch(e) {
+      // Errors are handled by the global error handler, but we can catch to stop loading state
+      console.error("Error connecting one or more accounts", e);
     } finally {
-        setIsLoading(false);
-        setOpen(false);
+      setIsLoading(false);
+      setOpen(false);
     }
   };
 
@@ -233,18 +242,11 @@ export function AccountConnections() {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
-    deleteDocumentNonBlocking(docRef).then(() => {
-        toast({
-            title: "Account Disconnected",
-            description: "The account has been successfully disconnected."
-        });
-    }).catch((error) => {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not disconnect account."
-        });
-        console.error("Error disconnecting account: ", error);
+    // Non-blocking delete
+    deleteDocumentNonBlocking(docRef);
+    toast({
+        title: "Account Disconnected",
+        description: "The account has been successfully disconnected."
     });
   };
 

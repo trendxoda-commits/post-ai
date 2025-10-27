@@ -205,7 +205,7 @@ export function SchedulePost() {
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder="Search accounts..." />
-                        <CommandList>
+                        <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
                             <CommandEmpty>No accounts found.</CommandEmpty>
                             <CommandGroup>
                                 {accounts?.map((account) => (
@@ -230,7 +230,7 @@ export function SchedulePost() {
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
-                        </CommandList>
+                        </div>
                     </Command>
                 </PopoverContent>
             </Popover>

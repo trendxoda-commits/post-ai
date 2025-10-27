@@ -10,16 +10,10 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { postToFacebook } from './post-to-facebook';
 import { postToInstagram } from './post-to-instagram';
-import { initializeFirebase } from '@/firebase';
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  deleteDoc,
-  getDoc,
-} from 'firebase/firestore';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { firebaseConfig } from '@/firebase/config';
+
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 
 
@@ -34,8 +28,15 @@ const ExecuteScheduledPostsOutputSchema = z.object({
 });
 export type ExecuteScheduledPostsOutput = z.infer<typeof ExecuteScheduledPostsOutputSchema>;
 
-// Initialize Firestore outside the flow to be reused.
-const { firestore } = initializeFirebase();
+// Server-side Firebase initialization
+let adminApp: App;
+if (!getApps().length) {
+  adminApp = initializeApp({ projectId: firebaseConfig.projectId });
+} else {
+  adminApp = getApps()[0];
+}
+const firestore = getFirestore(adminApp);
+
 
 const executeScheduledPostsFlow = ai.defineFlow(
   {
@@ -49,19 +50,16 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
     // 1. Fetch all pending scheduled posts for the user
     const now = new Date().toISOString();
-    const postsQuery = query(
-      collection(firestore, 'users', userId, 'scheduledPosts'),
-      where('scheduledTime', '<=', now)
-    );
+    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('scheduledTime', '<=', now);
 
-    const querySnapshot = await getDocs(postsQuery);
+    const querySnapshot = await postsQuery.get();
     if (querySnapshot.empty) {
       return { publishedPosts, failedPosts };
     }
     
     // 2. Get User's long-lived access token from apiCredentials
-    const credsRef = collection(firestore, 'users', userId, 'apiCredentials');
-    const credsSnapshot = await getDocs(credsRef);
+    const credsRef = firestore.collection(`users/${userId}/apiCredentials`);
+    const credsSnapshot = await credsRef.get();
     if (credsSnapshot.empty) {
         console.error(`No API credentials found for user ${userId}. Cannot process posts.`);
         // Mark all as failed since we can't do anything
@@ -81,10 +79,10 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
       for (const accountId of post.socialAccountIds) {
         try {
-            const accountDocRef = doc(firestore, 'users', userId, 'socialAccounts', accountId);
-            const accountDoc = await getDoc(accountDocRef);
+            const accountDocRef = firestore.doc(`users/${userId}/socialAccounts/${accountId}`);
+            const accountDoc = await accountDocRef.get();
 
-            if (!accountDoc.exists()) {
+            if (!accountDoc.exists) {
                 throw new Error(`SocialAccount with ID ${accountId} not found.`);
             }
             
@@ -115,7 +113,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
       
       // 4. If all publications for a post were successful, delete it from the schedule
       if (allSucceeded) {
-        await deleteDoc(doc(firestore, 'users', userId, 'scheduledPosts', postId));
+        await firestore.doc(`users/${userId}/scheduledPosts/${postId}`).delete();
         publishedPosts.push(postId);
       } else {
         failedPosts.push(postId);

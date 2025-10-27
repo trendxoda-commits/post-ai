@@ -105,9 +105,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 },
                 {
                     method: 'GET',
-                    // Note: Facebook video views are harder to get in a simple batch and often require video-specific calls.
-                    // We will focus on likes and comments for FB for now.
-                    relative_url: `${accountId}/posts?fields=likes.summary(true),comments.summary(true)&limit=25`,
+                    relative_url: `${accountId}/posts?fields=likes.summary(true),comments.summary(true),insights.metric(post_video_views)&limit=25`,
                 }
             ];
 
@@ -136,11 +134,15 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             // Process posts response
             const postsResponse = JSON.parse(batchResult[1].body);
              if (batchResult[1].code === 200 && postsResponse.data) {
-                const postsWithStats = postsResponse.data.filter((p: any) => p.likes);
+                const postsWithStats = postsResponse.data;
                 postCount = postsWithStats.length;
                 postsWithStats.forEach((post: any) => {
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
+                    if (post.insights?.data) {
+                        const viewsInsight = post.insights.data.find((d: any) => d.name === 'post_video_views');
+                        totalViews += viewsInsight?.values[0]?.value || 0;
+                    }
                 });
             }
         }
@@ -253,7 +255,7 @@ const FacebookPostObjectSchema = z.object({
     id: z.string(),
     message: z.string().optional(),
     created_time: z.string(),
-    attachments: z.any().optional(), // Updated from full_picture
+    attachments: z.any().optional(), 
     permalink_url: z.string().url(),
     likes: z.object({
         summary: z.object({
@@ -266,7 +268,7 @@ const FacebookPostObjectSchema = z.object({
         })
     }).optional(),
     // Added for video views
-    video_insights: z.any().optional(),
+    insights: z.any().optional(),
 });
 
 const GetFacebookPostsOutputSchema = z.object({
@@ -282,9 +284,8 @@ const getFacebookPostsFlow = ai.defineFlow(
     outputSchema: GetFacebookPostsOutputSchema,
   },
   async ({ facebookPageId, pageAccessToken }) => {
-    // Replaced 'full_picture' with 'attachments' which is the modern way to get media.
-    // Also requesting 'source' for video URLs and 'video_insights' for views.
-    const fields = 'id,message,created_time,permalink_url,attachments{media,type,url},likes.summary(true),comments.summary(true),video_insights.metric(total_video_views)';
+    // Requesting attachments, source for videos, and the correct insights metric.
+    const fields = 'id,message,created_time,permalink_url,attachments{media{source,image},type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);

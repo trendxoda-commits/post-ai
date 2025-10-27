@@ -97,8 +97,8 @@ export function Feed() {
 
                 // Extract video views
                 let views = 0;
-                 if (isVideo && item.video_insights?.data?.[0]?.name === 'total_video_views') {
-                    views = item.video_insights.data[0].values[0].value;
+                 if (isVideo && item.insights?.data?.[0]?.name === 'post_video_views') {
+                    views = item.insights.data[0].values[0].value;
                 }
                 
                 return {

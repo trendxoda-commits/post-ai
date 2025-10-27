@@ -37,6 +37,7 @@ export type ScheduledPost = {
   scheduledTime: string;
   socialAccountIds: string[];
   createdAt: string;
+  media?: any; // To fix the error in dashboard/page.tsx
 }
 
 export type AnalyticsData = {

@@ -5,6 +5,7 @@
  * This file contains Genkit flows for fetching data from social media platforms.
  * - getInstagramMedia - Fetches recent media from an Instagram account.
  * - getFacebookPosts - Fetches recent posts from a Facebook Page.
+ * - getAccountAnalytics - Fetches comprehensive analytics for a single social media account.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,7 +13,144 @@ import { z } from 'zod';
 
 const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 
-// #################### Get Instagram Media Flow ####################
+// #################### Get Account Analytics Flow ####################
+
+const GetAccountAnalyticsInputSchema = z.object({
+    accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
+    platform: z.enum(["Instagram", "Facebook"]),
+    accessToken: z.string().describe("The relevant access token (User Token for IG, Page Token for FB)."),
+});
+export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
+
+
+const AnalyticsOutputSchema = z.object({
+    followers: z.number(),
+    totalLikes: z.number(),
+    totalComments: z.number(),
+    postCount: z.number(),
+});
+export type AnalyticsOutput = z.infer<typeof AnalyticsOutputSchema>;
+
+
+const getAccountAnalyticsFlow = ai.defineFlow(
+    {
+        name: 'getAccountAnalyticsFlow',
+        inputSchema: GetAccountAnalyticsInputSchema,
+        outputSchema: AnalyticsOutputSchema,
+    },
+    async ({ accountId, platform, accessToken }) => {
+        let followers = 0;
+        let totalLikes = 0;
+        let totalComments = 0;
+        let postCount = 0;
+
+        if (platform === 'Instagram') {
+            // Batch API call for Instagram
+            const batchParams = [
+                {
+                    method: 'GET',
+                    relative_url: `${accountId}?fields=followers_count`,
+                },
+                {
+                    method: 'GET',
+                    relative_url: `${accountId}/media?fields=like_count,comments_count&limit=25`, // Get recent 25 posts
+                }
+            ];
+
+            const batchResponse = await fetch(INSTAGRAM_GRAPH_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    access_token: accessToken,
+                    batch: batchParams,
+                }),
+            });
+            
+            if (!batchResponse.ok) {
+                 const errorData: any = await batchResponse.json();
+                 throw new Error(`Instagram batch request failed: ${errorData.error?.message || 'Unknown error'}`);
+            }
+
+            const batchResult: any[] = await batchResponse.json();
+            
+            // Process followers count response
+            const followersResponse = JSON.parse(batchResult[0].body);
+            if (batchResult[0].code === 200) {
+                followers = followersResponse.followers_count || 0;
+            }
+
+            // Process media response
+            const mediaResponse = JSON.parse(batchResult[1].body);
+            if (batchResult[1].code === 200 && mediaResponse.data) {
+                postCount = mediaResponse.data.length;
+                mediaResponse.data.forEach((post: any) => {
+                    totalLikes += post.like_count || 0;
+                    totalComments += post.comments_count || 0;
+                });
+            }
+
+        } else if (platform === 'Facebook') {
+            // Batch API call for Facebook
+             const batchParams = [
+                {
+                    method: 'GET',
+                    relative_url: `${accountId}?fields=followers_count`,
+                },
+                {
+                    method: 'GET',
+                    relative_url: `${accountId}/posts?fields=likes.summary(true),comments.summary(true)&limit=25`,
+                }
+            ];
+
+            const batchResponse = await fetch(INSTAGRAM_GRAPH_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    access_token: accessToken,
+                    batch: batchParams,
+                }),
+            });
+
+            if (!batchResponse.ok) {
+                 const errorData: any = await batchResponse.json();
+                 throw new Error(`Facebook batch request failed: ${errorData.error?.message || 'Unknown error'}`);
+            }
+            
+            const batchResult: any[] = await batchResponse.json();
+
+            // Process followers count response
+            const followersResponse = JSON.parse(batchResult[0].body);
+            if (batchResult[0].code === 200) {
+                followers = followersResponse.followers_count || 0;
+            }
+
+            // Process posts response
+            const postsResponse = JSON.parse(batchResult[1].body);
+             if (batchResult[1].code === 200 && postsResponse.data) {
+                const postsWithStats = postsResponse.data.filter((p: any) => p.likes);
+                postCount = postsWithStats.length;
+                postsWithStats.forEach((post: any) => {
+                    totalLikes += post.likes?.summary.total_count || 0;
+                    totalComments += post.comments?.summary.total_count || 0;
+                });
+            }
+        }
+
+        return {
+            followers,
+            totalLikes,
+            totalComments,
+            postCount,
+        };
+    }
+);
+
+export async function getAccountAnalytics(input: GetAccountAnalyticsInput): Promise<AnalyticsOutput> {
+    return getAccountAnalyticsFlow(input);
+}
+
+
+// #################### Get Instagram Media Flow (Legacy - for feed) ####################
 
 const GetInstagramMediaInputSchema = z.object({
   instagramUserId: z.string().describe('The Instagram User ID.'),
@@ -94,7 +232,7 @@ export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaI
 }
 
 
-// #################### Get Facebook Posts Flow ####################
+// #################### Get Facebook Posts Flow (Legacy - for feed) ####################
 
 const GetFacebookPostsInputSchema = z.object({
   facebookPageId: z.string().describe('The Facebook Page ID.'),

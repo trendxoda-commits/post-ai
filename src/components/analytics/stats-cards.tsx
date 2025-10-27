@@ -6,16 +6,13 @@ import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase
 import { collection } from 'firebase/firestore';
 import type { SocialAccount } from '@/lib/types';
 import { useEffect, useState } from 'react';
-import { fetchInstagramMedia, fetchFacebookPosts } from '@/app/actions';
+import { getAccountAnalytics } from '@/app/actions';
 
 
 interface OverallStats {
   totalFollowers: number;
   engagementRate: number;
   topAccount: string | null;
-  totalLikes: number;
-  totalComments: number;
-  totalPosts: number;
 }
 
 export function StatsCards() {
@@ -39,7 +36,10 @@ export function StatsCards() {
 
   useEffect(() => {
     const fetchOverallStats = async () => {
-      if (!accounts || !userAccessToken) return;
+       if (!accounts || !userAccessToken) {
+        setIsLoading(false);
+        return;
+      }
 
       setIsLoading(true);
       let totalFollowers = 0;
@@ -47,70 +47,58 @@ export function StatsCards() {
       let totalComments = 0;
       let totalPosts = 0;
       let topAccount: { name: string, followers: number } | null = null;
+      
+      const analyticsPromises = accounts.map(account => 
+        getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+        }).then(analytics => ({
+            ...analytics,
+            displayName: account.displayName
+        })).catch(error => {
+            console.error(`Failed to fetch analytics for ${account.displayName}`, error);
+            return null;
+        })
+      );
+      
+      const results = await Promise.all(analyticsPromises);
 
-      for (const account of accounts) {
-        let followers = 0;
-        try {
-          if (account.platform === 'Instagram') {
-            const userDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${userAccessToken}`;
-            const userDetailsResponse = await fetch(userDetailsUrl);
-            if (userDetailsResponse.ok) {
-              const userDetails = await userDetailsResponse.json();
-              followers = userDetails.followers_count || 0;
-            }
+      for (const result of results) {
+          if (!result) continue;
 
-            const media = await fetchInstagramMedia({ instagramUserId: account.accountId, accessToken: userAccessToken });
-            totalPosts += media.media.length;
-            media.media.forEach((post: any) => {
-              totalLikes += post.like_count || 0;
-              totalComments += post.comments_count || 0;
-            });
+          totalFollowers += result.followers;
+          totalLikes += result.totalLikes;
+          totalComments += result.totalComments;
+          totalPosts += result.postCount;
 
-          } else if (account.platform === 'Facebook') {
-            const pageDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${account.pageAccessToken}`;
-            const pageDetailsResponse = await fetch(pageDetailsUrl);
-            if (pageDetailsResponse.ok) {
-              const pageDetails = await pageDetailsResponse.json();
-              followers = pageDetails.followers_count || 0;
-            }
-
-            const postsData = await fetchFacebookPosts({ facebookPageId: account.accountId, pageAccessToken: account.pageAccessToken! });
-            const posts = postsData.posts.filter((p: any) => p.likes);
-            totalPosts += posts.length;
-            posts.forEach((post: any) => {
-              totalLikes += post.likes?.summary.total_count || 0;
-              totalComments += post.comments?.summary.total_count || 0;
-            });
+          if (!topAccount || result.followers > topAccount.followers) {
+            topAccount = { name: result.displayName, followers: result.followers };
           }
-          
-          totalFollowers += followers;
-          if (!topAccount || followers > topAccount.followers) {
-            topAccount = { name: account.displayName, followers };
-          }
-        } catch (error) {
-          console.error(`Failed to fetch data for ${account.displayName}`, error);
-        }
       }
 
-      const engagementRate = totalFollowers > 0 ? ((totalLikes + totalComments) / totalPosts / totalFollowers) * 100 : 0;
+      // ((Total Likes + Total Comments) / Total Posts) / Total Followers * 100
+      const totalInteractions = totalLikes + totalComments;
+      const engagementRate = totalPosts > 0 && totalFollowers > 0
+        ? (totalInteractions / totalPosts / totalFollowers) * 100
+        : 0;
 
       setStats({
         totalFollowers,
         engagementRate,
         topAccount: topAccount?.name || null,
-        totalLikes,
-        totalComments,
-        totalPosts,
       });
       setIsLoading(false);
     };
 
     if (accounts && userAccessToken) {
       fetchOverallStats();
-    } else if (!accounts && !isLoading) {
+    } else if (accounts === null && user) {
+        // Still loading accounts
+    } else {
       setIsLoading(false);
     }
-  }, [accounts, userAccessToken, firestore, user, isLoading]);
+  }, [accounts, userAccessToken, user]);
 
   if (isLoading) {
     return (

@@ -29,8 +29,11 @@ import {
 import {
   getInstagramMedia as getInstagramMediaFlow,
   getFacebookPosts as getFacebookPostsFlow,
+  getAccountAnalytics as getAccountAnalyticsFlow,
   type GetInstagramMediaOutput,
-  type GetFacebookPostsOutput
+  type GetFacebookPostsOutput,
+  type GetAccountAnalyticsInput,
+  type AnalyticsOutput,
 } from '@/ai/flows/social-media-actions';
 import type { z } from 'zod';
 
@@ -85,4 +88,10 @@ export async function fetchFacebookPosts(
   input: any
 ): Promise<GetFacebookPostsOutput> {
   return getFacebookPostsFlow(input);
+}
+
+export async function getAccountAnalytics(
+    input: GetAccountAnalyticsInput
+): Promise<AnalyticsOutput> {
+    return getAccountAnalyticsFlow(input);
 }

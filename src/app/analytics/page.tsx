@@ -10,10 +10,10 @@ import { collection, query, getDocs } from 'firebase/firestore';
 import type { SocialAccount } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { fetchInstagramMedia, fetchFacebookPosts } from '@/app/actions';
+import { getAccountAnalytics } from '@/app/actions';
 
 // Interface for aggregated stats per account
-interface AccountStats {
+export interface AccountStats {
   id: string;
   displayName: string;
   avatar?: string;
@@ -44,87 +44,53 @@ function AccountPerformance() {
 
   useEffect(() => {
     const fetchAccountStats = async () => {
-      if (!accounts || !userAccessToken) return;
+      if (!accounts || !userAccessToken) {
+        setIsLoading(false);
+        return;
+      };
 
       setIsLoading(true);
-      const allStats: AccountStats[] = [];
-
-      for (const account of accounts) {
-        let followers = 0;
-        let totalLikes = 0;
-        let totalComments = 0;
-        let postCount = 0;
-
-        try {
-            if (account.platform === 'Instagram') {
-                // Fetch follower count
-                const userDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${userAccessToken}`;
-                const userDetailsResponse = await fetch(userDetailsUrl);
-                if (userDetailsResponse.ok) {
-                    const userDetails = await userDetailsResponse.json();
-                    followers = userDetails.followers_count || 0;
-                }
-                
-                // Fetch media to calculate engagement
-                const media = await fetchInstagramMedia({
-                    instagramUserId: account.accountId,
-                    accessToken: userAccessToken,
-                });
-                postCount = media.media.length;
-                media.media.forEach((post: any) => {
-                    totalLikes += post.like_count || 0;
-                    totalComments += post.comments_count || 0;
-                });
-
-            } else if (account.platform === 'Facebook') {
-                // Fetch follower count
-                const pageDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${account.pageAccessToken}`;
-                const pageDetailsResponse = await fetch(pageDetailsUrl);
-                 if (pageDetailsResponse.ok) {
-                    const pageDetails = await pageDetailsResponse.json();
-                    followers = pageDetails.followers_count || 0;
-                }
-                
-                // Fetch posts to calculate engagement
-                const postsData = await fetchFacebookPosts({
-                    facebookPageId: account.accountId,
-                    pageAccessToken: account.pageAccessToken!,
-                });
-                const posts = postsData.posts.filter((p: any) => p.likes); // filter out posts without stats
-                postCount = posts.length;
-                posts.forEach((post: any) => {
-                    totalLikes += post.likes?.summary.total_count || 0;
-                    totalComments += post.comments?.summary.total_count || 0;
-                });
-            }
-
-            allStats.push({
-                id: account.id,
-                displayName: account.displayName,
-                avatar: account.avatar,
-                platform: account.platform,
-                followers,
-                avgLikes: postCount > 0 ? Math.round(totalLikes / postCount) : 0,
-                avgComments: postCount > 0 ? Math.round(totalComments / postCount) : 0,
-            });
-
-        } catch (error) {
-            console.error(`Failed to fetch stats for ${account.displayName}`, error);
-        }
-      }
       
-      setStats(allStats.sort((a, b) => b.followers - a.followers));
+      const statsPromises = accounts.map(async (account) => {
+        try {
+          const analytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+          });
+
+          return {
+            id: account.id,
+            displayName: account.displayName,
+            avatar: account.avatar,
+            platform: account.platform,
+            followers: analytics.followers,
+            avgLikes: analytics.postCount > 0 ? Math.round(analytics.totalLikes / analytics.postCount) : 0,
+            avgComments: analytics.postCount > 0 ? Math.round(analytics.totalComments / analytics.postCount) : 0,
+          };
+        } catch (error) {
+          console.error(`Failed to fetch stats for ${account.displayName}`, error);
+          return null; // Return null for failed fetches
+        }
+      });
+      
+      const allStats = (await Promise.all(statsPromises))
+        .filter((stat): stat is AccountStats => stat !== null) // Filter out nulls
+        .sort((a, b) => b.followers - a.followers);
+
+      setStats(allStats);
       setIsLoading(false);
     };
 
     if (accounts && userAccessToken) {
       fetchAccountStats();
     } else if (accounts === null && user) {
-      // Still loading accounts
+      // Still loading accounts, do nothing
     } else {
+      // No accounts or no token
       setIsLoading(false);
     }
-  }, [accounts, userAccessToken, user, firestore]);
+  }, [accounts, userAccessToken, user]);
 
 
   return (
@@ -166,7 +132,7 @@ function AccountPerformance() {
             </div>
           ))
         ) : (
-            <p className="text-sm text-center text-muted-foreground py-4">No accounts connected.</p>
+            <p className="text-sm text-center text-muted-foreground py-4">No accounts connected or data available.</p>
         )}
       </CardContent>
     </Card>

@@ -24,8 +24,9 @@ import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase
 import { collection } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import type { SocialAccount, AnalyticsData } from '@/lib/types';
-import { subMonths, format, startOfMonth } from 'date-fns';
+import { subMonths, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { getAccountAnalytics } from '@/app/actions';
 
 const chartConfig = {
   followers: {
@@ -45,6 +46,7 @@ export function FollowerChart() {
     [firestore, user]
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+  
   const apiCredentialsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
   , [firestore, user]);
@@ -62,27 +64,22 @@ export function FollowerChart() {
       setIsLoading(true);
       
       let totalFollowers = 0;
-      for (const account of accounts) {
-         try {
-          if (account.platform === 'Instagram') {
-            const userDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${userAccessToken}`;
-            const userDetailsResponse = await fetch(userDetailsUrl);
-            if (userDetailsResponse.ok) {
-              const userDetails = await userDetailsResponse.json();
-              totalFollowers += userDetails.followers_count || 0;
-            }
-          } else if (account.platform === 'Facebook') {
-            const pageDetailsUrl = `https://graph.facebook.com/v20.0/${account.accountId}?fields=followers_count&access_token=${account.pageAccessToken}`;
-            const pageDetailsResponse = await fetch(pageDetailsUrl);
-            if (pageDetailsResponse.ok) {
-              const pageDetails = await pageDetailsResponse.json();
-              totalFollowers += pageDetails.followers_count || 0;
-            }
-          }
-         } catch (e) {
-            console.error("Could not fetch follower data", e)
-         }
-      }
+      const analyticsPromises = accounts.map(account => 
+        getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+        }).catch(e => {
+            console.error(`Failed to get followers for ${account.displayName}`, e);
+            return null;
+        })
+      );
+      
+      const results = await Promise.all(analyticsPromises);
+      results.forEach(result => {
+        if(result) totalFollowers += result.followers;
+      });
+
 
       // Simulate historical data based on current followers
       const data: AnalyticsData[] = [];
@@ -104,8 +101,15 @@ export function FollowerChart() {
       setIsLoading(false);
     };
 
-    generateChartData();
-  }, [accounts, userAccessToken]);
+    if (accounts && userAccessToken) {
+        generateChartData();
+    } else if (accounts === null && user) {
+        // Still loading accounts
+    }
+    else {
+        setIsLoading(false);
+    }
+  }, [accounts, userAccessToken, user]);
 
 
   return (
@@ -113,7 +117,7 @@ export function FollowerChart() {
       <CardHeader>
         <CardTitle>Follower Growth</CardTitle>
         <CardDescription>
-          Total follower count across all accounts over the last 7 months (simulated historical data).
+          Total follower count across all accounts (simulated historical data).
         </CardDescription>
       </CardHeader>
       <CardContent>

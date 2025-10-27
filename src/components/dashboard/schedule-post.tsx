@@ -207,34 +207,32 @@ export function SchedulePost() {
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder="Search accounts..." />
-                        <div className="max-h-[200px] overflow-y-auto">
-                            <CommandList>
-                                <CommandEmpty>No accounts found.</CommandEmpty>
-                                <CommandGroup>
-                                    {accounts?.map((account) => (
-                                        <CommandItem
-                                            key={account.id}
-                                            value={account.displayName}
-                                            onSelect={() => {
-                                                setSelectedAccountIds(prev => 
-                                                    prev.includes(account.id)
-                                                        ? prev.filter(id => id !== account.id)
-                                                        : [...prev, account.id]
-                                                )
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                            {account.displayName} ({account.platform})
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                             </CommandList>
-                        </div>
+                        <CommandList>
+                            <CommandEmpty>No accounts found.</CommandEmpty>
+                            <CommandGroup>
+                                {accounts?.map((account) => (
+                                    <CommandItem
+                                        key={account.id}
+                                        value={account.displayName}
+                                        onSelect={() => {
+                                            setSelectedAccountIds(prev => 
+                                                prev.includes(account.id)
+                                                    ? prev.filter(id => id !== account.id)
+                                                    : [...prev, account.id]
+                                            )
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {account.displayName} ({account.platform})
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                         </CommandList>
                     </Command>
                 </PopoverContent>
             </Popover>

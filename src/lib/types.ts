@@ -5,7 +5,7 @@ export type SocialAccount = {
   accountId: string;
   displayName: string;
   avatar?: string;
-  pageAccessToken?: string; // Encrypted
+  pageAccessToken?: string; 
 };
 
 export type ApiCredential = {
@@ -32,6 +32,8 @@ export type ScheduledPost = {
   id: string;
   userId: string;
   content: string;
+  mediaUrl?: string;
+  mediaType?: 'IMAGE' | 'VIDEO';
   scheduledTime: string;
   socialAccountIds: string[];
   createdAt: string;

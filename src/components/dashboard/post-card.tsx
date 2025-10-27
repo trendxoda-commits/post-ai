@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
-import type { Post, SocialAccount } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-const findImage = (hint: string) =>
-  PlaceHolderImages.find((img) => img.imageHint.includes(hint))?.imageUrl || '';
-
+import type { FeedPost } from './feed';
+import Link from 'next/link';
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   if (platform === 'Instagram') {
@@ -51,28 +47,27 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
 };
 
 interface PostCardProps {
-  post: Post;
-  account: SocialAccount;
+  post: FeedPost;
 }
 
-export function PostCard({ post, account }: PostCardProps) {
+export function PostCard({ post }: PostCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src={account.avatar} alt={account.displayName} />
-            <AvatarFallback>{account.displayName.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={post.accountAvatar} alt={post.accountDisplayName} />
+            <AvatarFallback>{post.accountDisplayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">{account.displayName}</p>
+            <p className="font-semibold">{post.accountDisplayName}</p>
             <p className="text-sm text-muted-foreground">
               {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <PlatformIcon platform={account.platform} />
+          <PlatformIcon platform={post.accountPlatform} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -80,23 +75,36 @@ export function PostCard({ post, account }: PostCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>View Post</DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={post.permalink} target="_blank" rel="noopener noreferrer">View Post on {post.accountPlatform}</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem>Analytics</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm">{post.content}</p>
-        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
-          <Image
-            src={findImage('post image')}
-            alt="Post content"
-            fill
-            className="object-cover"
-            data-ai-hint="post image"
-          />
-        </div>
+        {post.content && <p className="text-sm">{post.content}</p>}
+        {post.mediaUrl && (
+          <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
+            {post.mediaType === 'VIDEO' ? (
+                <video
+                    src={post.mediaUrl}
+                    controls
+                    className="w-full h-full object-cover"
+                >
+                    Your browser does not support the video tag.
+                </video>
+            ) : (
+                <Image
+                    src={post.mediaUrl}
+                    alt="Post content"
+                    fill
+                    className="object-cover"
+                />
+            )}
+          </div>
+        )}
       </CardContent>
       <CardFooter className="flex items-center gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-1.5">

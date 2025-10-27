@@ -14,7 +14,7 @@ const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 
 // #################### Get Instagram Media Flow ####################
 
-const GetInstagramMediaInputSchema = z.object({
+export const GetInstagramMediaInputSchema = z.object({
   instagramUserId: z.string().describe('The Instagram User ID.'),
   accessToken: z.string().describe('The user access token.'),
 });
@@ -26,12 +26,12 @@ const InstagramMediaObjectSchema = z.object({
     media_url: z.string().url(),
     permalink: z.string().url(),
     timestamp: z.string(),
-    like_count: z.number(),
-    comments_count: z.number(),
+    like_count: z.number().optional(),
+    comments_count: z.number().optional(),
     impressions: z.number().optional(),
 });
 
-const GetInstagramMediaOutputSchema = z.object({
+export const GetInstagramMediaOutputSchema = z.object({
   media: z.array(InstagramMediaObjectSchema),
 });
 
@@ -93,7 +93,7 @@ export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaI
 
 // #################### Get Facebook Posts Flow ####################
 
-const GetFacebookPostsInputSchema = z.object({
+export const GetFacebookPostsInputSchema = z.object({
   facebookPageId: z.string().describe('The Facebook Page ID.'),
   pageAccessToken: z.string().describe('The Page Access Token.'),
 });
@@ -116,7 +116,7 @@ const FacebookPostObjectSchema = z.object({
     }).optional(),
 });
 
-const GetFacebookPostsOutputSchema = z.object({
+export const GetFacebookPostsOutputSchema = z.object({
   posts: z.array(FacebookPostObjectSchema),
 });
 

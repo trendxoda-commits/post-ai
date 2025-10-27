@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -29,14 +29,23 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Input } from '../ui/input';
+import { postToFacebook, postToInstagram } from '@/app/actions';
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group"
 
 export function SchedulePost() {
   const [open, setOpen] = useState(false);
   const [content, setContent] = useState('');
-  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
   const [scheduledTime, setScheduledTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -48,8 +57,71 @@ export function SchedulePost() {
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
 
+  const resetForm = () => {
+    setContent('');
+    setMediaUrl('');
+    setMediaType('IMAGE');
+    setSelectedAccountId('');
+    setScheduledDate(undefined);
+    setScheduledTime('');
+  };
+
+  const handlePostNow = async () => {
+    if (!selectedAccountId || !mediaUrl) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please select an account and provide a media URL to post.",
+      });
+      return;
+    }
+
+    const selectedAccount = accounts?.find(acc => acc.id === selectedAccountId);
+    if (!selectedAccount || !selectedAccount.pageAccessToken) {
+      toast({ variant: "destructive", title: "Error", description: "Selected account is invalid or missing permissions." });
+      return;
+    }
+
+    setIsPosting(true);
+    try {
+      let result;
+      if (selectedAccount.platform === 'Facebook') {
+        result = await postToFacebook({
+          facebookPageId: selectedAccount.accountId,
+          mediaUrl,
+          caption: content,
+          pageAccessToken: selectedAccount.pageAccessToken,
+          mediaType,
+        });
+      } else { // Instagram
+        result = await postToInstagram({
+          instagramUserId: selectedAccount.accountId,
+          mediaUrl,
+          caption: content,
+          pageAccessToken: selectedAccount.pageAccessToken,
+          mediaType,
+        });
+      }
+      toast({
+        title: 'Post Successful!',
+        description: `Your post has been published to ${selectedAccount.displayName}. Post ID: ${result.postId}`,
+      });
+      setOpen(false);
+      resetForm();
+    } catch (error: any) {
+      console.error("Error posting now:", error);
+      toast({
+        variant: "destructive",
+        title: 'Error Posting',
+        description: error.message || 'There was an issue posting your content. Please try again.',
+      });
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   const handleSchedule = () => {
-    if (!user || !content || selectedAccounts.length === 0 || !scheduledDate || !scheduledTime) {
+    if (!user || selectedAccounts.length === 0 || !scheduledDate || !scheduledTime) {
         toast({
             variant: "destructive",
             title: "Missing Information",
@@ -68,7 +140,9 @@ export function SchedulePost() {
     addDocumentNonBlocking(postsCollection, {
       userId: user.uid,
       content,
-      socialAccountIds: selectedAccounts,
+      mediaUrl,
+      mediaType,
+      socialAccountIds: [selectedAccountId],
       scheduledTime: scheduledDateTime.toISOString(),
       createdAt: new Date().toISOString(),
     }).then(() => {
@@ -76,6 +150,8 @@ export function SchedulePost() {
             title: 'Post Scheduled!',
             description: 'Your post has been successfully scheduled for publishing.',
         });
+        setOpen(false);
+        resetForm();
     }).catch((error) => {
         console.error("Error scheduling post: ", error);
         toast({
@@ -85,12 +161,6 @@ export function SchedulePost() {
         });
     }).finally(() => {
         setIsLoading(false);
-        setOpen(false);
-        // Reset form
-        setContent('');
-        setSelectedAccounts([]);
-        setScheduledDate(undefined);
-        setScheduledTime('');
     });
   };
 
@@ -106,24 +176,13 @@ export function SchedulePost() {
         <DialogHeader>
           <DialogTitle>Create a new post</DialogTitle>
           <DialogDescription>
-            Craft your message and schedule it to be published on your selected
-            accounts.
+            Craft your message, add your media, and then post it now or schedule it for later.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="content">Content</Label>
-            <Textarea
-              id="content"
-              placeholder="What's on your mind?"
-              className="min-h-[120px]"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Accounts</Label>
-            <Select onValueChange={(value) => setSelectedAccounts([value])} value={selectedAccounts[0]}>
+           <div className="space-y-2">
+            <Label>Account</Label>
+            <Select onValueChange={setSelectedAccountId} value={selectedAccountId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select an account to post to" />
               </SelectTrigger>
@@ -136,6 +195,41 @@ export function SchedulePost() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="content">Content / Caption</Label>
+            <Textarea
+              id="content"
+              placeholder="What's on your mind?"
+              className="min-h-[120px]"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+            />
+          </div>
+          <div className='space-y-2'>
+            <Label htmlFor="media-url">Media URL</Label>
+             <div className="relative">
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input id="media-url" placeholder="https://example.com/image.jpg or /video.mp4" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10"/>
+             </div>
+          </div>
+           <div className="space-y-2">
+              <Label>Media Type</Label>
+              <RadioGroup
+                defaultValue="IMAGE"
+                className="flex items-center gap-4"
+                value={mediaType}
+                onValueChange={(value: 'IMAGE' | 'VIDEO') => setMediaType(value)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="IMAGE" id="r-image" />
+                  <Label htmlFor="r-image">Image</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="VIDEO" id="r-video" />
+                  <Label htmlFor="r-video">Video</Label>
+                </div>
+              </RadioGroup>
+            </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Schedule Date</Label>
@@ -176,13 +270,18 @@ export function SchedulePost() {
             </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSchedule} disabled={isLoading}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
-          </Button>
+        <DialogFooter className='sm:justify-between'>
+            <Button variant="secondary" onClick={handlePostNow} disabled={isPosting || isLoading}>
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+            </Button>
+          <div className='flex gap-2'>
+             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading || isPosting}>
+                Cancel
+             </Button>
+             <Button onClick={handleSchedule} disabled={isLoading || isPosting || !scheduledDate || !scheduledTime}>
+                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
+             </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

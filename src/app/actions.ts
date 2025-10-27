@@ -16,6 +16,23 @@ import {
   type GetInstagramUserDetailsInput,
   type GetInstagramUserDetailsOutput,
 } from '@/ai/flows/instagram-auth';
+import { 
+    postToInstagram, 
+    type PostToInstagramInput, 
+    type PostToInstagramOutput 
+} from '@/ai/flows/post-to-instagram';
+import { 
+    postToFacebook, 
+    type PostToFacebookInput, 
+    type PostToFacebookOutput 
+} from '@/ai/flows/post-to-facebook';
+import { 
+    getInstagramMedia, 
+    getFacebookPosts 
+} from '@/ai/flows/social-media-actions';
+import type { z } from 'zod';
+import type { GetInstagramMediaInputSchema, GetInstagramMediaOutputSchema, GetFacebookPostsInputSchema, GetFacebookPostsOutputSchema } from '@/ai/flows/social-media-actions';
+
 
 // --- Trending Hashtags ---
 export async function generateHashtags(
@@ -41,4 +58,23 @@ export async function getIgUserDetails(
   input: GetInstagramUserDetailsInput
 ): Promise<GetInstagramUserDetailsOutput> {
   return getInstagramUserDetails(input);
+}
+
+// --- Social Media Posting ---
+
+export async function postToInstagram(input: PostToInstagramInput): Promise<PostToInstagramOutput> {
+    return postToInstagram(input);
+}
+
+export async function postToFacebook(input: PostToFacebookInput): Promise<PostToFacebookOutput> {
+    return postToFacebook(input);
+}
+
+// --- Social Media Data Fetching ---
+export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaInputSchema>): Promise<z.infer<typeof GetInstagramMediaOutputSchema>> {
+    return getInstagramMedia(input);
+}
+
+export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInputSchema>): Promise<z.infer<typeof GetFacebookPostsOutputSchema>> {
+    return getFacebookPosts(input);
 }

@@ -1,0 +1,111 @@
+/**
+ * @file Firebase Security Rules for Social Streamliner
+ * @core_philosophy This ruleset enforces a strict user-ownership model for user profiles, social accounts, and scheduled posts.
+ * Trending hashtags are publicly readable.
+ * @data_structure
+ * - /users/{userId}: Stores user profile data, owned by the user with ID {userId}.
+ * - /users/{userId}/socialAccounts/{socialAccountId}: Stores social accounts linked to the user.
+ * - /users/{userId}/scheduledPosts/{scheduledPostId}: Stores scheduled posts created by the user.
+ * - /trendingHashtags/{trendingHashtagId}: Stores trending hashtags, publicly readable.
+ * @key_security_decisions
+ * - User data and associated social accounts/scheduled posts are strictly user-owned.
+ * - Listing social accounts and scheduled posts is restricted to the owning user.
+ * - Trending hashtags are publicly readable but not writable.
+ * @denormalization_for_authorization The `SocialAccount` and `ScheduledPost` documents contain a denormalized `userId` field to allow ownership validation without additional `get()` calls.
+ * This approach improves security rule performance and prevents excessive reads.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to user profile documents.
+     * @path /users/{userId}
+     * @allow (create) Authenticated user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) Authenticated user can read, update, and delete their own profile if the userId matches their auth.uid.
+     * @deny (create) An unauthenticated user cannot create a profile.
+     * @deny (get, update, delete) An authenticated user cannot access another user's profile.
+     * @principle Enforces document ownership for user profiles.
+     */
+    match /users/{userId} {
+      // Helper function to check if the authenticated user is the owner of the document.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow the user to create their own profile.
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+
+      // Allow the user to get, update, and delete their own profile.
+      allow get, update, delete: if isOwner(userId) && resource.data.id == userId;
+
+      // Deny list operations for security.
+      allow list: if false;
+    }
+
+    /**
+     * @description Controls access to social accounts owned by a user.
+     * @path /users/{userId}/socialAccounts/{socialAccountId}
+     * @allow (create) Authenticated user can create a social account under their profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) Authenticated user can read, update, and delete their own social accounts if the userId matches their auth.uid.
+     * @deny (create) An unauthenticated user cannot create a social account.
+     * @deny (get, update, delete) An authenticated user cannot access another user's social accounts.
+     * @principle Enforces document ownership for social accounts within a user's profile.
+     */
+    match /users/{userId}/socialAccounts/{socialAccountId} {
+      // Helper function to check if the authenticated user is the owner of the social account.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow the user to create a social account under their profile.
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+
+      // Allow the user to get, update, and delete their own social accounts.
+      allow get, update, delete: if isOwner(userId) && resource.data.userId == userId;
+
+      // Allow listing social accounts for the owner.
+      allow list: if isOwner(userId);
+    }
+
+    /**
+     * @description Controls access to scheduled posts owned by a user.
+     * @path /users/{userId}/scheduledPosts/{scheduledPostId}
+     * @allow (create) Authenticated user can create a scheduled post under their profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) Authenticated user can read, update, and delete their own scheduled posts if the userId matches their auth.uid.
+     * @deny (create) An unauthenticated user cannot create a scheduled post.
+     * @deny (get, update, delete) An authenticated user cannot access another user's scheduled posts.
+     * @principle Enforces document ownership for scheduled posts within a user's profile.
+     */
+    match /users/{userId}/scheduledPosts/{scheduledPostId} {
+      // Helper function to check if the authenticated user is the owner of the scheduled post.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Allow the user to create a scheduled post under their profile.
+      allow create: if isOwner(userId) && request.resource.data.userId == request.auth.uid;
+
+      // Allow the user to get, update, and delete their own scheduled posts.
+      allow get, update, delete: if isOwner(userId) && resource.data.userId == userId;
+
+      // Allow listing scheduled posts for the owner.
+      allow list: if isOwner(userId);
+    }
+
+    /**
+     * @description Controls access to trending hashtags.
+     * @path /trendingHashtags/{trendingHashtagId}
+     * @allow (get, list) Anyone can read trending hashtags.
+     * @deny (create, update, delete) No one can create, update, or delete trending hashtags.
+     * @principle Trending hashtags are publicly readable but not writable.
+     */
+    match /trendingHashtags/{trendingHashtagId} {
+      // Allow anyone to read trending hashtags.
+      allow get, list: if true;
+
+      // Prevent anyone from creating, updating, or deleting trending hashtags.
+      allow create, update, delete: if false;
+    }
+  }
+}

@@ -1,7 +1,6 @@
 'use client';
 
 import { Feed } from '@/components/dashboard/feed';
-import { SchedulePost } from '@/components/dashboard/schedule-post';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,16 +14,19 @@ import {
 import { format } from 'date-fns';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
-import { MoreVertical, Edit, Trash, Clock, Eye } from 'lucide-react';
+import { MoreVertical, Edit, Trash, Clock, Eye, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, ScheduledPost as ScheduledPostType } from '@/lib/types';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 function ScheduledPostsList() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const [selectedPost, setSelectedPost] = useState<ScheduledPostType | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
 
   const scheduledPostsQuery = useMemoFirebase(() => 
     user ? query(
@@ -55,9 +57,8 @@ function ScheduledPostsList() {
   };
 
   const handleEdit = (post: ScheduledPostType) => {
-    // Open edit modal or redirect to edit page
-    setSelectedPost(post);
-    // You can implement an edit modal here
+    // You can implement an edit modal or redirect to edit page
+    router.push(`/create-post?edit=${post.id}`);
   };
 
   const handleView = (post: ScheduledPostType) => {
@@ -195,7 +196,12 @@ function ScheduledPostsList() {
             <p className="text-sm text-muted-foreground mb-3">
               No upcoming posts scheduled
             </p>
-            <SchedulePost />
+            <Button asChild>
+              <Link href="/create-post">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create a Post
+              </Link>
+            </Button>
           </div>
         )}
         
@@ -219,7 +225,12 @@ export default function DashboardPage() {
       <div className="lg:col-span-2 space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
-          <SchedulePost />
+          <Button asChild>
+            <Link href="/create-post">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Post
+            </Link>
+          </Button>
         </div>
         <Feed />
       </div>

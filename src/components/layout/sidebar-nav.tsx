@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BarChart2, Settings, Wand2 } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, Wand2, PlusSquare } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -11,6 +11,7 @@ import {
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/create-post', label: 'Create Post', icon: PlusSquare },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];

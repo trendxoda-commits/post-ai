@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -20,29 +19,27 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useState } from 'react';
-import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import {
+  useFirebase,
+  useUser,
+  useCollection,
+  useMemoFirebase,
+  addDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+} from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   if (platform === 'Instagram') {
     return (
       <svg
-        className="h-5 w-5 text-muted-foreground"
+        className="h-5 w-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -58,7 +55,7 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   }
   return (
     <svg
-      className="h-5 w-5 text-muted-foreground"
+      className="h-5 w-5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -71,52 +68,68 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   );
 };
 
+// This is a sample list of accounts that would be fetched from the social media API
+const sampleAccounts = [
+    { id: 'fb-page-1', displayName: 'My Awesome Facebook Page', platform: 'Facebook', avatar: `https://i.pravatar.cc/150?u=fb-page-1` },
+    { id: 'ig-biz-1', displayName: 'My Cool Instagram Biz', platform: 'Instagram', avatar: `https://i.pravatar.cc/150?u=ig-biz-1` },
+    { id: 'fb-page-2', displayName: 'Travel Blog Page', platform: 'Facebook', avatar: `https://i.pravatar.cc/150?u=fb-page-2` },
+];
+
+
 function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] }) {
   const [open, setOpen] = useState(false);
-  const [platform, setPlatform] = useState<'Instagram' | 'Facebook' | ''>('');
-  const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedAccounts, setSelectedAccounts] = useState<typeof sampleAccounts>([]);
 
   const { firestore } = useFirebase();
   const { user } = useUser();
   const { toast } = useToast();
+  
+  const handleSelectionChange = (account: typeof sampleAccounts[0], checked: boolean | 'indeterminate') => {
+    setSelectedAccounts(prev => 
+        checked ? [...prev, account] : prev.filter(a => a.id !== account.id)
+    );
+  };
 
-  const handleAddAccount = () => {
-    if (!user || !platform || !displayName ) {
+  const handleConnectAccounts = async () => {
+    if (!user || selectedAccounts.length === 0) {
       toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Please fill out all fields.",
+        variant: 'destructive',
+        title: 'No Accounts Selected',
+        description: 'Please select at least one account to connect.',
       });
       return;
     }
     setIsLoading(true);
 
     const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
-    addDocumentNonBlocking(accountsCollection, {
-      userId: user.uid,
-      platform,
-      displayName,
-      accountId: `acc-${Date.now()}`, // Simple unique ID
-      avatar: `https://i.pravatar.cc/150?u=${displayName}`
-    }).then(() => {
+    
+    try {
+        for (const account of selectedAccounts) {
+            await addDocumentNonBlocking(accountsCollection, {
+                userId: user.uid,
+                platform: account.platform,
+                displayName: account.displayName,
+                accountId: account.id, // Use the real ID from the social platform
+                avatar: account.avatar
+            });
+        }
         toast({
-            title: 'Account Added',
-            description: `${displayName} has been connected.`,
+            title: 'Accounts Connected!',
+            description: `${selectedAccounts.length} account(s) have been successfully connected.`,
         });
-    }).catch((error) => {
-        console.error("Error adding account:", error);
+    } catch (error) {
+        console.error("Error connecting accounts:", error);
         toast({
             variant: "destructive",
             title: "Error",
-            description: "Could not add account. Please try again.",
+            description: "Could not connect accounts. Please try again.",
         });
-    }).finally(() => {
+    } finally {
         setIsLoading(false);
         setOpen(false);
-        setPlatform('');
-        setDisplayName('');
-    });
+        setSelectedAccounts([]);
+    }
   };
 
   const hasNoCredentials = apiCredentials.length === 0;
@@ -131,9 +144,11 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Connect a New Account</DialogTitle>
+          <DialogTitle>Connect Facebook & Instagram</DialogTitle>
           <DialogDescription>
-            Enter a display name and select the platform for your new account.
+            {hasNoCredentials 
+                ? 'Add your Meta API Keys first to connect accounts.' 
+                : 'Select the accounts you want to connect to Social Streamliner.'}
           </DialogDescription>
         </DialogHeader>
         {hasNoCredentials ? (
@@ -141,36 +156,35 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
               <Info className="h-4 w-4" />
               <AlertTitle>No API Keys Found</AlertTitle>
               <AlertDescription>
-                You need to add API keys for a platform before you can connect an account. Please go to the API Keys tab to add your credentials.
+                You need to add API keys for Meta before you can connect an account. Please go to the API Keys tab to add your credentials.
               </AlertDescription>
             </Alert>
         ) : (
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="platform" className="text-right">
-                Platform
-              </Label>
-              <Select onValueChange={(value: 'Instagram' | 'Facebook') => setPlatform(value)}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a platform" />
-                </SelectTrigger>
-                <SelectContent>
-                   <SelectItem value="Facebook">Facebook</SelectItem>
-                   <SelectItem value="Instagram">Instagram</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="displayName" className="text-right">
-                Display Name
-              </Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                className="col-span-3"
-                placeholder="e.g., My Personal Page"
-              />
+          <div className="py-4 space-y-4">
+            <p className="text-sm font-medium text-foreground">Available Accounts</p>
+            <div className="space-y-3 rounded-md border p-4">
+                {sampleAccounts.map(account => (
+                    <div key={account.id} className="flex items-center space-x-3">
+                        <Checkbox 
+                            id={account.id} 
+                            onCheckedChange={(checked) => handleSelectionChange(account, checked)}
+                            checked={selectedAccounts.some(a => a.id === account.id)}
+                        />
+                        <Label htmlFor={account.id} className="flex items-center gap-3 font-normal cursor-pointer">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={account.avatar} />
+                                <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p>{account.displayName}</p>
+                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                    <PlatformIcon platform={account.platform as 'Facebook' | 'Instagram'} />
+                                    <span className="text-xs">{account.platform}</span>
+                                </div>
+                            </div>
+                        </Label>
+                    </div>
+                ))}
             </div>
           </div>
         )}
@@ -178,8 +192,8 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleAddAccount} disabled={isLoading || hasNoCredentials}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Adding...</> : 'Add Account'}
+          <Button onClick={handleConnectAccounts} disabled={isLoading || hasNoCredentials || selectedAccounts.length === 0}>
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Connecting...</> : `Connect ${selectedAccounts.length > 0 ? selectedAccounts.length : ''} Account(s)`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -210,12 +224,14 @@ export function AccountConnections() {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
-    toast({
-        title: "Account Disconnected",
-        description: "The account is being disconnected."
-    });
-
-    deleteDocumentNonBlocking(docRef).catch((error) => {
+    // Optimistic UI update can be implemented here if desired
+    
+    deleteDocumentNonBlocking(docRef).then(() => {
+        toast({
+            title: "Account Disconnected",
+            description: "The account has been successfully disconnected."
+        });
+    }).catch((error) => {
         toast({
             variant: "destructive",
             title: "Error",
@@ -264,7 +280,9 @@ export function AccountConnections() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <PlatformIcon platform={account.platform} />
+                    <div className="text-muted-foreground">
+                        <PlatformIcon platform={account.platform} />
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => handleDisconnect(account.id)}>
                       <Trash2 className="h-4 w-4 mr-2 sm:hidden" />
                       <span className="hidden sm:inline">Disconnect</span>

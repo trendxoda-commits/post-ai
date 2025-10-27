@@ -7,20 +7,25 @@ import { Label } from '@/components/ui/label';
 import {
   Loader2,
   Link as LinkIcon,
-  ChevronDown
+  ChevronDown,
+  Calendar as CalendarIcon,
+  Clock,
+  Wand2,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { postToFacebook, postToInstagram, generatePostCaption } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 export default function CreatePostPage() {
   const [content, setContent] = useState('');
@@ -28,6 +33,12 @@ export default function CreatePostPage() {
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date>();
+  const [scheduleTime, setScheduleTime] = useState('10:00');
+  const [captionTopic, setCaptionTopic] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -54,6 +65,34 @@ export default function CreatePostPage() {
     setMediaUrl('');
     setMediaType('IMAGE');
     setSelectedAccountIds([]);
+    setScheduleDate(undefined);
+    setScheduleTime('10:00');
+    setCaptionTopic('');
+  };
+
+  const handleGenerateCaption = async () => {
+    if (!captionTopic) {
+      toast({
+        variant: 'destructive',
+        title: 'Topic is empty',
+        description: 'Please enter a topic to generate a caption.',
+      });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { caption } = await generatePostCaption({ topic: captionTopic });
+      setContent(caption);
+    } catch (error: any) {
+      console.error('Failed to generate caption:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Generate Caption',
+        description: error.message || 'There was a problem with the AI service.',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handlePostNow = async () => {
@@ -122,6 +161,53 @@ export default function CreatePostPage() {
     }
   };
   
+    const handleSchedulePost = async () => {
+    if (selectedAccountIds.length === 0 || !mediaUrl || !scheduleDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please select accounts, provide media URL, and choose a date and time to schedule.',
+      });
+      return;
+    }
+    if (!user) return;
+
+    setIsScheduling(true);
+
+    try {
+      const [hours, minutes] = scheduleTime.split(':').map(Number);
+      const scheduledDateTime = new Date(scheduleDate);
+      scheduledDateTime.setHours(hours, minutes);
+
+      const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
+      await addDoc(scheduledPostsRef, {
+        userId: user.uid,
+        content: content,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        scheduledTime: scheduledDateTime.toISOString(),
+        socialAccountIds: selectedAccountIds,
+        createdAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Post Scheduled!',
+        description: 'Your post has been successfully scheduled.',
+      });
+      resetForm();
+    } catch (error: any) {
+      console.error('Error scheduling post:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Schedule Post',
+        description: error.message || 'There was an issue scheduling your post. Please try again.',
+      });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+
+
     // Create a mock post object for the preview
   const previewPost: FeedPost = {
     id: 'preview-post',
@@ -208,9 +294,23 @@ export default function CreatePostPage() {
           <Card>
             <CardHeader>
               <CardTitle>2. Craft Your Post</CardTitle>
-              <CardDescription>Write your content and add a link to your media. The media type will be auto-detected.</CardDescription>
+              <CardDescription>Write your content and add a link to your media. Use the AI assistant to generate captions.</CardDescription>
             </CardHeader>
             <CardContent className='space-y-4'>
+                 <div className="space-y-2">
+                  <Label>AI Caption Assistant</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Enter a topic, e.g., 'a beautiful sunset'"
+                      value={captionTopic}
+                      onChange={(e) => setCaptionTopic(e.target.value)}
+                    />
+                    <Button variant="outline" onClick={handleGenerateCaption} disabled={isGenerating}>
+                      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                      <span className="sr-only">Generate Caption</span>
+                    </Button>
+                  </div>
+                </div>
               <Textarea
                 id="content"
                 placeholder="What's on your mind?"
@@ -247,11 +347,61 @@ export default function CreatePostPage() {
               <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
+              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isScheduling}>
                 {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
               </Button>
             </CardContent>
           </Card>
+          
+           {/* Step 4: Schedule */}
+            <Card>
+                <CardHeader>
+                <CardTitle>Or Schedule for Later</CardTitle>
+                <CardDescription>Select a future date and time to publish your post automatically.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        variant={"outline"}
+                        className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !scheduleDate && "text-muted-foreground"
+                        )}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={scheduleDate}
+                        onSelect={setScheduleDate}
+                        initialFocus
+                        disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
+                    />
+                    </PopoverContent>
+                </Popover>
+
+                <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="pl-10"
+                    />
+                </div>
+                 <p className="text-xs text-muted-foreground text-center">Note: Scheduling backend is not yet implemented. This will save the post but not publish it.</p>
+                </CardContent>
+                <CardFooter>
+                  <Button className="w-full" onClick={handleSchedulePost} disabled={isScheduling || isPosting || true}>
+                      {isScheduling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
+                  </Button>
+                </CardFooter>
+            </Card>
+
         </div>
       </div>
     </div>

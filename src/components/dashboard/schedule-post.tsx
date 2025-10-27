@@ -48,7 +48,7 @@ export function SchedulePost() {
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
 
-  const handleSchedule = async () => {
+  const handleSchedule = () => {
     if (!user || !content || selectedAccounts.length === 0 || !scheduledDate || !scheduledTime) {
         toast({
             variant: "destructive",
@@ -64,37 +64,34 @@ export function SchedulePost() {
     const scheduledDateTime = new Date(scheduledDate);
     scheduledDateTime.setHours(hours, minutes);
 
-    try {
-      const postsCollection = collection(firestore, 'users', user.uid, 'scheduledPosts');
-      await addDocumentNonBlocking(postsCollection, {
-        userId: user.uid,
-        content,
-        socialAccountIds: selectedAccounts,
-        scheduledTime: scheduledDateTime.toISOString(),
-        createdAt: new Date().toISOString(),
-      });
-
-      toast({
-        title: 'Post Scheduled!',
-        description: 'Your post has been successfully scheduled for publishing.',
-      });
-      setOpen(false);
-      // Reset form
-      setContent('');
-      setSelectedAccounts([]);
-      setScheduledDate(undefined);
-      setScheduledTime('');
-
-    } catch (error) {
-      console.error("Error scheduling post: ", error);
-      toast({
-        variant: "destructive",
-        title: 'Error scheduling post',
-        description: 'There was an issue scheduling your post. Please try again.',
-      });
-    } finally {
+    const postsCollection = collection(firestore, 'users', user.uid, 'scheduledPosts');
+    addDocumentNonBlocking(postsCollection, {
+      userId: user.uid,
+      content,
+      socialAccountIds: selectedAccounts,
+      scheduledTime: scheduledDateTime.toISOString(),
+      createdAt: new Date().toISOString(),
+    }).then(() => {
+        toast({
+            title: 'Post Scheduled!',
+            description: 'Your post has been successfully scheduled for publishing.',
+        });
+    }).catch((error) => {
+        console.error("Error scheduling post: ", error);
+        toast({
+            variant: "destructive",
+            title: 'Error scheduling post',
+            description: 'There was an issue scheduling your post. Please try again.',
+        });
+    }).finally(() => {
         setIsLoading(false);
-    }
+        setOpen(false);
+        // Reset form
+        setContent('');
+        setSelectedAccounts([]);
+        setScheduledDate(undefined);
+        setScheduledTime('');
+    });
   };
 
   return (

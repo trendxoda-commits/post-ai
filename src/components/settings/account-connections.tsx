@@ -79,7 +79,7 @@ function AddAccountDialog() {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const handleAddAccount = async () => {
+  const handleAddAccount = () => {
     if (!user || !platform || !displayName || !apiKey) {
       toast({
         variant: "destructive",
@@ -90,35 +90,33 @@ function AddAccountDialog() {
     }
     setIsLoading(true);
 
-    try {
-      const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
-      await addDocumentNonBlocking(accountsCollection, {
-        userId: user.uid,
-        platform,
-        displayName,
-        apiKey,
-        accountId: `acc-${Date.now()}`, // Simple unique ID
-        avatar: `https://i.pravatar.cc/150?u=${displayName}`
-      });
-      
-      toast({
-        title: 'Account Added',
-        description: `${displayName} has been connected.`,
-      });
-      setOpen(false);
-      setPlatform('');
-      setDisplayName('');
-      setApiKey('');
-    } catch (error) {
-      console.error("Error adding account:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Could not add account. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
+    addDocumentNonBlocking(accountsCollection, {
+      userId: user.uid,
+      platform,
+      displayName,
+      apiKey,
+      accountId: `acc-${Date.now()}`, // Simple unique ID
+      avatar: `https://i.pravatar.cc/150?u=${displayName}`
+    }).then(() => {
+        toast({
+            title: 'Account Added',
+            description: `${displayName} has been connected.`,
+        });
+    }).catch((error) => {
+        console.error("Error adding account:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not add account. Please try again.",
+        });
+    }).finally(() => {
+        setIsLoading(false);
+        setOpen(false);
+        setPlatform('');
+        setDisplayName('');
+        setApiKey('');
+    });
   };
 
   return (
@@ -201,23 +199,25 @@ export function AccountConnections() {
   );
   const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
-  const handleDisconnect = async (accountId: string) => {
+  const handleDisconnect = (accountId: string) => {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
-    try {
-        await deleteDocumentNonBlocking(docRef);
-        toast({
-            title: "Account Disconnected",
-            description: "The account has been successfully disconnected."
-        });
-    } catch(error) {
+    
+    // Optimistically update UI, then send request
+    toast({
+        title: "Account Disconnected",
+        description: "The account is being disconnected."
+    });
+
+    deleteDocumentNonBlocking(docRef).catch((error) => {
         toast({
             variant: "destructive",
             title: "Error",
             description: "Could not disconnect account."
         });
         console.error("Error disconnecting account: ", error);
-    }
+        // Here you might want to add logic to revert the UI change if the delete fails
+    });
   };
 
   return (

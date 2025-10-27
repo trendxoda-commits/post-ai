@@ -39,8 +39,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
         throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
     }
     const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
-    const state = crypto.randomBytes(16).toString('hex');
-
+    
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
@@ -241,3 +240,5 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
 export async function getInstagramUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {
     return getInstagramUserDetailsFlow(input);
 }
+
+    

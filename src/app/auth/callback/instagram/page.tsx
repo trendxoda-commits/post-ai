@@ -8,9 +8,10 @@ import {
   getLongLivedToken,
   getIgUserDetails,
 } from '@/app/actions';
-import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
 
 enum Status {
   PENDING,
@@ -109,7 +110,7 @@ export default function InstagramCallbackPage() {
                     platform: account.platform,
                     displayName: account.username,
                     accountId: accountId,
-                    pageAccessToken: account.pageAccessToken, // This will be undefined for IG basic
+                    pageAccessToken: account.pageAccessToken,
                     avatar: `https://picsum.photos/seed/${accountId}/40/40`,
                 });
                 newAccountsCount++;
@@ -167,3 +168,5 @@ export default function InstagramCallbackPage() {
     </div>
   );
 }
+
+    

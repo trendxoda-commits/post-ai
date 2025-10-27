@@ -29,6 +29,7 @@ import {
   RadioGroupItem,
 } from "@/components/ui/radio-group"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Separator } from '../ui/separator';
 
 export function SchedulePost() {
   const [open, setOpen] = useState(false);
@@ -188,7 +189,7 @@ export function SchedulePost() {
         </DialogHeader>
         <div className="grid gap-6 py-4">
            <div className="space-y-2">
-            <Label>Accounts</Label>
+            <Label>1. Select Accounts</Label>
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -205,8 +206,8 @@ export function SchedulePost() {
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder="Search accounts..." />
-                        <CommandList>
-                            <div className="max-h-[300px] overflow-y-auto overflow-x-hidden">
+                        <div className="max-h-[200px] overflow-y-auto">
+                            <CommandList>
                                 <CommandEmpty>No accounts found.</CommandEmpty>
                                 <CommandGroup>
                                     {accounts?.map((account) => (
@@ -231,14 +232,14 @@ export function SchedulePost() {
                                         </CommandItem>
                                     ))}
                                 </CommandGroup>
-                             </div>
-                        </CommandList>
+                             </CommandList>
+                        </div>
                     </Command>
                 </PopoverContent>
             </Popover>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="content">Content / Caption</Label>
+          <div className="space-y-4">
+            <Label>2. Craft your post</Label>
             <Textarea
               id="content"
               placeholder="What's on your mind?"
@@ -246,84 +247,82 @@ export function SchedulePost() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
-          </div>
-          <div className='space-y-2'>
-            <Label htmlFor="media-url">Media URL</Label>
-             <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="media-url" placeholder="https://example.com/image.jpg or /video.mp4" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10"/>
-             </div>
-          </div>
-           <div className="space-y-2">
-              <Label>Media Type</Label>
-              <RadioGroup
-                defaultValue="IMAGE"
-                className="flex items-center gap-4"
-                value={mediaType}
-                onValueChange={(value: 'IMAGE' | 'VIDEO') => setMediaType(value)}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="IMAGE" id="r-image" />
-                  <Label htmlFor="r-image">Image</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="VIDEO" id="r-video" />
-                  <Label htmlFor="r-video">Video</Label>
-                </div>
-              </RadioGroup>
+            <div className="relative">
+              <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input id="media-url" placeholder="Add a public media URL (e.g., https://.../image.jpg)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10"/>
             </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Schedule Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !scheduledDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {scheduledDate ? format(scheduledDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={scheduledDate}
-                    onSelect={setScheduledDate}
-                    initialFocus
+             <RadioGroup
+              defaultValue="IMAGE"
+              className="flex items-center gap-4 pt-2"
+              value={mediaType}
+              onValueChange={(value: 'IMAGE' | 'VIDEO') => setMediaType(value)}
+            >
+              <Label className="text-sm">Media Type:</Label>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="IMAGE" id="r-image" />
+                <Label htmlFor="r-image" className="font-normal">Image</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="VIDEO" id="r-video" />
+                <Label htmlFor="r-video" className="font-normal">Video</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <div className="space-y-2">
+            <Label>3. Schedule or Post</Label>
+            <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+              <div className="space-y-2">
+                <Label htmlFor="date" className="text-xs font-semibold">Schedule Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !scheduledDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {scheduledDate ? format(scheduledDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={scheduledDate}
+                      onSelect={setScheduledDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time" className="text-xs font-semibold">Schedule Time</Label>
+                <div className='relative'>
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input 
+                      type="time" 
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Schedule Time</Label>
-              <div className='relative'>
-                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                 <input 
-                    type="time" 
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
-                 />
+                </div>
+              </div>
+              <div className="col-span-2">
+                  <Button onClick={handleSchedule} disabled={isLoading || isPosting || !scheduledDate || !scheduledTime} className="w-full">
+                      {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
+                  </Button>
               </div>
             </div>
           </div>
         </div>
-        <DialogFooter className='pt-4 flex-col sm:flex-row sm:justify-between'>
-            <Button variant="secondary" onClick={handlePostNow} disabled={isPosting || isLoading}>
+        <DialogFooter className='sm:justify-between pt-4 border-t'>
+           <Button variant="secondary" onClick={handlePostNow} disabled={isPosting || isLoading}>
                 {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
-            </Button>
-          <div className='flex gap-2 justify-end'>
-             <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading || isPosting}>
-                Cancel
-             </Button>
-             <Button onClick={handleSchedule} disabled={isLoading || isPosting || !scheduledDate || !scheduledTime}>
-                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
-             </Button>
-          </div>
+           </Button>
+           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading || isPosting}>
+              Cancel
+           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

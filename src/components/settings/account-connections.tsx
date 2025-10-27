@@ -73,6 +73,7 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [accountId, setAccountId] = useState('');
   const [platform, setPlatform] = useState<'Facebook' | 'Instagram' | ''>('');
 
 
@@ -82,11 +83,11 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
   
 
   const handleConnectAccount = async () => {
-    if (!user || !displayName || !platform) {
+    if (!user || !displayName || !platform || !accountId) {
       toast({
         variant: 'destructive',
         title: 'Missing Information',
-        description: 'Please provide a display name and select a platform.',
+        description: 'Please provide a display name, account ID, and select a platform.',
       });
       return;
     }
@@ -94,13 +95,14 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
 
     const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
     
+    // We are not setting a real avatar here, as that would require an OAuth flow.
+    // The AvatarFallback will correctly show the initial of the displayName.
     try {
         await addDocumentNonBlocking(accountsCollection, {
             userId: user.uid,
             platform: platform,
             displayName: displayName,
-            accountId: `${platform.toLowerCase()}-${Date.now()}`,
-            avatar: `https://i.pravatar.cc/150?u=${displayName}`
+            accountId: accountId,
         });
         toast({
             title: 'Account Connected!',
@@ -117,6 +119,7 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
         setIsLoading(false);
         setOpen(false);
         setDisplayName('');
+        setAccountId('');
         setPlatform('');
     }
   };
@@ -151,10 +154,6 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
         ) : (
           <div className="py-4 space-y-4">
             <div className="space-y-2">
-                <Label htmlFor='account-name'>Display Name</Label>
-                <Input id="account-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g., My Awesome Page" />
-            </div>
-             <div className="space-y-2">
                 <Label htmlFor='platform'>Platform</Label>
                 <Select onValueChange={(value: 'Facebook' | 'Instagram') => setPlatform(value)} value={platform}>
                     <SelectTrigger>
@@ -166,13 +165,21 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
                     </SelectContent>
                 </Select>
             </div>
+            <div className="space-y-2">
+                <Label htmlFor='account-name'>Display Name</Label>
+                <Input id="account-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="e.g., My Awesome Page" />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor='account-id'>Account ID / Username</Label>
+                <Input id="account-id" value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="e.g., my_instagram_username" />
+            </div>
           </div>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleConnectAccount} disabled={isLoading || hasNoCredentials || !displayName || !platform}>
+          <Button onClick={handleConnectAccount} disabled={isLoading || hasNoCredentials || !displayName || !platform || !accountId}>
             {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Connecting...</> : `Connect Account`}
           </Button>
         </DialogFooter>
@@ -253,7 +260,7 @@ export function AccountConnections() {
                     <div>
                       <p className="font-semibold">{account.displayName}</p>
                       <p className="text-sm text-muted-foreground capitalize">
-                        {account.platform}
+                        {account.platform} ({account.accountId})
                       </p>
                     </div>
                   </div>

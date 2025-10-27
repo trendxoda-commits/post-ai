@@ -21,7 +21,7 @@ export interface AccountStats {
   followers: number;
   avgLikes: number;
   avgComments: number;
-  avgViews: number; // Added for video views
+  avgViews: number;
 }
 
 function AccountPerformance() {
@@ -132,12 +132,10 @@ function AccountPerformance() {
                 <p className="font-semibold">{(account.avgComments || 0).toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Avg. Comments</p>
               </div>
-              {account.platform === 'Instagram' && (
-                <div className="text-right">
-                  <p className="font-semibold">{(account.avgViews || 0).toLocaleString()}</p>
-                  <p className="text-sm text-muted-foreground">Avg. Views</p>
-                </div>
-              )}
+              <div className="text-right">
+                <p className="font-semibold">{(account.avgViews || 0).toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Avg. Views</p>
+              </div>
             </div>
           ))
         ) : (

@@ -93,9 +93,7 @@ export function PostCard({ post }: PostCardProps) {
                 <video
                     src={post.mediaUrl}
                     controls
-                    className="w-full h-full object-cover"
-                    // The poster can be a thumbnail, especially useful for FB
-                    poster={post.accountPlatform === 'Facebook' && !post.mediaUrl.includes('mp4') ? post.mediaUrl : undefined}
+                    className="w-full h-full object-cover bg-black"
                 >
                     Your browser does not support the video tag.
                 </video>

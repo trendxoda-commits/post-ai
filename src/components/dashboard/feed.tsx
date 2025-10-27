@@ -89,17 +89,16 @@ export function Feed() {
           });
 
           const fbPosts = result.posts
-            .filter(item => item.attachments?.data?.[0]?.media?.image?.src || item.attachments?.data?.[0]?.media?.source) // Ensure there's media to display
+            .filter(item => item.attachments?.data?.[0]?.media?.source || item.attachments?.data?.[0]?.media?.image?.src) // Ensure there's media to display
             .map((item): FeedPost => {
                 const attachment = item.attachments.data[0];
                 const isVideo = attachment.type === 'video_inline' || attachment.type === 'video' || !!attachment.media.source;
-                const mediaUrl = isVideo ? attachment.media.source : attachment.media.image.src;
+                const mediaUrl = isVideo ? attachment.media.source : (attachment.media.image?.src || attachment.url);
 
-                // Safely extract video views
                 let views = 0;
-                 if (isVideo && item.insights?.data?.length > 0) {
+                if (isVideo && item.insights?.data) {
                     const viewsInsight = item.insights.data.find((insight: any) => insight.name === 'post_video_views');
-                    if (viewsInsight && viewsInsight.values?.length > 0) {
+                    if (viewsInsight?.values?.[0]?.value) {
                         views = viewsInsight.values[0].value;
                     }
                 }

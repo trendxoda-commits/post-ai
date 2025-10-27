@@ -20,7 +20,7 @@ export interface FeedPost {
   accountPlatform: 'Instagram' | 'Facebook';
   content?: string;
   mediaUrl: string;
-  mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+  mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | 'ALBUM' | 'SHARE';
   likes: number;
   comments: number;
   views?: number;
@@ -89,9 +89,11 @@ export function Feed() {
           });
 
           const fbPosts = result.posts
-            .filter(item => item.full_picture || item.source) // Show posts with pictures or videos
+            .filter(item => item.attachments?.data?.[0]?.media?.image?.src) // Ensure there's media to display
             .map((item): FeedPost => {
-                const isVideo = !!item.source;
+                const attachment = item.attachments.data[0];
+                const isVideo = attachment.type === 'video_inline' || attachment.type === 'video';
+                
                 return {
                     id: item.id,
                     accountId: account.id,
@@ -99,7 +101,7 @@ export function Feed() {
                     accountAvatar: account.avatar,
                     accountPlatform: 'Facebook',
                     content: item.message,
-                    mediaUrl: (isVideo ? item.source : item.full_picture)!,
+                    mediaUrl: attachment.media.image.src,
                     mediaType: isVideo ? 'VIDEO' : 'IMAGE',
                     likes: item.likes?.summary.total_count ?? 0,
                     comments: item.comments?.summary.total_count ?? 0,

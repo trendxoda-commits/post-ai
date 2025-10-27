@@ -51,6 +51,8 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const isVideo = post.mediaType === 'VIDEO';
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -87,11 +89,13 @@ export function PostCard({ post }: PostCardProps) {
         {post.content && <p className="text-sm">{post.content}</p>}
         {post.mediaUrl && (
           <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
-            {post.mediaType === 'VIDEO' ? (
+            {isVideo ? (
                 <video
                     src={post.mediaUrl}
                     controls
                     className="w-full h-full object-cover"
+                    // For Facebook videos that might not play directly due to token issues
+                    poster={post.accountPlatform === 'Facebook' ? post.mediaUrl : undefined}
                 >
                     Your browser does not support the video tag.
                 </video>
@@ -115,10 +119,10 @@ export function PostCard({ post }: PostCardProps) {
           <MessageCircle className="h-4 w-4" />
           <span>{post.comments.toLocaleString()}</span>
         </div>
-        {post.mediaType === 'VIDEO' && post.views !== undefined && (
+        {post.views !== undefined && (
           <div className="flex items-center gap-1.5">
             <Eye className="h-4 w-4" />
-            <span>{post.views.toLocaleString()}</span>
+            <span>{(post.views || 0).toLocaleString()}</span>
           </div>
         )}
       </CardFooter>

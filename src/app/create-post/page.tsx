@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -47,7 +47,7 @@ export default function CreatePostPage() {
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
 
   // Group accounts by platform
-  const groupedAccounts = useMemoFirebase(() => {
+  const groupedAccounts = useMemo(() => {
     if (!accounts) return {};
     return accounts.reduce((acc, account) => {
       const { platform } = account;

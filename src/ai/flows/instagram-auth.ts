@@ -34,11 +34,13 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     outputSchema: GetInstagramAuthUrlOutputSchema,
   },
   async ({ clientId, userId }) => {
-    // This flow now correctly uses the NEXT_PUBLIC_ prefixed variables, as it's initiated from the client-side context.
     if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
         throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
     }
-    const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
+    // Clean up potential double slashes
+    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
+    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
+    const redirectUri = `${baseUrl}${path}`;
     
     const params = new URLSearchParams({
         client_id: clientId,
@@ -80,7 +82,10 @@ const getInstagramAccessTokenFlow = ai.defineFlow({
     if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
         throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
     }
-    const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
+    // Clean up potential double slashes
+    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
+    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
+    const redirectUri = `${baseUrl}${path}`;
 
     const url = `https://graph.facebook.com/v20.0/oauth/access_token`;
     const params = new URLSearchParams({
@@ -240,5 +245,3 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
 export async function getInstagramUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {
     return getInstagramUserDetailsFlow(input);
 }
-
-    

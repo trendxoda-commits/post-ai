@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -37,6 +38,7 @@ import { collection, doc } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '../ui/badge';
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   if (platform === 'Instagram') {

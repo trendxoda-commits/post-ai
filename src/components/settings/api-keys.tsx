@@ -27,7 +27,7 @@ import { collection, doc } from 'firebase/firestore';
 import type { ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-function AddCredentialDialog() {
+function AddCredentialDialog({ hasCredentials }: { hasCredentials?: boolean }) {
   const [open, setOpen] = useState(false);
   const [appId, setAppId] = useState('');
   const [appSecret, setAppSecret] = useState('');
@@ -77,7 +77,7 @@ function AddCredentialDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button disabled={hasCredentials}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Add API Keys
         </Button>
@@ -86,24 +86,23 @@ function AddCredentialDialog() {
         <DialogHeader>
           <DialogTitle>Add Meta App API Keys</DialogTitle>
           <DialogDescription>
-            Add your App ID and App Secret. These will be used to connect your Facebook and Instagram accounts.
+            Add your App ID and App Secret. These will be used to connect your Facebook and Instagram accounts. You only need to do this once.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="appId" className="text-right">
+          <div className="space-y-2">
+            <Label htmlFor="appId">
               App ID
             </Label>
             <Input
               id="appId"
               value={appId}
               onChange={(e) => setAppId(e.target.value)}
-              className="col-span-3"
               placeholder="Paste your App ID here"
             />
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="appSecret" className="text-right">
+           <div className="space-y-2">
+            <Label htmlFor="appSecret">
               App Secret
             </Label>
             <Input
@@ -111,7 +110,6 @@ function AddCredentialDialog() {
               type="password"
               value={appSecret}
               onChange={(e) => setAppSecret(e.target.value)}
-              className="col-span-3"
               placeholder="Paste your App Secret here"
             />
           </div>
@@ -145,11 +143,6 @@ export function ApiKeys() {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'apiCredentials', credentialId);
     
-    toast({
-        title: "Credentials Removed",
-        description: "The selected API keys are being removed."
-    });
-
     deleteDocumentNonBlocking(docRef).catch((error) => {
         toast({
             variant: "destructive",
@@ -157,6 +150,10 @@ export function ApiKeys() {
             description: "Could not remove the credentials."
         });
         console.error("Error removing credentials: ", error);
+    });
+     toast({
+        title: "Credentials Removed",
+        description: "The selected API keys have been removed."
     });
   };
 
@@ -166,10 +163,10 @@ export function ApiKeys() {
         <div>
           <CardTitle>API Keys</CardTitle>
           <CardDescription>
-            Manage your App ID and App Secret for each platform.
+            Manage the Meta App ID and Secret used to connect your accounts.
           </CardDescription>
         </div>
-        <AddCredentialDialog />
+        <AddCredentialDialog hasCredentials={(credentials?.length ?? 0) > 0} />
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -206,7 +203,7 @@ export function ApiKeys() {
             ) : (
               <div className="text-center py-10">
                 <p className="text-muted-foreground">No API keys saved yet.</p>
-                <p className="text-sm text-muted-foreground">Add your first set of API keys to get started.</p>
+                <p className="text-sm text-muted-foreground">Add your Meta App keys to get started.</p>
               </div>
             )}
           </div>

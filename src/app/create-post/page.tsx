@@ -9,8 +9,6 @@ import {
   Clock,
   Loader2,
   Link as LinkIcon,
-  Check,
-  ChevronsUpDown,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -22,10 +20,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { postToFacebook, postToInstagram } from '@/app/actions';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostCard, FeedPost } from '@/components/dashboard/post-card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 export default function CreatePostPage() {
@@ -37,7 +36,6 @@ export default function CreatePostPage() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [openAccountSelector, setOpenAccountSelector] = useState(false);
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -212,56 +210,38 @@ export default function CreatePostPage() {
               <CardTitle>1. Select Accounts</CardTitle>
               <CardDescription>Choose which social media accounts you want to post to.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Popover open={openAccountSelector} onOpenChange={setOpenAccountSelector}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={openAccountSelector}
-                    className="w-full justify-between"
-                  >
-                    {selectedAccountIds.length > 0
-                      ? `${selectedAccountIds.length} account(s) selected`
-                      : "Select accounts to post to..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search accounts..." />
-                    <CommandList>
-                      <CommandEmpty>No accounts found.</CommandEmpty>
-                      <CommandGroup>
-                        {accounts?.map((account) => (
-                          <CommandItem
-                            key={account.id}
-                            value={account.id}
-                            onSelect={(currentValue) => {
-                                const accountId = currentValue;
-                                if (!accountId) return;
-
+            <CardContent className="space-y-4">
+              {accounts && accounts.length > 0 ? (
+                accounts.map(account => (
+                    <div key={account.id} className="flex items-center space-x-4 p-3 rounded-md hover:bg-muted/50 transition-colors">
+                        <Checkbox
+                            id={`account-${account.id}`}
+                            checked={selectedAccountIds.includes(account.id)}
+                            onCheckedChange={(checked) => {
                                 setSelectedAccountIds(prev =>
-                                    prev.includes(accountId)
-                                    ? prev.filter(id => id !== accountId)
-                                    : [...prev, accountId]
+                                    checked
+                                    ? [...prev, account.id]
+                                    : prev.filter(id => id !== account.id)
                                 );
                             }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {account.displayName} ({account.platform})
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                        />
+                        <Label htmlFor={`account-${account.id}`} className="flex items-center gap-3 cursor-pointer w-full">
+                           <Avatar className="h-9 w-9">
+                                <AvatarImage src={account.avatar} alt={account.displayName} />
+                                <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1">
+                                <p className="font-semibold">{account.displayName}</p>
+                                <p className="text-sm text-muted-foreground">{account.platform}</p>
+                            </div>
+                        </Label>
+                    </div>
+                ))
+              ) : (
+                <p className='text-sm text-muted-foreground text-center py-4'>
+                    No accounts connected. Please add one in settings.
+                </p>
+              )}
             </CardContent>
           </Card>
 

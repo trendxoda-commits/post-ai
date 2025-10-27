@@ -102,7 +102,11 @@ export function PostCard({ post, isPreview = false }: PostCardProps) {
                     <video
                         key={post.mediaUrl} // Key to force re-render on URL change
                         src={post.mediaUrl}
-                        controls
+                        controls={!isPreview} // Show controls only if it's not a preview
+                        autoPlay={isPreview} // Autoplay only for previews
+                        loop={isPreview} // Loop only for previews
+                        muted // Always muted to avoid unexpected sound
+                        playsInline // Important for iOS
                         className="w-full h-full object-cover bg-black"
                     >
                         Your browser does not support the video tag.

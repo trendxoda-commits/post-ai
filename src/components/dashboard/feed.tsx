@@ -23,6 +23,7 @@ export interface FeedPost {
   mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
   likes: number;
   comments: number;
+  views?: number;
   timestamp: string;
   permalink: string;
 }
@@ -72,9 +73,10 @@ export function Feed() {
             accountPlatform: 'Instagram',
             content: item.caption,
             mediaUrl: item.media_url,
-            mediaType: item.media_type as 'IMAGE' | 'VIDEO',
+            mediaType: item.media_type as 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM',
             likes: item.like_count ?? 0,
             comments: item.comments_count ?? 0,
+            views: item.plays,
             timestamp: item.timestamp,
             permalink: item.permalink,
           }));

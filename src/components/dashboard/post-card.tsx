@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Heart, MessageCircle, MoreHorizontal, Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -115,6 +115,12 @@ export function PostCard({ post }: PostCardProps) {
           <MessageCircle className="h-4 w-4" />
           <span>{post.comments.toLocaleString()}</span>
         </div>
+        {post.mediaType === 'VIDEO' && post.views !== undefined && (
+          <div className="flex items-center gap-1.5">
+            <Eye className="h-4 w-4" />
+            <span>{post.views.toLocaleString()}</span>
+          </div>
+        )}
       </CardFooter>
     </Card>
   );

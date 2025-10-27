@@ -13,14 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2, Link as LinkIcon, Image as ImageIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2, Link as LinkIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +28,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@/components/ui/radio-group"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 export function SchedulePost() {
   const [open, setOpen] = useState(false);
@@ -209,33 +202,35 @@ export function SchedulePost() {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder="Search accounts..." />
-                        <CommandEmpty>No accounts found.</CommandEmpty>
-                        <CommandGroup>
-                            {accounts?.map((account) => (
-                                <CommandItem
-                                    key={account.id}
-                                    value={account.displayName}
-                                    onSelect={() => {
-                                        setSelectedAccountIds(prev => 
-                                            prev.includes(account.id)
-                                                ? prev.filter(id => id !== account.id)
-                                                : [...prev, account.id]
-                                        )
-                                    }}
-                                >
-                                    <Check
-                                        className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
-                                        )}
-                                    />
-                                    {account.displayName} ({account.platform})
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
+                        <CommandList>
+                            <CommandEmpty>No accounts found.</CommandEmpty>
+                            <CommandGroup>
+                                {accounts?.map((account) => (
+                                    <CommandItem
+                                        key={account.id}
+                                        value={account.displayName}
+                                        onSelect={() => {
+                                            setSelectedAccountIds(prev => 
+                                                prev.includes(account.id)
+                                                    ? prev.filter(id => id !== account.id)
+                                                    : [...prev, account.id]
+                                            )
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedAccountIds.includes(account.id) ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        {account.displayName} ({account.platform})
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
                     </Command>
                 </PopoverContent>
             </Popover>
@@ -315,11 +310,11 @@ export function SchedulePost() {
             </div>
           </div>
         </div>
-        <DialogFooter className='sm:justify-between'>
+        <DialogFooter className='pt-4 flex-col sm:flex-row sm:justify-between'>
             <Button variant="secondary" onClick={handlePostNow} disabled={isPosting || isLoading}>
                 {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
             </Button>
-          <div className='flex gap-2'>
+          <div className='flex gap-2 justify-end'>
              <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading || isPosting}>
                 Cancel
              </Button>
@@ -332,3 +327,5 @@ export function SchedulePost() {
     </Dialog>
   );
 }
+
+    

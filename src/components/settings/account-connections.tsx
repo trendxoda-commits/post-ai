@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlusCircle, Trash2, Loader2, Info } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Info, Check, ChevronsUpDown } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,12 +20,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { useState } from 'react';
 import {
   useFirebase,
@@ -39,14 +37,12 @@ import { collection, doc } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Label } from '../ui/label';
-import { Input } from '../ui/input';
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   if (platform === 'Instagram') {
     return (
       <svg
-        className="h-5 w-5 text-muted-foreground"
+        className="h-5 w-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -62,7 +58,7 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   }
   return (
     <svg
-      className="h-5 w-5 text-muted-foreground"
+      className="h-5 w-5"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -75,13 +71,19 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   );
 };
 
+// Simulated accounts that would be fetched from the Meta API
+const simulatedAccounts = [
+    { id: '101', displayName: 'My Travel Blog', platform: 'Facebook' as const, type: 'Page' },
+    { id: '102', displayName: 'The Foodie Channel', platform: 'Facebook' as const, type: 'Page' },
+    { id: '201', displayName: '@urban_explorer', platform: 'Instagram' as const, type: 'Profile' },
+    { id: '202', displayName: '@nature_lover', platform: 'Instagram' as const, type: 'Profile' },
+];
 
-function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] }) {
+
+function AddAccountDialog({ apiCredentials, existingAccounts }: { apiCredentials: ApiCredential[], existingAccounts: SocialAccount[] }) {
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [accountId, setAccountId] = useState('');
-  const [platform, setPlatform] = useState<'Facebook' | 'Instagram' | ''>('');
+  const [step, setStep] = useState(1); // 1: Initial, 2: Loading, 3: Select, 4: Saving
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   
   const { firestore } = useFirebase();
   const { user } = useUser();
@@ -89,50 +91,64 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
 
   const hasNoCredentials = apiCredentials.length === 0;
 
-  const resetForm = () => {
-    setDisplayName('');
-    setAccountId('');
-    setPlatform('');
-    setIsLoading(false);
+  const resetDialog = () => {
+    setStep(1);
+    setSelectedAccountIds([]);
   }
 
-  const handleConnectAccount = async () => {
-    if (!user || !displayName || !accountId || !platform) {
-        toast({
-            variant: "destructive",
-            title: "Missing Information",
-            description: "Please fill out all fields.",
-        });
-        return;
-    }
+  const handleFetchAccounts = () => {
+    setStep(2); // Show loading spinner
+    // Simulate API call to Meta
+    setTimeout(() => {
+      setStep(3); // Show selection list
+    }, 1500);
+  };
 
-    setIsLoading(true);
+  const handleConnectAccounts = async () => {
+    if (!user || selectedAccountIds.length === 0) return;
+    
+    setStep(4); // Show saving spinner
+
+    const accountsToConnect = simulatedAccounts.filter(acc => selectedAccountIds.includes(acc.id));
     const accountsCollection = collection(firestore, 'users', user.uid, 'socialAccounts');
 
-    addDocumentNonBlocking(accountsCollection, {
-        userId: user.uid,
-        platform: platform,
-        displayName: displayName,
-        accountId: accountId,
-        avatar: `https://picsum.photos/seed/${accountId}/40/40`
-    }).then(() => {
-        toast({
-          title: "Account Added!",
-          description: `Successfully added ${displayName}.`,
-        });
-    }).catch((e) => {
-        console.error("Error connecting account", e);
-    }).finally(() => {
-        setIsLoading(false);
-        setOpen(false);
-        resetForm();
+    const promises = accountsToConnect.map(acc => {
+      return addDocumentNonBlocking(accountsCollection, {
+          userId: user.uid,
+          platform: acc.platform,
+          displayName: acc.displayName,
+          accountId: acc.id,
+          avatar: `https://picsum.photos/seed/${acc.id}/40/40`
+      });
     });
+
+    try {
+        await Promise.all(promises);
+        toast({
+          title: "Accounts Added!",
+          description: `Successfully connected ${accountsToConnect.length} new account(s).`,
+        });
+    } catch (e) {
+        console.error("Error connecting accounts", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "There was an issue connecting your accounts.",
+        });
+    } finally {
+        setOpen(false);
+        resetDialog();
+    }
   };
-  
+
+  const isAlreadyConnected = (simulatedAccountId: string) => {
+    return existingAccounts.some(acc => acc.accountId === simulatedAccountId);
+  }
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
         setOpen(isOpen);
-        if (!isOpen) resetForm();
+        if (!isOpen) resetDialog();
     }}>
       <DialogTrigger asChild>
         <Button>
@@ -142,58 +158,126 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Manually Add Social Account</DialogTitle>
+          <DialogTitle>Connect Social Accounts</DialogTitle>
           <DialogDescription>
-            {hasNoCredentials 
-                ? 'Please add your Meta API Keys first to connect accounts.' 
-                : "Enter the details of the Facebook Page or Instagram Profile you want to manage."}
+            {step === 1 && "Connect new Facebook Pages or Instagram Profiles."}
+            {step === 3 && "Select the accounts you want to manage with Social Streamliner."}
+            {(step === 2 || step === 4) && "Please wait..."}
           </DialogDescription>
         </DialogHeader>
         
         {hasNoCredentials ? (
-           <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>No API Keys Found</AlertTitle>
-              <AlertDescription>
-                Go to the API Keys tab to add your credentials before connecting accounts.
-              </AlertDescription>
+           <div className="py-4">
+            <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>No API Keys Found</AlertTitle>
+                <AlertDescription>
+                    Go to the API Keys tab to add your Meta App credentials before connecting accounts.
+                </AlertDescription>
             </Alert>
+           </div>
         ) : (
-            <div className="py-4 space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="displayName">Display Name</Label>
-                    <Input id="displayName" placeholder="e.g., My Awesome Page" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="accountId">Account ID / Username</Label>
-                    <Input id="accountId" placeholder="e.g., my_insta_handle or 10012345678" value={accountId} onChange={(e) => setAccountId(e.target.value)} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="platform">Platform</Label>
-                    <Select onValueChange={(value: 'Facebook' | 'Instagram') => setPlatform(value)} value={platform}>
-                      <SelectTrigger id="platform">
-                        <SelectValue placeholder="Select a platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="Facebook">Facebook</SelectItem>
-                          <SelectItem value="Instagram">Instagram</SelectItem>
-                      </SelectContent>
-                    </Select>
-                </div>
+            <div className="py-4 min-h-[200px] flex flex-col justify-center">
+                {step === 1 && (
+                    <div className="text-center space-y-4">
+                        <p>You will be redirected to Facebook to authorize Social Streamliner.</p>
+                        <Button onClick={handleFetchAccounts}>
+                            Continue with Facebook
+                        </Button>
+                    </div>
+                )}
+                {(step === 2 || step === 4) && (
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-muted-foreground">{step === 2 ? 'Fetching your accounts...' : 'Connecting accounts...'}</p>
+                    </div>
+                )}
+                {step === 3 && (
+                    <div className="space-y-4">
+                      <Collapsible defaultOpen>
+                        <CollapsibleTrigger className="flex w-full justify-between items-center font-semibold">
+                          Facebook Pages <ChevronsUpDown className="h-4 w-4" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 pt-2">
+                          {simulatedAccounts.filter(a => a.platform === 'Facebook').map(account => (
+                            <AccountSelectItem 
+                              key={account.id} 
+                              account={account} 
+                              isSelected={selectedAccountIds.includes(account.id)}
+                              isDisabled={isAlreadyConnected(account.id)}
+                              onToggle={() => {
+                                if (isAlreadyConnected(account.id)) return;
+                                setSelectedAccountIds(prev => 
+                                  prev.includes(account.id) 
+                                  ? prev.filter(id => id !== account.id) 
+                                  : [...prev, account.id]
+                                )
+                              }}
+                            />
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                      <Collapsible defaultOpen>
+                        <CollapsibleTrigger className="flex w-full justify-between items-center font-semibold">
+                          Instagram Profiles <ChevronsUpDown className="h-4 w-4" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-2 pt-2">
+                          {simulatedAccounts.filter(a => a.platform === 'Instagram').map(account => (
+                             <AccountSelectItem 
+                              key={account.id} 
+                              account={account} 
+                              isSelected={selectedAccountIds.includes(account.id)}
+                              isDisabled={isAlreadyConnected(account.id)}
+                              onToggle={() => {
+                                if (isAlreadyConnected(account.id)) return;
+                                setSelectedAccountIds(prev => 
+                                  prev.includes(account.id) 
+                                  ? prev.filter(id => id !== account.id) 
+                                  : [...prev, account.id]
+                                )
+                              }}
+                            />
+                          ))}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                )}
             </div>
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={step === 2 || step === 4}>
             Cancel
           </Button>
-          <Button onClick={handleConnectAccount} disabled={isLoading || hasNoCredentials}>
-            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Adding...</> : 'Add Account'}
+          <Button onClick={handleConnectAccounts} disabled={hasNoCredentials || step !== 3 || selectedAccountIds.length === 0}>
+             Connect {selectedAccountIds.length > 0 ? `(${selectedAccountIds.length})` : ''}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+const AccountSelectItem = ({ account, isSelected, isDisabled, onToggle }: { account: (typeof simulatedAccounts)[0], isSelected: boolean, isDisabled: boolean, onToggle: () => void }) => {
+  return (
+    <div 
+      onClick={onToggle}
+      className={`flex items-center justify-between rounded-md border p-3 text-sm ${isDisabled ? 'opacity-50 cursor-not-allowed bg-muted/50' : 'cursor-pointer hover:bg-muted/50'} ${isSelected && 'bg-accent/20 border-accent'}`}
+    >
+      <div className="flex items-center gap-3">
+        <PlatformIcon platform={account.platform} />
+        <div className='flex flex-col'>
+          <span className="font-medium">{account.displayName}</span>
+          <span className="text-xs text-muted-foreground">{account.platform} {account.type}</span>
+        </div>
+      </div>
+      {isDisabled ? <Badge variant="outline">Connected</Badge> : (
+        <div className={`h-5 w-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'}`}>
+          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function AccountConnections() {
@@ -219,7 +303,6 @@ export function AccountConnections() {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
-    // Non-blocking delete
     deleteDocumentNonBlocking(docRef);
     toast({
         title: "Account Disconnected",
@@ -236,7 +319,7 @@ export function AccountConnections() {
             Manage your connected social media accounts.
           </CardDescription>
         </div>
-        <AddAccountDialog apiCredentials={apiCredentials || []} />
+        <AddAccountDialog apiCredentials={apiCredentials || []} existingAccounts={accounts || []}/>
       </CardHeader>
       <CardContent>
         {isLoading ? (

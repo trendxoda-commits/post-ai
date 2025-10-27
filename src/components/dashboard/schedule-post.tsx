@@ -188,8 +188,9 @@ export function SchedulePost() {
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
-           <div className="space-y-2">
-            <Label>1. Select Accounts</Label>
+           {/* Step 1: Select Accounts */}
+           <div className="space-y-3 rounded-lg border p-4">
+            <Label className="font-semibold">1. Select Accounts</Label>
             <Popover>
                 <PopoverTrigger asChild>
                     <Button
@@ -238,8 +239,10 @@ export function SchedulePost() {
                 </PopoverContent>
             </Popover>
           </div>
-          <div className="space-y-4">
-            <Label>2. Craft your post</Label>
+
+          {/* Step 2: Craft Post */}
+          <div className="space-y-4 rounded-lg border p-4">
+            <Label className="font-semibold">2. Craft your post</Label>
             <Textarea
               id="content"
               placeholder="What's on your mind?"
@@ -268,9 +271,17 @@ export function SchedulePost() {
               </div>
             </RadioGroup>
           </div>
-          <div className="space-y-2">
-            <Label>3. Schedule or Post</Label>
-            <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+
+          {/* Step 3: Schedule or Post */}
+          <div className="space-y-3 rounded-lg border p-4">
+             <div className="flex justify-between items-center">
+                <Label className="font-semibold">3. Schedule or Post</Label>
+                <Button variant="secondary" size="sm" onClick={handlePostNow} disabled={isPosting || isLoading}>
+                    {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+               </Button>
+            </div>
+            <Separator />
+            <div className="grid grid-cols-2 gap-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="date" className="text-xs font-semibold">Schedule Date</Label>
                 <Popover>
@@ -316,10 +327,7 @@ export function SchedulePost() {
             </div>
           </div>
         </div>
-        <DialogFooter className='sm:justify-between pt-4 border-t'>
-           <Button variant="secondary" onClick={handlePostNow} disabled={isPosting || isLoading}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
-           </Button>
+        <DialogFooter className='sm:justify-end pt-0'>
            <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading || isPosting}>
               Cancel
            </Button>

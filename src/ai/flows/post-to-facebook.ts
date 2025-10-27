@@ -35,21 +35,25 @@ const postToFacebookFlow = ai.defineFlow(
     
     const isVideo = mediaType === 'VIDEO';
     const postEndpoint = isVideo ? 'videos' : 'photos';
-    // Only the access token should be in the query string for POST requests.
-    const postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/${postEndpoint}?access_token=${pageAccessToken}`;
+    // The Graph API endpoint to post to.
+    const postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/${postEndpoint}`;
     
     // All other parameters go in the body.
     const bodyParams = new URLSearchParams();
+    bodyParams.append('access_token', pageAccessToken);
+
 
     if (isVideo) {
         bodyParams.append('file_url', mediaUrl);
         if (caption) {
+            // For videos, the parameter for the text is 'description'.
             bodyParams.append('description', caption);
         }
     } else { // Image
         bodyParams.append('url', mediaUrl);
         if (caption) {
-            bodyParams.append('caption', caption); // For photos, the parameter is 'caption' or 'message'
+            // For photos, the parameter is 'caption' (or 'message').
+            bodyParams.append('caption', caption);
         }
     }
     

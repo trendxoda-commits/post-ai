@@ -53,7 +53,7 @@ const postToInstagramFlow = ai.defineFlow(
     if (isVideo) {
         params.append('media_type', 'VIDEO');
         params.append('video_url', mediaUrl);
-        // For videos, caption is added at the publish step, not container creation
+        // For videos, caption is added at the publish step, NOT container creation.
     } else { // It's an image
         params.append('image_url', mediaUrl);
         // For images, we can add the caption at the container creation step.
@@ -84,14 +84,14 @@ const postToInstagramFlow = ai.defineFlow(
       throw new Error('Failed to get creation ID from Instagram.');
     }
     
-    // Step 2: For videos, poll for processing completion, then publish.
-    // For images, we just need to publish the container we created.
+    // Step 2: For videos, poll for processing completion, then publish with caption.
+    // For images, we just need to publish the container we created (caption was already included).
     if (isVideo) {
         // The caption is passed here to be used in the final publish step for videos.
         return await pollAndPublishContainer(instagramUserId, creationId, pageAccessToken, caption);
     } else {
         // For images, the caption was already included in the container.
-        // We just need to trigger the publish step.
+        // We just need to trigger the publish step without a caption.
         return await publishContainer(instagramUserId, creationId, pageAccessToken);
     }
   }
@@ -144,7 +144,7 @@ async function publishContainer(instagramUserId: string, creationId: string, pag
     });
 
     // The caption is only needed here for videos. For images, it was already added during container creation.
-    // This check handles both cases.
+    // This check correctly adds the caption for videos at the publishing stage.
     if (caption) {
         params.append('caption', caption);
     }

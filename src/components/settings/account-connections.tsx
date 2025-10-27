@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -154,9 +155,8 @@ function AddAccountDialog({ apiCredentials }: { apiCredentials: ApiCredential[] 
                   <SelectValue placeholder="Select a platform" />
                 </SelectTrigger>
                 <SelectContent>
-                  {apiCredentials.map(cred => (
-                     <SelectItem key={cred.id} value={cred.platform}>{cred.platform}</SelectItem>
-                  ))}
+                   <SelectItem value="Facebook">Facebook</SelectItem>
+                   <SelectItem value="Instagram">Instagram</SelectItem>
                 </SelectContent>
               </Select>
             </div>

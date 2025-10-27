@@ -10,7 +10,7 @@ export type SocialAccount = {
 export type ApiCredential = {
   id: string;
   userId: string;
-  platform: 'Instagram' | 'Facebook';
+  platform: 'Meta';
   appId: string;
   appSecret: string;
 }

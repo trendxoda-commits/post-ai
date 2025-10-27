@@ -21,13 +21,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { PlusCircle, Trash2, Loader2, KeyRound } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
@@ -36,7 +29,6 @@ import { useToast } from '@/hooks/use-toast';
 
 function AddCredentialDialog() {
   const [open, setOpen] = useState(false);
-  const [platform, setPlatform] = useState<'Instagram' | 'Facebook' | ''>('');
   const [appId, setAppId] = useState('');
   const [appSecret, setAppSecret] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +38,7 @@ function AddCredentialDialog() {
   const { toast } = useToast();
 
   const handleAddCredential = () => {
-    if (!user || !platform || !appId || !appSecret) {
+    if (!user || !appId || !appSecret) {
       toast({
         variant: "destructive",
         title: "Missing Information",
@@ -59,13 +51,13 @@ function AddCredentialDialog() {
     const credentialsCollection = collection(firestore, 'users', user.uid, 'apiCredentials');
     addDocumentNonBlocking(credentialsCollection, {
       userId: user.uid,
-      platform,
+      platform: 'Meta', // Hardcode to 'Meta' as one key set is used for both
       appId,
       appSecret,
     }).then(() => {
         toast({
             title: 'API Keys Added',
-            description: `Credentials for ${platform} have been saved.`,
+            description: `Credentials for your Meta app have been saved.`,
         });
     }).catch((error) => {
         console.error("Error adding credential:", error);
@@ -77,7 +69,6 @@ function AddCredentialDialog() {
     }).finally(() => {
         setIsLoading(false);
         setOpen(false);
-        setPlatform('');
         setAppId('');
         setAppSecret('');
     });
@@ -93,26 +84,12 @@ function AddCredentialDialog() {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add API Keys</DialogTitle>
+          <DialogTitle>Add Meta App API Keys</DialogTitle>
           <DialogDescription>
-            Add new App ID and App Secret for a platform. These will be used to connect your social accounts.
+            Add your App ID and App Secret. These will be used to connect your Facebook and Instagram accounts.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="platform" className="text-right">
-              Platform
-            </Label>
-            <Select onValueChange={(value: 'Instagram' | 'Facebook') => setPlatform(value)}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select a platform" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Instagram">Instagram</SelectItem>
-                <SelectItem value="Facebook">Facebook</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="appId" className="text-right">
               App ID

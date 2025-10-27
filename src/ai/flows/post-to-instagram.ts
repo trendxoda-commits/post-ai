@@ -46,18 +46,22 @@ const postToInstagramFlow = ai.defineFlow(
     
     const isVideo = mediaType === 'VIDEO';
     
-    let params = new URLSearchParams({
+    const params = new URLSearchParams({
         access_token: pageAccessToken,
     });
 
     if (isVideo) {
         params.append('media_type', 'VIDEO');
         params.append('video_url', mediaUrl);
+        // For videos, caption is added at the publish step, not container creation
     } else {
         params.append('image_url', mediaUrl);
+        if (caption) {
+          params.append('caption', caption);
+        }
     }
     
-    const containerResponse = await fetch(containerUrl, {
+    const containerResponse = await fetch(`${containerUrl}`, {
         method: 'POST',
         body: params,
     });
@@ -78,13 +82,16 @@ const postToInstagramFlow = ai.defineFlow(
     if (!creationId) {
       throw new Error('Failed to get creation ID from Instagram.');
     }
-
-    // For images, publishing is immediate.
-    // For videos, we must wait for it to finish processing.
-    if (!isVideo) {
-        return publishContainer(instagramUserId, creationId, pageAccessToken, caption);
-    } else {
+    
+    // For images, publishing is one-step if caption was included.
+    // For videos, we must poll and then publish with the caption.
+    if (isVideo) {
         return await pollAndPublishContainer(instagramUserId, creationId, pageAccessToken, caption);
+    } else {
+        // For images, the container is directly published as the post ID is in the container response (if no further action is needed)
+        // However, the Graph API for images now also uses a two-step process if you don't provide a caption initially.
+        // Since we provide it, we use `media_publish` to be consistent.
+        return publishContainer(instagramUserId, creationId, pageAccessToken, undefined); // Caption is already in the container for images
     }
   }
 );
@@ -99,7 +106,9 @@ async function pollAndPublishContainer(instagramUserId: string, creationId: stri
         const statusResponse = await fetch(statusUrl);
 
         if (!statusResponse.ok) {
-            throw new Error('Failed to poll container status.');
+            const errorBody: any = await statusResponse.json();
+            console.error('Polling failed:', errorBody);
+            throw new Error(`Failed to poll container status: ${errorBody.error?.message || 'Unknown polling error'}`);
         }
 
         const statusData: any = await statusResponse.json();
@@ -132,6 +141,8 @@ async function publishContainer(instagramUserId: string, creationId: string, pag
         access_token: pageAccessToken,
     });
 
+    // Caption is only needed here for videos, or for images if not provided during container creation.
+    // Our logic for images provides it at creation, so this is mainly for videos.
     if (caption) {
         params.append('caption', caption);
     }

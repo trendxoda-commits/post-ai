@@ -104,8 +104,9 @@ export default function InstagramCallbackPage() {
             const existingAccountSnapshot = await getDocs(q);
 
             if (existingAccountSnapshot.empty) {
-                const newAccountDoc = doc(socialAccountsRef);
+                const newAccountDoc = doc(socialAccountsRef); // Creates a new doc with a random ID
                 await setDoc(newAccountDoc, {
+                    id: newAccountDoc.id, // Explicitly set the ID field
                     userId: user.uid,
                     platform: account.platform,
                     displayName: account.username,
@@ -114,6 +115,10 @@ export default function InstagramCallbackPage() {
                     avatar: `https://picsum.photos/seed/${accountId}/40/40`,
                 });
                 newAccountsCount++;
+            } else {
+                // Optionally, update the existing account's pageAccessToken if it has changed
+                const existingDoc = existingAccountSnapshot.docs[0];
+                await setDoc(existingDoc.ref, { pageAccessToken: account.pageAccessToken }, { merge: true });
             }
         }
 
@@ -168,5 +173,3 @@ export default function InstagramCallbackPage() {
     </div>
   );
 }
-
-    

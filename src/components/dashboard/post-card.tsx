@@ -12,6 +12,8 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import type { FeedPost } from './feed';
 import Link from 'next/link';
+import { Skeleton } from '../ui/skeleton';
+
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   if (platform === 'Instagram') {
@@ -48,13 +50,14 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
 
 interface PostCardProps {
   post: FeedPost;
+  isPreview?: boolean;
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, isPreview = false }: PostCardProps) {
   const isVideo = post.mediaType === 'VIDEO';
 
   return (
-    <Card>
+    <Card className={isPreview ? 'shadow-none border-border' : ''}>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar>
@@ -63,53 +66,65 @@ export function PostCard({ post }: PostCardProps) {
           </Avatar>
           <div>
             <p className="font-semibold">{post.accountDisplayName}</p>
-            <p className="text-sm text-muted-foreground">
-              {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
-            </p>
+            {!isPreview && (
+                 <p className="text-sm text-muted-foreground">
+                    {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
+                </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
           <PlatformIcon platform={post.accountPlatform} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={post.permalink} target="_blank" rel="noopener noreferrer">View Post on {post.accountPlatform}</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>Analytics</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!isPreview && (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                    <Link href={post.permalink} target="_blank" rel="noopener noreferrer">View Post on {post.accountPlatform}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem>Analytics</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {post.content && <p className="text-sm">{post.content}</p>}
-        {post.mediaUrl && (
-          <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
-            {isVideo ? (
-                <video
-                    src={post.mediaUrl}
-                    controls
-                    className="w-full h-full object-cover bg-black"
-                >
-                    Your browser does not support the video tag.
-                </video>
+      <CardContent className="space-y-4 pt-0">
+        {post.content && <p className="text-sm whitespace-pre-wrap">{post.content}</p>}
+        
+        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted">
+            {post.mediaUrl ? (
+                <>
+                {isVideo ? (
+                    <video
+                        key={post.mediaUrl} // Key to force re-render on URL change
+                        src={post.mediaUrl}
+                        controls
+                        className="w-full h-full object-cover bg-black"
+                    >
+                        Your browser does not support the video tag.
+                    </video>
+                ) : (
+                    <Image
+                        src={post.mediaUrl}
+                        alt="Post content"
+                        fill
+                        className="object-cover"
+                        unoptimized // Added for external URLs like from Facebook CDN
+                    />
+                )}
+                </>
             ) : (
-                <Image
-                    src={post.mediaUrl}
-                    alt="Post content"
-                    fill
-                    className="object-cover"
-                    unoptimized // Added for external URLs like from Facebook CDN
-                />
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground text-sm">Media will be shown here</p>
+                </div>
             )}
-          </div>
-        )}
+        </div>
       </CardContent>
-      <CardFooter className="flex items-center gap-4 text-sm text-muted-foreground">
+       <CardFooter className="flex items-center gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <Heart className="h-4 w-4" />
           <span>{post.likes.toLocaleString()}</span>
@@ -118,7 +133,7 @@ export function PostCard({ post }: PostCardProps) {
           <MessageCircle className="h-4 w-4" />
           <span>{post.comments.toLocaleString()}</span>
         </div>
-        {post.views !== undefined && post.views > 0 && (
+        {(post.views !== undefined && post.views > 0 || (isVideo && isPreview)) && (
           <div className="flex items-center gap-1.5">
             <Eye className="h-4 w-4" />
             <span>{(post.views || 0).toLocaleString()}</span>
@@ -128,3 +143,5 @@ export function PostCard({ post }: PostCardProps) {
     </Card>
   );
 }
+
+export type { FeedPost };

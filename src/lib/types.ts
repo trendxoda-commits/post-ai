@@ -5,6 +5,7 @@ export type SocialAccount = {
   accountId: string;
   displayName: string;
   avatar?: string;
+  pageAccessToken?: string; // Encrypted
 };
 
 export type ApiCredential = {
@@ -13,6 +14,7 @@ export type ApiCredential = {
   platform: 'Meta';
   appId: string;
   appSecret: string;
+  accessToken?: string; // Encrypted long-lived user access token
 }
 
 export type Post = {

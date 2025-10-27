@@ -44,7 +44,7 @@
         },
         "platform": {
           "type": "string",
-          "description": "The social media platform (e.g., 'Facebook', 'Instagram')."
+          "description": "The social media platform (e.g., 'Meta')."
         },
         "appId": {
           "type": "string",
@@ -53,6 +53,10 @@
         "appSecret": {
           "type": "string",
           "description": "The App Secret for the social media application."
+        },
+        "accessToken": {
+          "type": "string",
+          "description": "The long-lived user access token, encrypted."
         }
       },
       "required": [
@@ -80,6 +84,10 @@
         },
         "platform": {
           "type": "string",
+          "enum": [
+            "Instagram",
+            "Facebook"
+          ],
           "description": "The social media platform (e.g., 'Facebook', 'Instagram')."
         },
         "accountId": {
@@ -88,7 +96,11 @@
         },
         "displayName": {
           "type": "string",
-          "description": "The display name of the account on the social media platform."
+          "description": "The display name or username of the account."
+        },
+        "pageAccessToken": {
+          "type": "string",
+          "description": "The Page Access Token for API calls, encrypted."
         }
       },
       "required": [
@@ -96,7 +108,8 @@
         "userId",
         "platform",
         "accountId",
-        "displayName"
+        "displayName",
+        "pageAccessToken"
       ]
     },
     "ScheduledPost": {
@@ -197,7 +210,7 @@
           "schema": {
             "$ref": "#/backend/entities/ApiCredential"
           },
-          "description": "Stores a user's API credentials for a specific platform. Path-based ownership ensures credentials are secure."
+          "description": "Stores a user's API credentials for a specific platform. Path-based ownership ensures credentials are secure. Only one document should exist in this subcollection."
         }
       },
       {

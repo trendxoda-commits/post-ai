@@ -42,6 +42,7 @@ const postToInstagramFlow = ai.defineFlow(
     }
 
     // Step 1: Create a media container.
+    // The caption is NOT sent in this step. It's sent during the publish step.
     const containerUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media`;
     
     const isVideo = mediaType === 'VIDEO';
@@ -56,12 +57,7 @@ const postToInstagramFlow = ai.defineFlow(
     } else {
         params.append('image_url', mediaUrl);
     }
-
-    if (caption) {
-        params.append('caption', caption);
-    }
-
-
+    
     const containerResponse = await fetch(`${containerUrl}?${params.toString()}`, {
         method: 'POST',
     });
@@ -85,15 +81,15 @@ const postToInstagramFlow = ai.defineFlow(
     // For images, publishing is immediate.
     // For videos, we must wait for it to finish processing.
     if (!isVideo) {
-        return publishContainer(instagramUserId, creationId, pageAccessToken);
+        return publishContainer(instagramUserId, creationId, pageAccessToken, caption);
     } else {
-        return await pollAndPublishContainer(instagramUserId, creationId, pageAccessToken);
+        return await pollAndPublishContainer(instagramUserId, creationId, pageAccessToken, caption);
     }
   }
 );
 
 
-async function pollAndPublishContainer(instagramUserId: string, creationId: string, pageAccessToken: string): Promise<PostToInstagramOutput> {
+async function pollAndPublishContainer(instagramUserId: string, creationId: string, pageAccessToken: string, caption?: string): Promise<PostToInstagramOutput> {
     const maxRetries = 20; // 20 * 5s = 100 seconds timeout
     const pollInterval = 5000; // 5 seconds
 
@@ -111,7 +107,7 @@ async function pollAndPublishContainer(instagramUserId: string, creationId: stri
         console.log(`Polling container ${creationId}, status: ${statusCode}`);
 
         if (statusCode === 'FINISHED') {
-            return publishContainer(instagramUserId, creationId, pageAccessToken);
+            return publishContainer(instagramUserId, creationId, pageAccessToken, caption);
         }
 
         if (statusCode === 'ERROR') {
@@ -127,13 +123,17 @@ async function pollAndPublishContainer(instagramUserId: string, creationId: stri
 }
 
 
-async function publishContainer(instagramUserId: string, creationId: string, pageAccessToken: string): Promise<PostToInstagramOutput> {
+async function publishContainer(instagramUserId: string, creationId: string, pageAccessToken: string, caption?: string): Promise<PostToInstagramOutput> {
     const publishUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media_publish`;
     
     const params = new URLSearchParams({
         creation_id: creationId,
         access_token: pageAccessToken,
     });
+
+    if (caption) {
+        params.append('caption', caption);
+    }
 
     console.log(`Publishing container ${creationId}...`);
     const publishResponse = await fetch(`${publishUrl}?${params.toString()}`, {

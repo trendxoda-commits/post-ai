@@ -89,21 +89,24 @@ export function Feed() {
           });
 
           const fbPosts = result.posts
-            .filter(item => item.full_picture) // Only show posts with pictures
-            .map((item): FeedPost => ({
-                id: item.id,
-                accountId: account.id,
-                accountDisplayName: account.displayName,
-                accountAvatar: account.avatar,
-                accountPlatform: 'Facebook',
-                content: item.message,
-                mediaUrl: item.full_picture!,
-                mediaType: 'IMAGE', // Facebook API doesn't specify video vs image in this context
-                likes: item.likes?.summary.total_count ?? 0,
-                comments: item.comments?.summary.total_count ?? 0,
-                timestamp: item.created_time,
-                permalink: item.permalink_url,
-            }));
+            .filter(item => item.full_picture || item.source) // Show posts with pictures or videos
+            .map((item): FeedPost => {
+                const isVideo = !!item.source;
+                return {
+                    id: item.id,
+                    accountId: account.id,
+                    accountDisplayName: account.displayName,
+                    accountAvatar: account.avatar,
+                    accountPlatform: 'Facebook',
+                    content: item.message,
+                    mediaUrl: (isVideo ? item.source : item.full_picture)!,
+                    mediaType: isVideo ? 'VIDEO' : 'IMAGE',
+                    likes: item.likes?.summary.total_count ?? 0,
+                    comments: item.comments?.summary.total_count ?? 0,
+                    timestamp: item.created_time,
+                    permalink: item.permalink_url,
+                }
+            });
           allPosts.push(...fbPosts);
         }
       }

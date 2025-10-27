@@ -255,6 +255,7 @@ const FacebookPostObjectSchema = z.object({
     created_time: z.string(),
     full_picture: z.string().url().optional(),
     permalink_url: z.string().url(),
+    source: z.string().url().optional(), // Added for video URLs
     likes: z.object({
         summary: z.object({
             total_count: z.number()
@@ -280,7 +281,7 @@ const getFacebookPostsFlow = ai.defineFlow(
     outputSchema: GetFacebookPostsOutputSchema,
   },
   async ({ facebookPageId, pageAccessToken }) => {
-    const fields = 'id,message,created_time,full_picture,permalink_url,likes.summary(true),comments.summary(true)';
+    const fields = 'id,message,created_time,full_picture,permalink_url,source,likes.summary(true),comments.summary(true)';
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);

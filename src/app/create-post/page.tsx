@@ -46,6 +46,19 @@ export default function CreatePostPage() {
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
 
+  // Group accounts by platform
+  const groupedAccounts = useMemoFirebase(() => {
+    if (!accounts) return {};
+    return accounts.reduce((acc, account) => {
+      const { platform } = account;
+      if (!acc[platform]) {
+        acc[platform] = [];
+      }
+      acc[platform].push(account);
+      return acc;
+    }, {} as Record<string, SocialAccount[]>);
+  }, [accounts]);
+
   // Auto-detect media type from URL
   useEffect(() => {
     if (mediaUrl.match(/\.(mp4|mov|avi)$/i)) {
@@ -231,28 +244,44 @@ export default function CreatePostPage() {
                 <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {accounts && accounts.length > 0 ? (
-                    accounts.map(account => (
-                      <DropdownMenuCheckboxItem
-                        key={account.id}
-                        checked={selectedAccountIds.includes(account.id)}
-                        onSelect={(e) => e.preventDefault()} // Prevents dropdown from closing on select
+                   {accounts && accounts.length > 0 ? (
+                    <>
+                    <DropdownMenuCheckboxItem
+                        checked={selectedAccountIds.length === accounts.length}
+                        onSelect={(e) => e.preventDefault()}
                         onCheckedChange={(checked) => {
-                          setSelectedAccountIds(prev =>
-                            checked
-                              ? [...prev, account.id]
-                              : prev.filter(id => id !== account.id)
-                          );
+                            setSelectedAccountIds(checked ? accounts.map(a => a.id) : []);
                         }}
-                      >
-                        <Avatar className="h-6 w-6 mr-2">
-                          <AvatarImage src={account.avatar} alt={account.displayName} />
-                          <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold">{account.displayName}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{account.platform}</span>
-                      </DropdownMenuCheckboxItem>
-                    ))
+                    >
+                        Select All
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    {Object.entries(groupedAccounts).map(([platform, platformAccounts]) => (
+                        <div key={platform}>
+                            <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{platform}</DropdownMenuLabel>
+                            {(platformAccounts as SocialAccount[]).map(account => (
+                                <DropdownMenuCheckboxItem
+                                key={account.id}
+                                checked={selectedAccountIds.includes(account.id)}
+                                onSelect={(e) => e.preventDefault()}
+                                onCheckedChange={(checked) => {
+                                    setSelectedAccountIds(prev =>
+                                    checked
+                                        ? [...prev, account.id]
+                                        : prev.filter(id => id !== account.id)
+                                    );
+                                }}
+                                >
+                                <Avatar className="h-6 w-6 mr-2">
+                                    <AvatarImage src={account.avatar} alt={account.displayName} />
+                                    <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-semibold">{account.displayName}</span>
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </div>
+                    ))}
+                    </>
                   ) : (
                     <div className="p-2 text-sm text-center text-muted-foreground">
                       No accounts connected.

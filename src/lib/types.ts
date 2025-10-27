@@ -1,10 +1,11 @@
-export type Account = {
+export type SocialAccount = {
   id: string;
-  platform: 'instagram' | 'facebook';
-  username: string;
-  avatar: string;
-  followers: number;
-  engagementRate: number;
+  userId: string;
+  platform: 'Instagram' | 'Facebook';
+  accountId: string;
+  displayName: string;
+  apiKey: string;
+  avatar?: string;
 };
 
 export type Post = {
@@ -17,6 +18,15 @@ export type Post = {
   timestamp: string;
   scheduledTime?: string;
 };
+
+export type ScheduledPost = {
+  id: string;
+  userId: string;
+  content: string;
+  scheduledTime: string;
+  socialAccountIds: string[];
+  createdAt: string;
+}
 
 export type AnalyticsData = {
   date: string;

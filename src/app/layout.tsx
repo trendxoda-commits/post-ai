@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { AppShell } from '@/components/layout/app-shell';
+import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 export const metadata: Metadata = {
   title: 'Social Streamliner',
@@ -28,8 +30,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <AppShell>{children}</AppShell>
-        <Toaster />
+        <FirebaseClientProvider>
+          <FirebaseErrorListener />
+          <AppShell>{children}</AppShell>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );

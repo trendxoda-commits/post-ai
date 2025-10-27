@@ -1,35 +1,11 @@
-import type { Account, Post, AnalyticsData } from './types';
+import type { Post, AnalyticsData } from './types';
 import { PlaceHolderImages } from './placeholder-images';
 
 const findImage = (id: string) =>
   PlaceHolderImages.find((img) => img.id === id)?.imageUrl || '';
 
-export const accounts: Account[] = [
-  {
-    id: 'acc1',
-    platform: 'instagram',
-    username: 'nature_lover',
-    avatar: findImage('avatar1'),
-    followers: 12500,
-    engagementRate: 2.5,
-  },
-  {
-    id: 'acc2',
-    platform: 'facebook',
-    username: 'foodie_adventures',
-    avatar: findImage('avatar2'),
-    followers: 7800,
-    engagementRate: 1.8,
-  },
-  {
-    id: 'acc3',
-    platform: 'instagram',
-    username: 'urban_explorer',
-    avatar: findImage('avatar3'),
-    followers: 23000,
-    engagementRate: 3.1,
-  },
-];
+// This file now mainly provides data for charts and placeholder images.
+// Account and Post data will be fetched from Firestore.
 
 export const posts: Post[] = [
   {
@@ -79,19 +55,6 @@ export const posts: Post[] = [
   },
 ];
 
-export const scheduledPosts: Post[] = [
-  {
-    id: 'spost1',
-    accountId: 'acc1',
-    content: 'New adventure coming soon! Stay tuned.',
-    scheduledTime: new Date(
-      Date.now() + 2 * 24 * 60 * 60 * 1000
-    ).toISOString(),
-    likes: 0,
-    comments: 0,
-    timestamp: new Date().toISOString(),
-  },
-];
 
 export const analyticsData: AnalyticsData[] = [
   { date: 'Jan', followers: 2000, engagement: 1.5 },

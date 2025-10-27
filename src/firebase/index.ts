@@ -3,7 +3,10 @@
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
+
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -40,11 +43,58 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+export const addDocumentNonBlocking = (ref: any, data: any) => {
+    return addDoc(ref, data)
+        .catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ref.path,
+                operation: 'create',
+                requestResourceData: data,
+            }));
+            throw err;
+        });
+}
+
+export const setDocumentNonBlocking = (ref: any, data: any, options: any) => {
+    return setDoc(ref, data, options)
+        .catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ref.path,
+                operation: options.merge ? 'update' : 'create',
+                requestResourceData: data,
+            }));
+            throw err;
+        });
+}
+
+export const updateDocumentNonBlocking = (ref: any, data: any) => {
+    return updateDoc(ref, data)
+        .catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ref.path,
+                operation: 'update',
+                requestResourceData: data,
+            }));
+            throw err;
+        });
+}
+
+
+export const deleteDocumentNonBlocking = (ref: any) => {
+    return deleteDoc(ref)
+        .catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: ref.path,
+                operation: 'delete',
+            }));
+            throw err;
+        });
+}
+
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
-export * from './non-blocking-updates';
 export * from './non-blocking-login';
 export * from './errors';
 export * from './error-emitter';

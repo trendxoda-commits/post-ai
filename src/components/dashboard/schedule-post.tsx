@@ -20,21 +20,81 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PlusCircle, Calendar, Clock } from 'lucide-react';
-import { accounts } from '@/lib/placeholder-data';
+import { PlusCircle, Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
+import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import type { SocialAccount } from '@/lib/types';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function SchedulePost() {
   const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+  const [content, setContent] = useState('');
+  const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>();
+  const [scheduledTime, setScheduledTime] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSchedule = () => {
-    // In a real app, logic to schedule the post would go here.
-    toast({
-      title: 'Post Scheduled!',
-      description: 'Your post has been successfully scheduled for publishing.',
-    });
-    setOpen(false);
+  const { toast } = useToast();
+  const { firestore } = useFirebase();
+  const { user } = useUser();
+
+  const socialAccountsQuery = useMemoFirebase(() =>
+    user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
+    [firestore, user]
+  );
+  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const handleSchedule = async () => {
+    if (!user || !content || selectedAccounts.length === 0 || !scheduledDate || !scheduledTime) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Please fill out all fields before scheduling.",
+        });
+        return;
+    }
+
+    setIsLoading(true);
+    
+    const [hours, minutes] = scheduledTime.split(':').map(Number);
+    const scheduledDateTime = new Date(scheduledDate);
+    scheduledDateTime.setHours(hours, minutes);
+
+    try {
+      const postsCollection = collection(firestore, 'users', user.uid, 'scheduledPosts');
+      await addDocumentNonBlocking(postsCollection, {
+        userId: user.uid,
+        content,
+        socialAccountIds: selectedAccounts,
+        scheduledTime: scheduledDateTime.toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: 'Post Scheduled!',
+        description: 'Your post has been successfully scheduled for publishing.',
+      });
+      setOpen(false);
+      // Reset form
+      setContent('');
+      setSelectedAccounts([]);
+      setScheduledDate(undefined);
+      setScheduledTime('');
+
+    } catch (error) {
+      console.error("Error scheduling post: ", error);
+      toast({
+        variant: "destructive",
+        title: 'Error scheduling post',
+        description: 'There was an issue scheduling your post. Please try again.',
+      });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -60,18 +120,20 @@ export function SchedulePost() {
               id="content"
               placeholder="What's on your mind?"
               className="min-h-[120px]"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
             />
           </div>
           <div className="space-y-2">
             <Label>Accounts</Label>
-            <Select>
+            <Select onValueChange={(value) => setSelectedAccounts([value])} value={selectedAccounts[0]}>
               <SelectTrigger>
-                <SelectValue placeholder="Select accounts to post to" />
+                <SelectValue placeholder="Select an account to post to" />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((account) => (
+                {accounts?.map((account) => (
                   <SelectItem key={account.id} value={account.id}>
-                    {account.username} ({account.platform})
+                    {account.displayName} ({account.platform})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -80,31 +142,50 @@ export function SchedulePost() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Schedule Date</Label>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Pick a date
-              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !scheduledDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {scheduledDate ? format(scheduledDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={scheduledDate}
+                    onSelect={setScheduledDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label htmlFor="time">Schedule Time</Label>
-              <Button
-                variant="outline"
-                className="w-full justify-start text-left font-normal"
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                Pick a time
-              </Button>
+              <div className='relative'>
+                 <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                 <input 
+                    type="time" 
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pl-10"
+                 />
+              </div>
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={handleSchedule}>Schedule Post</Button>
+          <Button onClick={handleSchedule} disabled={isLoading}>
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

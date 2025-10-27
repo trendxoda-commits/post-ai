@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { Heart, MessageCircle, MoreHorizontal } from 'lucide-react';
-import type { Post, Account } from '@/lib/types';
+import type { Post, SocialAccount } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-const PlatformIcon = ({ platform }: { platform: 'instagram' | 'facebook' }) => {
-  if (platform === 'instagram') {
+const findImage = (hint: string) =>
+  PlaceHolderImages.find((img) => img.imageHint.includes(hint))?.imageUrl || '';
+
+
+const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
+  if (platform === 'Instagram') {
     return (
       <svg
         className="h-5 w-5 text-muted-foreground"
@@ -47,7 +52,7 @@ const PlatformIcon = ({ platform }: { platform: 'instagram' | 'facebook' }) => {
 
 interface PostCardProps {
   post: Post;
-  account: Account;
+  account: SocialAccount;
 }
 
 export function PostCard({ post, account }: PostCardProps) {
@@ -56,11 +61,11 @@ export function PostCard({ post, account }: PostCardProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src={account.avatar} alt={account.username} />
-            <AvatarFallback>{account.username.charAt(0).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={account.avatar} alt={account.displayName} />
+            <AvatarFallback>{account.displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold">{account.username}</p>
+            <p className="font-semibold">{account.displayName}</p>
             <p className="text-sm text-muted-foreground">
               {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
             </p>
@@ -83,17 +88,15 @@ export function PostCard({ post, account }: PostCardProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm">{post.content}</p>
-        {post.imageUrl && (
-          <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
-            <Image
-              src={post.imageUrl}
-              alt="Post content"
-              fill
-              className="object-cover"
-              data-ai-hint="post image"
-            />
-          </div>
-        )}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border">
+          <Image
+            src={findImage('post image')}
+            alt="Post content"
+            fill
+            className="object-cover"
+            data-ai-hint="post image"
+          />
+        </div>
       </CardContent>
       <CardFooter className="flex items-center gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-1.5">

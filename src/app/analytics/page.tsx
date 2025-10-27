@@ -120,21 +120,21 @@ function AccountPerformance() {
               </div>
               <div className="text-right">
                 <p className="font-semibold">
-                  {account.followers.toLocaleString()}
+                  {(account.followers || 0).toLocaleString()}
                 </p>
                 <p className="text-sm text-muted-foreground">Followers</p>
               </div>
               <div className="text-right">
-                <p className="font-semibold">{account.avgLikes.toLocaleString()}</p>
+                <p className="font-semibold">{(account.avgLikes || 0).toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Avg. Likes</p>
               </div>
                <div className="text-right">
-                <p className="font-semibold">{account.avgComments.toLocaleString()}</p>
+                <p className="font-semibold">{(account.avgComments || 0).toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Avg. Comments</p>
               </div>
               {account.platform === 'Instagram' && (
                 <div className="text-right">
-                  <p className="font-semibold">{account.avgViews.toLocaleString()}</p>
+                  <p className="font-semibold">{(account.avgViews || 0).toLocaleString()}</p>
                   <p className="text-sm text-muted-foreground">Avg. Views</p>
                 </div>
               )}

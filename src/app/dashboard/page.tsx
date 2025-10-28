@@ -1,60 +1,128 @@
 'use client';
 
-import { Feed } from '@/components/dashboard/feed';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Clock } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { ScheduledPost } from '@/lib/types';
-import { format } from 'date-fns';
+import { collection } from 'firebase/firestore';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { getAccountAnalytics } from '@/app/actions';
+import { StatsCards } from '@/components/analytics/stats-cards';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
-function ScheduledPosts() {
+function AccountFollowers() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const [accountsData, setAccountsData] = useState<{name: string, followers: number, avatar?: string}[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const scheduledPostsQuery = useMemoFirebase(
-    () =>
-      user
-        ? query(
-            collection(firestore, 'users', user.uid, 'scheduledPosts'),
-            where('scheduledTime', '>=', new Date().toISOString()),
-            orderBy('scheduledTime', 'asc')
-          )
-        : null,
+  const socialAccountsQuery = useMemoFirebase(
+    () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
     [firestore, user]
   );
-  const { data: scheduledPosts, isLoading } = useCollection<ScheduledPost>(scheduledPostsQuery);
+  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const apiCredentialsQuery = useMemoFirebase(() =>
+    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
+  , [firestore, user]);
+  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
+  const userAccessToken = apiCredentials?.[0]?.accessToken;
+
+
+  useEffect(() => {
+    const fetchAccountFollowers = async () => {
+      if (!accounts || !userAccessToken) {
+        setIsLoading(false);
+        return;
+      };
+
+      setIsLoading(true);
+      
+      const followersPromises = accounts.map(async (account) => {
+        try {
+          const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+          
+          if (!accessTokenForRequest) {
+            console.warn(`No access token available for ${account.displayName}. Skipping.`);
+            return null;
+          }
+
+          const analytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            accessToken: accessTokenForRequest,
+          });
+
+          return {
+            name: account.displayName,
+            followers: analytics.followers,
+            avatar: account.avatar,
+          };
+        } catch (error) {
+          console.error(`Failed to fetch followers for ${account.displayName}`, error);
+          return {
+            name: account.displayName,
+            followers: 0,
+            avatar: account.avatar,
+          };
+        }
+      });
+      
+      const allFollowers = (await Promise.all(followersPromises))
+        .filter((stat): stat is {name: string, followers: number, avatar?: string} => stat !== null)
+        .sort((a, b) => b.followers - a.followers);
+
+      setAccountsData(allFollowers);
+      setIsLoading(false);
+    };
+
+    if (accounts && userAccessToken) {
+      fetchAccountFollowers();
+    } else if (accounts === null && user) {
+      // Still loading accounts, do nothing
+    } else {
+      // No accounts or no token
+      setIsLoading(false);
+    }
+  }, [accounts, userAccessToken, user]);
+
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Scheduled Posts</CardTitle>
-        <CardDescription>Your upcoming scheduled posts.</CardDescription>
+        <CardTitle>Account Followers</CardTitle>
+        <CardDescription>Follower count for each of your connected accounts.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {isLoading ? (
-          <div className="text-center text-sm text-muted-foreground">Loading...</div>
-        ) : scheduledPosts && scheduledPosts.length > 0 ? (
-          <div className="space-y-4">
-            {scheduledPosts.slice(0, 5).map(post => (
-              <div key={post.id} className="flex items-start gap-4">
-                <div className="bg-muted rounded-md p-2">
-                    <Clock className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm truncate">{post.content || 'Untitled Post'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {format(new Date(post.scheduledTime), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                </div>
+            <div className="flex justify-center items-center h-24">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+        ) : accountsData.length > 0 ? (
+          accountsData.map((account) => (
+            <div key={account.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={account.avatar} alt={account.name} />
+                  <AvatarFallback>
+                    {account.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="font-semibold">{account.name}</p>
               </div>
-            ))}
-          </div>
+              <div className="text-right">
+                <p className="text-lg font-bold">
+                  {(account.followers || 0).toLocaleString()}
+                </p>
+                <p className="text-sm text-muted-foreground">Followers</p>
+              </div>
+            </div>
+          ))
         ) : (
-          <div className="text-center text-sm text-muted-foreground py-4">No posts scheduled.</div>
+            <p className="text-sm text-center text-muted-foreground py-4">No accounts connected or data available.</p>
         )}
       </CardContent>
     </Card>
@@ -74,14 +142,8 @@ export default function DashboardPage() {
             </Link>
           </Button>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2">
-              <Feed />
-            </div>
-            <div className="lg:col-span-1 space-y-8">
-              <ScheduledPosts />
-            </div>
-        </div>
+        <StatsCards />
+        <AccountFollowers />
     </div>
   );
 }

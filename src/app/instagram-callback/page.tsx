@@ -142,17 +142,17 @@ export default function InstagramCallbackPage() {
                     userId: user.uid,
                     platform: account.platform,
                     displayName: account.displayName,
-                    accountId: platformSpecificId,
+                    accountId: account.accountId,
                     pageAccessToken: account.pageAccessToken, // Crucial for future API calls
-                    avatar: account.avatar || `https://picsum.photos/seed/${platformSpecificId}/40/40`,
+                    avatar: account.avatar || `https://picsum.photos/seed/${account.accountId}/40/40`,
                 });
                 newAccountsCount++;
             } else {
                 // IMPORTANT: Update the existing account's details, especially the pageAccessToken, which might have been refreshed.
                 const existingDoc = existingAccountSnapshot.docs[0];
                 await setDoc(existingDoc.ref, { 
-                    pageAccessToken: account.pageAccessToken, 
                     displayName: account.displayName,
+                    pageAccessToken: account.pageAccessToken, 
                     avatar: account.avatar || existingDoc.data().avatar,
                 }, { merge: true });
             }

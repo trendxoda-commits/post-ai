@@ -176,6 +176,7 @@ const getInstagramMediaFlow = ai.defineFlow(
         if (item.media_type === 'VIDEO') {
             try {
                 // The insights call must also use the USER access token.
+                // CRITICAL FIX: The parameter name is 'access_token', not 'accessToken'.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {
@@ -265,6 +266,7 @@ const getFacebookPostsFlow = ai.defineFlow(
         const isVideo = post.attachments?.data[0]?.type?.includes('video');
         if (isVideo) {
             try {
+                // CRITICAL FIX: Fetch insights for each video post individually.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${post.id}/insights?metric=post_video_views&access_token=${pageAccessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {

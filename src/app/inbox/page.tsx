@@ -83,27 +83,7 @@ export default function InboxPage() {
 
       for (const account of accounts) {
         try {
-          if (account.platform === 'Facebook' && account.pageAccessToken) {
-            const { posts: fbPosts } = await fetchFacebookPosts({
-              facebookPageId: account.accountId,
-              pageAccessToken: account.pageAccessToken,
-            });
-            allPosts.push(
-              ...fbPosts.map((post) => ({
-                id: post.id,
-                accountId: account.id,
-                accountDisplayName: account.displayName,
-                accountAvatar: account.avatar,
-                platform: 'Facebook',
-                content: post.message,
-                mediaUrl: post.attachments?.data[0]?.media?.image?.src,
-                mediaType: post.attachments?.data[0]?.type?.includes('video') ? 'VIDEO' : 'IMAGE',
-                timestamp: post.created_time,
-                permalink: post.permalink_url,
-                accessToken: account.pageAccessToken!,
-              }))
-            );
-          } else if (account.platform === 'Instagram') {
+          if (account.platform === 'Instagram') {
             const { media } = await fetchInstagramMedia({
               instagramUserId: account.accountId,
               accessToken: userAccessToken,
@@ -165,18 +145,7 @@ export default function InboxPage() {
 
       try {
         let fetchedComments: UnifiedComment[] = [];
-        if (post.platform === 'Facebook') {
-          const { comments: fbComments } = await fetchFacebookComments({
-            postId: post.id,
-            accessToken: post.accessToken,
-          });
-          fetchedComments = fbComments.map((c: any) => ({
-            id: c.id,
-            author: c.from.name,
-            text: c.message,
-            timestamp: c.created_time,
-          }));
-        } else { // Instagram
+        if (post.platform === 'Instagram') { // Only fetch for Instagram
           const { comments: igComments } = await fetchInstagramComments({
             mediaId: post.id,
             accessToken: post.accessToken,
@@ -207,15 +176,15 @@ export default function InboxPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline">Inbox</h1>
         <p className="text-muted-foreground max-w-2xl">
-          View and reply to comments from your connected accounts. Click on a post to see its comments.
+          View and reply to comments from your connected Instagram accounts. Click on a post to see its comments.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Posts & Comments</CardTitle>
+          <CardTitle>Recent Instagram Posts & Comments</CardTitle>
           <CardDescription>
-            A unified feed of your most recent posts across all platforms.
+            A unified feed of your most recent posts across all Instagram accounts.
           </CardDescription>
         </CardHeader>
         <CardContent>

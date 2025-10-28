@@ -51,7 +51,7 @@ export function PostPerformance() {
       <CardHeader>
         <CardTitle>Post Performance</CardTitle>
         <CardDescription>
-          Detailed statistics for each of your recent posts from the database.
+          Detailed statistics for each of your recent posts.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -62,51 +62,51 @@ export function PostPerformance() {
         ) : postsWithAccountData && postsWithAccountData.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {postsWithAccountData.map((post) => (
-              <Card key={post.id} className="flex flex-col">
-                <CardHeader className="flex-row gap-3 items-center">
+              <Card key={post.id} className="flex flex-col overflow-hidden">
+                <CardHeader className="flex-row gap-3 items-center p-4">
                     <Avatar className="h-9 w-9">
                         <AvatarImage src={post.account?.avatar} alt={post.account?.displayName} />
                         <AvatarFallback>{post.account?.displayName.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="flex-grow">
                         <CardTitle className="text-base">{post.account?.displayName}</CardTitle>
                          <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
                         </p>
                     </div>
-                     <Badge variant={post.platform === 'Instagram' ? 'destructive' : 'default'} className="ml-auto bg-blue-500">
+                     <Badge variant={post.platform === 'Instagram' ? 'destructive' : 'default'} className="ml-auto bg-blue-500 shrink-0">
                         {post.platform}
                     </Badge>
                 </CardHeader>
-                <CardContent className="space-y-4 flex-grow">
+                <CardContent className="p-4 pt-0 space-y-4 flex-grow">
                   {post.mediaUrl && (
-                     <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="block relative aspect-square w-full rounded-md overflow-hidden">
+                     <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="block relative aspect-square w-full rounded-md overflow-hidden group">
                         <Image
                             src={post.mediaUrl}
                             alt="Post media"
                             fill
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform hover:scale-105"
+                            className="object-cover transition-transform group-hover:scale-105"
                         />
                      </a>
                   )}
-                  <p className="text-sm text-muted-foreground line-clamp-3">
+                  <p className="text-sm text-muted-foreground line-clamp-3 flex-grow">
                     {post.content || 'No caption'}
                   </p>
                 </CardContent>
-                <div className="p-6 pt-0 flex justify-around items-center border-t mt-4">
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="p-4 border-t flex justify-around items-center text-xs text-muted-foreground font-semibold">
+                  <div className="flex items-center gap-1.5">
                     <ThumbsUp className="h-4 w-4 text-blue-500" />
-                    <span className="font-semibold text-sm">{post.likes.toLocaleString()}</span>
+                    <span>{post.likes.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
                     <MessageSquare className="h-4 w-4 text-green-500" />
-                    <span className="font-semibold text-sm">{post.comments.toLocaleString()}</span>
+                    <span>{post.comments.toLocaleString()}</span>
                   </div>
                   {post.views > 0 && (
-                     <div className="flex items-center gap-2 text-muted-foreground">
+                     <div className="flex items-center gap-1.5">
                         <Eye className="h-4 w-4 text-purple-500" />
-                        <span className="font-semibold text-sm">{post.views.toLocaleString()}</span>
+                        <span>{post.views.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -126,5 +126,3 @@ export function PostPerformance() {
     </Card>
   );
 }
-
-    

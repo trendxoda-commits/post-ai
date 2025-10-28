@@ -23,7 +23,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
-import { collection, collectionGroup, query, getDocs, doc, setDoc, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import type { SocialAccount, User, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
@@ -130,8 +130,8 @@ export default function AdminAccountsPage() {
     const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
     const userAccessToken = apiCredential.accessToken;
 
-    if (!userAccessToken) {
-        toast({ variant: 'destructive', title: 'Error', description: `User access token not found for user ${account.user.email}. They may need to reconnect.` });
+    if (!userAccessToken || !account.pageAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `A required access token is missing for user ${account.user.email}. They may need to reconnect.` });
         return;
     }
 
@@ -140,7 +140,7 @@ export default function AdminAccountsPage() {
         const newAnalytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            pageAccessToken: account.pageAccessToken!,
+            pageAccessToken: account.pageAccessToken,
             userAccessToken: userAccessToken,
         });
 

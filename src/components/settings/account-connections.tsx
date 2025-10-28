@@ -144,8 +144,8 @@ export function AccountConnections() {
       return;
     }
     const userAccessToken = apiCredentials[0].accessToken;
-    if (!userAccessToken) {
-        toast({ variant: 'destructive', title: 'Error', description: 'User access token not found. Please reconnect your account.' });
+    if (!userAccessToken || !account.pageAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: 'A required access token is missing. Please reconnect your account.' });
         return;
     }
 
@@ -154,7 +154,7 @@ export function AccountConnections() {
         const newAnalytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            pageAccessToken: account.pageAccessToken!,
+            pageAccessToken: account.pageAccessToken,
             userAccessToken: userAccessToken,
         });
 

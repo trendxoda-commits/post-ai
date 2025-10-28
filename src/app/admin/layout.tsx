@@ -25,12 +25,9 @@ export const useAdminAuth = () => {
 function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Auto-login the admin
   useEffect(() => {
-    // Check session storage on initial load
-    const storedStatus = sessionStorage.getItem('isAdmin');
-    if (storedStatus === 'true') {
-      setIsAdmin(true);
-    }
+    login();
   }, []);
 
   const login = () => {
@@ -42,38 +39,18 @@ function AdminAuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('isAdmin');
     setIsAdmin(false);
   };
-
+  
+  // Render children immediately if isAdmin is true, otherwise show a loader.
+  // This prevents brief flashes of content before the auto-login takes effect.
   return (
     <AdminAuthContext.Provider value={{ isAdmin, login, logout }}>
-      {children}
+      {isAdmin ? children : (
+         <div className="flex h-screen w-full items-center justify-center bg-muted">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      )}
     </AdminAuthContext.Provider>
   );
-}
-
-function AdminLayoutContent({ children }: { children: ReactNode }) {
-  const { isAdmin } = useAdminAuth();
-  const pathname = usePathname();
-  const router = useRouter();
-
-  // This effect handles redirection based on auth state
-  useEffect(() => {
-    if (!isAdmin && pathname !== '/admin/login') {
-      router.push('/admin/login');
-    } else if (isAdmin && pathname === '/admin/login') {
-      router.push('/admin/dashboard');
-    }
-  }, [isAdmin, pathname, router]);
-
-  // While redirecting, show a loader
-  if (!isAdmin && pathname !== '/admin/login') {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-muted">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  return <>{children}</>;
 }
 
 
@@ -81,9 +58,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
      <FirebaseClientProvider>
         <AdminAuthProvider>
-            <AdminLayoutContent>
-                {children}
-            </AdminLayoutContent>
+            {children}
         </AdminAuthProvider>
     </FirebaseClientProvider>
   );

@@ -213,9 +213,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const pagesData: any = await pagesResponse.json();
     
     if (!pagesData.data || pagesData.data.length === 0) {
-        // If no pages are found, don't crash. Just return an empty list.
-        // This is a valid scenario.
-        return { accounts: [] };
+        throw new Error('No Facebook Page linked to this account. Please go to Facebook Business settings and link a Page with an Instagram Business account.');
     }
     
     const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
@@ -260,7 +258,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     
     if (allFoundAccounts.length === 0) {
         // This can happen if the user granted permissions but has no eligible pages/accounts.
-        console.log('No Facebook Page or Instagram Business Account could be processed.');
+        throw new Error('No Facebook Page or Instagram Business Account could be processed. Please ensure you have granted the correct permissions.');
     }
 
     return { accounts: allFoundAccounts };

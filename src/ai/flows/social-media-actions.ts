@@ -117,7 +117,7 @@ const GetInstagramMediaInputSchema = z.object({
 
 const InstagramMediaObjectSchema = z.object({
     id: z.string(),
-    caption: z.string().optional(),
+    caption: z.string().optional().nullable(),
     media_type: z.string(),
     media_url: z.string().url(),
     permalink: z.string().url(),
@@ -200,7 +200,7 @@ const GetFacebookPostsInputSchema = z.object({
 
 const FacebookPostObjectSchema = z.object({
     id: z.string(),
-    message: z.string().optional(),
+    message: z.string().optional().nullable(),
     created_time: z.string(),
     attachments: z.any().optional(), 
     permalink_url: z.string().url(),
@@ -233,7 +233,7 @@ const getFacebookPostsFlow = ai.defineFlow(
   async ({ facebookPageId, pageAccessToken }) => {
     // Requesting attachments, source for videos, and the correct insights metric.
     const fields = 'id,message,created_time,permalink_url,attachments{media{source,image},type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
-    // CRITICAL FIX: Use the pageAccessToken for this call, not a generic accessToken.
+    // CRITICAL FIX: Use the pageAccessToken for this call.
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);

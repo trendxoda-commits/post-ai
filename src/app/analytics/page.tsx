@@ -6,7 +6,7 @@ import { EngagementChart } from '@/components/analytics/engagement-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';

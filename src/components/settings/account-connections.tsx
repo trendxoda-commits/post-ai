@@ -134,7 +134,9 @@ export function AccountConnections() {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
+    // Use the non-blocking delete function
     deleteDocumentNonBlocking(docRef);
+
     toast({
         title: "Account Disconnected",
         description: "The account has been successfully disconnected."

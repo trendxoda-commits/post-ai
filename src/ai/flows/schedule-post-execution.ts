@@ -48,16 +48,17 @@ const executeScheduledPostsFlow = ai.defineFlow(
     const publishedPosts: string[] = [];
     const failedPosts: string[] = [];
 
-    // 1. Fetch all pending scheduled posts for the user
+    // 1. Fetch all pending scheduled posts for the user that are due
     const now = new Date().toISOString();
     const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('status', '==', 'scheduled').where('scheduledTime', '<=', now);
 
     const querySnapshot = await postsQuery.get();
     if (querySnapshot.empty) {
+      // No posts are due, so we can exit.
       return { publishedPosts, failedPosts };
     }
     
-    // 2. Get User's long-lived access token from apiCredentials
+    // 2. Get User's long-lived access token from apiCredentials (still useful for some operations)
     const credsRef = firestore.collection(`users/${userId}/apiCredentials`);
     const credsSnapshot = await credsRef.get();
     if (credsSnapshot.empty) {
@@ -69,8 +70,6 @@ const executeScheduledPostsFlow = ai.defineFlow(
         }
         return { publishedPosts, failedPosts };
     }
-    const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
-    const userAccessToken = apiCredential.accessToken;
 
 
     // 3. Iterate over due posts and publish them
@@ -95,12 +94,17 @@ const executeScheduledPostsFlow = ai.defineFlow(
                 throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
             }
 
+            // Ensure we have the necessary page access token for the specific account
+            if (!socialAccount.pageAccessToken) {
+                throw new Error(`Missing Page Access Token for account ${socialAccount.displayName}.`);
+            }
+
             if (socialAccount.platform === 'Facebook') {
                 await postToFacebook({
                     facebookPageId: socialAccount.accountId,
                     mediaUrl: post.mediaUrl,
                     caption: post.content,
-                    pageAccessToken: socialAccount.pageAccessToken!,
+                    pageAccessToken: socialAccount.pageAccessToken,
                     mediaType: post.mediaType,
                 });
             } else if (socialAccount.platform === 'Instagram') {
@@ -108,7 +112,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
                     instagramUserId: socialAccount.accountId,
                     mediaUrl: post.mediaUrl,
                     caption: post.content,
-                    pageAccessToken: socialAccount.pageAccessToken!,
+                    pageAccessToken: socialAccount.pageAccessToken,
                     mediaType: post.mediaType,
                 });
             }
@@ -118,7 +122,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
         }
       }
       
-      // 4. Update the post status instead of deleting
+      // 4. Update the post status based on the outcome
       if (allSucceeded) {
         await postDoc.ref.update({ status: 'published' });
         publishedPosts.push(postId);
@@ -139,3 +143,5 @@ export async function executeScheduledPosts(input: ExecuteScheduledPostsInput): 
   // Immediately return a response to the client.
   return { publishedPosts: [], failedPosts: [] };
 }
+
+    

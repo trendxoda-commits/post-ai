@@ -13,6 +13,7 @@ import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firesto
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { syncUserPosts } from '@/lib/data';
 
 enum Status {
   PENDING,
@@ -166,18 +167,22 @@ export default function InstagramCallbackPage() {
                 await setDoc(existingDoc.ref, accountData, { merge: true });
             }
         }
+        
+        // 7. Trigger a background sync of posts for the user
+        // This is a "fire-and-forget" call. We don't wait for it to finish.
+        syncUserPosts(user.uid, longLivedToken);
 
         setStatus(Status.SUCCESS);
         
         if (newAccountsCount > 0) {
             toast({
               title: 'Connection Successful!',
-              description: `${newAccountsCount} new account(s) have been connected.`,
+              description: `${newAccountsCount} new account(s) have been connected. Fetching recent posts in the background.`,
             });
         } else {
             toast({
               title: 'Accounts Updated',
-              description: 'Your existing accounts have been refreshed with the latest information and permissions.',
+              description: 'Your existing accounts have been refreshed. Fetching recent posts in the background.',
             });
         }
         
@@ -226,3 +231,5 @@ export default function InstagramCallbackPage() {
     </div>
   );
 }
+
+    

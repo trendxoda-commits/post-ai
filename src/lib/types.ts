@@ -28,16 +28,27 @@ export type ApiCredential = {
   accessToken?: string; // Encrypted long-lived user access token
 }
 
-export type Post = {
+export type SocialPost = {
   id: string;
-  accountId: string;
-  content: string;
-  imageUrl?: string;
+  userId: string;
+  socialAccountId: string;
+  platform: 'Instagram' | 'Facebook';
+  postId: string;
+  content?: string | null;
+  mediaUrl?: string;
+  mediaType?: string;
+  permalink?: string;
   likes: number;
   comments: number;
+  views: number;
   timestamp: string;
-  scheduledTime?: string;
+  // For UI joins
+  account?: {
+    displayName: string;
+    avatar?: string;
+  }
 };
+
 
 export type ScheduledPost = {
   id: string;
@@ -55,3 +66,5 @@ export type AnalyticsData = {
   followers: number;
   engagement: number;
 };
+
+    

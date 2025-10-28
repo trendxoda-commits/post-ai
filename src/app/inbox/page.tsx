@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Accordion,
   AccordionContent,
@@ -9,37 +9,18 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { Loader2, MessageSquare, CornerDownRight } from 'lucide-react';
-import type { SocialAccount, ApiCredential } from '@/lib/types';
+import type { SocialPost, ApiCredential, SocialAccount } from '@/lib/types';
 import {
-  fetchInstagramMedia,
   fetchInstagramComments,
-  fetchFacebookPosts,
   getFacebookPostComments,
 } from '@/app/actions';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
-
-// Combined type for posts from both platforms
-type UnifiedPost = {
-  id: string;
-  accountId: string;
-  accountDisplayName: string;
-  accountAvatar?: string;
-  platform: 'Instagram' | 'Facebook';
-  content?: string | null;
-  mediaUrl?: string;
-  mediaType?: string;
-  timestamp: string;
-  permalink: string;
-  accessToken: string;
-};
 
 // Combined type for comments
 type UnifiedComment = {
@@ -54,100 +35,38 @@ export default function InboxPage() {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const [posts, setPosts] = useState<UnifiedPost[]>([]);
   const [comments, setComments] = useState<Record<string, UnifiedComment[]>>({});
-  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
   const [isLoadingComments, setIsLoadingComments] = useState<Record<string, boolean>>({});
   const [openPostId, setOpenPostId] = useState<string | null>(null);
 
+  // Fetch social posts from the new collection
+  const socialPostsQuery = useMemoFirebase(
+    () => user ? query(collection(firestore, 'users', user.uid, 'socialPosts'), orderBy('timestamp', 'desc')) : null,
+    [firestore, user]
+  );
+  const { data: posts, isLoading: isLoadingPosts } = useCollection<SocialPost>(socialPostsQuery);
+  
+  // Fetch accounts to join author data to posts
   const socialAccountsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
+    () => user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
     [firestore, user]
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
 
-  const apiCredentialsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null),
-    [firestore, user]
-  );
-  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
-  const userAccessToken = apiCredentials?.[0]?.accessToken;
 
-  useEffect(() => {
-    const loadPosts = async () => {
-      if (!accounts || !userAccessToken) {
-        setIsLoadingPosts(false);
-        return;
+  // Join account data with posts
+  const postsWithAccountData = useMemo(() => {
+    if (!posts || !accounts) return posts;
+    const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
+    return posts.map(post => ({
+      ...post,
+      account: {
+        displayName: accountsMap.get(post.socialAccountId)?.displayName || 'Unknown Account',
+        avatar: accountsMap.get(post.socialAccountId)?.avatar
       }
-      setIsLoadingPosts(true);
-      let allPosts: UnifiedPost[] = [];
+    }));
+  }, [posts, accounts]);
 
-      for (const account of accounts) {
-        try {
-          if (account.platform === 'Instagram') {
-              const { media } = await fetchInstagramMedia({
-                instagramUserId: account.accountId,
-                accessToken: userAccessToken,
-              });
-              allPosts.push(
-                ...media.map((post) => ({
-                  id: post.id,
-                  accountId: account.id,
-                  accountDisplayName: account.displayName,
-                  accountAvatar: account.avatar,
-                  platform: 'Instagram',
-                  content: post.caption,
-                  mediaUrl: post.media_url,
-                  mediaType: post.media_type,
-                  timestamp: post.timestamp,
-                  permalink: post.permalink,
-                  accessToken: account.pageAccessToken!,
-                }))
-              );
-          } else if (account.platform === 'Facebook') {
-              const { posts: fbPosts } = await fetchFacebookPosts({
-                facebookPageId: account.accountId,
-                pageAccessToken: account.pageAccessToken!,
-              });
-              allPosts.push(
-                ...fbPosts.map((post) => ({
-                  id: post.id,
-                  accountId: account.id,
-                  accountDisplayName: account.displayName,
-                  accountAvatar: account.avatar,
-                  platform: 'Facebook',
-                  content: post.message,
-                  mediaUrl: post.attachments?.data[0]?.media?.image?.src || post.attachments?.data[0]?.url,
-                  timestamp: post.created_time,
-                  permalink: post.permalink_url,
-                  accessToken: account.pageAccessToken!,
-                }))
-              );
-          }
-        } catch (error: any) {
-          console.error(`Failed to fetch posts for ${account.displayName}:`, error);
-          toast({
-            variant: 'destructive',
-            title: `Error fetching posts for ${account.displayName}`,
-            description: error.message,
-          });
-        }
-      }
-
-      // Sort all posts by date, newest first
-      allPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setPosts(allPosts);
-      setIsLoadingPosts(false);
-    };
-
-    if (accounts && userAccessToken) {
-      loadPosts();
-    } else if (accounts === null && user) {
-        // accounts still loading
-    } else {
-      setIsLoadingPosts(false);
-    }
-  }, [accounts, userAccessToken, user, toast]);
 
   const handlePostToggle = async (postId: string) => {
     if (openPostId === postId) {
@@ -160,15 +79,25 @@ export default function InboxPage() {
     // Fetch comments if not already fetched
     if (!comments[postId]) {
       setIsLoadingComments((prev) => ({ ...prev, [postId]: true }));
-      const post = posts.find((p) => p.id === postId);
-      if (!post) return;
+      const post = posts?.find((p) => p.id === postId);
+      const account = accounts?.find(a => a.id === post?.socialAccountId);
+      
+      if (!post || !account || !account.pageAccessToken) {
+        setIsLoadingComments((prev) => ({ ...prev, [postId]: false }));
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not find post or required account token to fetch comments.'
+        });
+        return;
+      };
 
       try {
         let fetchedComments: UnifiedComment[] = [];
         if (post.platform === 'Instagram') {
           const { comments: igComments } = await fetchInstagramComments({
-            mediaId: post.id,
-            accessToken: post.accessToken,
+            mediaId: post.postId, // Use the original platform-specific post ID
+            accessToken: account.pageAccessToken,
           });
           fetchedComments = igComments.map((c: any) => ({
             id: c.id,
@@ -178,8 +107,8 @@ export default function InboxPage() {
           }));
         } else if (post.platform === 'Facebook') {
           const { comments: fbComments } = await getFacebookPostComments({
-             postId: post.id,
-             accessToken: post.accessToken,
+             postId: post.postId, // Use the original platform-specific post ID
+             accessToken: account.pageAccessToken,
           });
            fetchedComments = fbComments.map((c: any) => ({
             id: c.id,
@@ -216,7 +145,7 @@ export default function InboxPage() {
         <CardHeader>
           <CardTitle>Recent Posts & Comments</CardTitle>
           <CardDescription>
-            A feed of your recent posts. Click on any post to load and view its comments.
+            A feed of your recent posts from the database. Click on any post to load and view its comments.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -224,14 +153,14 @@ export default function InboxPage() {
             <div className="flex justify-center items-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : posts.length > 0 ? (
+          ) : postsWithAccountData && postsWithAccountData.length > 0 ? (
             <Accordion
               type="single"
               collapsible
               value={openPostId || ''}
               onValueChange={handlePostToggle}
             >
-              {posts.map((post) => (
+              {postsWithAccountData.map((post) => (
                 <AccordionItem value={post.id} key={post.id}>
                   <AccordionTrigger className="hover:bg-muted/50 rounded-md p-4 w-full">
                     <div className="flex items-start gap-4 text-left w-full">
@@ -249,10 +178,10 @@ export default function InboxPage() {
                       <div className="flex-grow">
                         <div className="flex items-center gap-2 mb-1">
                           <Avatar className="h-5 w-5">
-                            <AvatarImage src={post.accountAvatar} alt={post.accountDisplayName} />
-                            <AvatarFallback>{post.accountDisplayName.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={post.account?.avatar} alt={post.account?.displayName} />
+                            <AvatarFallback>{post.account?.displayName.charAt(0)}</AvatarFallback>
                           </Avatar>
-                          <p className="font-semibold text-sm">{post.accountDisplayName}</p>
+                          <p className="font-semibold text-sm">{post.account?.displayName}</p>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {post.content || 'No caption'}
@@ -309,3 +238,5 @@ export default function InboxPage() {
     </div>
   );
 }
+
+    

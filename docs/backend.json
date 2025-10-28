@@ -137,6 +137,78 @@
         "pageAccessToken"
       ]
     },
+    "SocialPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SocialPost",
+      "type": "object",
+      "description": "Represents a single post fetched from a social media platform, with its analytics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Firestore document ID."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns the account this post belongs to."
+        },
+        "socialAccountId": {
+          "type": "string",
+          "description": "Reference to the SocialAccount this post belongs to."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["Instagram", "Facebook"],
+          "description": "The social media platform."
+        },
+        "postId": {
+          "type": "string",
+          "description": "The original post ID from the social media platform."
+        },
+        "content": {
+          "type": "string",
+          "description": "The caption or text content of the post."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the post's primary image or video."
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "The type of media (e.g., 'IMAGE', 'VIDEO')."
+        },
+        "permalink": {
+          "type": "string",
+          "format": "uri",
+          "description": "A direct link to view the post on its platform."
+        },
+        "likes": {
+          "type": "number",
+          "description": "The number of likes on the post."
+        },
+        "comments": {
+          "type": "number",
+          "description": "The number of comments on the post."
+        },
+        "views": {
+          "type": "number",
+          "description": "The number of views for a video post."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The original creation time of the post."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "socialAccountId",
+        "platform",
+        "postId",
+        "timestamp"
+      ]
+    },
     "ScheduledPost": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ScheduledPost",
@@ -249,6 +321,16 @@
         }
       },
       {
+        "path": "/users/{userId}/socialPosts/{socialPostId}",
+        "definition": {
+          "entityName": "SocialPost",
+          "schema": {
+            "$ref": "#/backend/entities/SocialPost"
+          },
+          "description": "Stores fetched posts from a user's social accounts, including their analytics. Path-based ownership."
+        }
+      },
+      {
         "path": "/users/{userId}/scheduledPosts/{scheduledPostId}",
         "definition": {
           "entityName": "ScheduledPost",
@@ -271,3 +353,5 @@
     ]
   }
 }
+
+    

@@ -73,7 +73,6 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             try {
                 // For Instagram media insights, we need the USER access token.
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
-                // CRITICAL FIX: Pass the correct USER access token to getInstagramMedia
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
                 media.forEach(post => {
@@ -97,7 +96,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
                     // For Facebook, we use insights for video views.
-                    const videoViews = post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
+                    const videoViews = post.insights?.post_video_views || 0;
                     totalViews += videoViews;
                 });
             } catch (e) {
@@ -248,21 +247,39 @@ const getFacebookPostsFlow = ai.defineFlow(
     outputSchema: GetFacebookPostsOutputSchema,
   },
   async ({ facebookPageId, pageAccessToken }) => {
-    // Requesting attachments, source for videos, and the correct insights metric.
-    const fields = 'id,message,created_time,permalink_url,attachments{media,type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
-    // CRITICAL FIX: Use the pageAccessToken for this call.
+    // Step 1: Get the basic post data
+    const fields = 'id,message,created_time,permalink_url,attachments{media,type,url},likes.summary(true),comments.summary(true)';
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);
-
     if (!response.ok) {
       const errorData: any = await response.json();
       console.error('Failed to get Facebook posts:', errorData);
       throw new Error(`Failed to get Facebook posts: ${errorData.error?.message || 'Unknown error'}`);
     }
-
     const data: any = await response.json();
-    return { posts: data.data || [] };
+    const posts = data.data || [];
+
+    // Step 2: For each video post, fetch its views separately
+    const postsWithInsights = await Promise.all(posts.map(async (post: any) => {
+        const isVideo = post.attachments?.data[0]?.type?.includes('video');
+        if (isVideo) {
+            try {
+                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${post.id}/insights?metric=post_video_views&access_token=${pageAccessToken}`;
+                const insightsResponse = await fetch(insightsUrl);
+                if (insightsResponse.ok) {
+                    const insightsData: any = await insightsResponse.json();
+                    const views = insightsData.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
+                    return { ...post, insights: { post_video_views: views } };
+                }
+            } catch (e) {
+                console.warn(`Could not fetch views for FB post ${post.id}`, e);
+            }
+        }
+        return post; // Return post as-is if not a video or if insights fail
+    }));
+
+    return { posts: postsWithInsights };
   }
 );
 

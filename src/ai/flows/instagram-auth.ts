@@ -42,7 +42,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_content_publish,instagram_manage_insights,business_management,pages_read_user_content',
+        scope: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_content_publish,instagram_manage_insights,business_management,pages_read_user_content,pages_read_insights',
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
         auth_type: 'reauthenticate', // Force re-authentication to ensure new permissions are granted

@@ -68,7 +68,7 @@ export function PostPerformance() {
           if (account.platform === 'Instagram') {
             const { media } = await fetchInstagramMedia({
               instagramUserId: account.accountId,
-              accessToken: userAccessToken,
+              accessToken: userAccessToken, // Use USER access token for IG
             });
             allPosts.push(
               ...media.map((post) => ({
@@ -90,7 +90,7 @@ export function PostPerformance() {
           } else if (account.platform === 'Facebook') {
              const { posts: fbPosts } = await fetchFacebookPosts({
                 facebookPageId: account.accountId,
-                pageAccessToken: account.pageAccessToken!,
+                pageAccessToken: account.pageAccessToken!, // Use PAGE access token for FB
             });
              allPosts.push(
               ...fbPosts.map((post) => ({

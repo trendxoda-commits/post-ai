@@ -55,10 +55,9 @@ function AccountPerformance() {
       
       const statsPromises = accounts.map(async (account) => {
         try {
-          // CRITICAL: Use the PAGE access token for FB analytics, but provide USER token for IG media fetching inside.
-          const accessTokenForRequest = account.pageAccessToken!;
+          const pageAccessToken = account.pageAccessToken!;
           
-          if (!accessTokenForRequest) {
+          if (!pageAccessToken) {
             console.warn(`No page access token available for ${account.displayName}. Skipping stats fetch.`);
             return null;
           }
@@ -66,7 +65,7 @@ function AccountPerformance() {
           const analytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: accessTokenForRequest,
+            pageAccessToken: pageAccessToken,
             userAccessToken: userAccessToken, // Pass main user token, it's needed for IG media fetching
           });
 

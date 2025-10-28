@@ -49,19 +49,19 @@ export function StatsCards() {
       let topAccount: { name: string, followers: number } | null = null;
       
       const analyticsPromises = accounts.map(account => {
-        // CRITICAL FIX: Use the PAGE access token for this call.
-        const accessTokenForRequest = account.pageAccessToken!;
+        // Correctly use PAGE token for FB and for IG follower count, but provide USER token for IG media fetching
+        const pageAccessToken = account.pageAccessToken!;
         
-        if (!accessTokenForRequest) {
-            console.warn(`No access token available for ${account.displayName}. Skipping stats fetch.`);
+        if (!pageAccessToken) {
+            console.warn(`No page access token available for ${account.displayName}. Skipping stats fetch.`);
             return Promise.resolve(null);
         }
         
         return getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: accessTokenForRequest,
-            userAccessToken: userAccessToken, // Pass user token for IG insights
+            pageAccessToken: pageAccessToken,
+            userAccessToken: userAccessToken, 
         }).then(analytics => ({
             ...analytics,
             displayName: account.displayName

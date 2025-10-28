@@ -22,8 +22,8 @@ const GetAccountAnalyticsInputSchema = z.object({
     accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
     platform: z.enum(["Instagram", "Facebook"]),
     // CRITICAL: This is the Page Access Token for FB, User Access Token for IG followers
-    accessToken: z.string().describe("The relevant access token (User Token for IG, Page Token for FB)."),
-    userAccessToken: z.string().describe("The main user access token, always required for fetching IG media insights."),
+    pageAccessToken: z.string().describe("The relevant PAGE access token, always required for Facebook and for IG followers."),
+    userAccessToken: z.string().describe("The main USER access token, always required for fetching IG media insights."),
 });
 export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
 
@@ -44,7 +44,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         inputSchema: GetAccountAnalyticsInputSchema,
         outputSchema: AnalyticsOutputSchema,
     },
-    async ({ accountId, platform, accessToken, userAccessToken }) => {
+    async ({ accountId, platform, pageAccessToken, userAccessToken }) => {
         let followers = 0;
         let totalLikes = 0;
         let totalComments = 0;
@@ -53,7 +53,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
 
         // Step 1: Get followers count
         // For both platforms, the page/business account ID and a Page Access Token can get follower count.
-        const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${accessToken}`;
+        const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${pageAccessToken}`;
         try {
             const followersResponse = await fetch(followersUrl);
             if (followersResponse.ok) {
@@ -86,7 +86,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         } else if (platform === 'Facebook') {
             try {
                 // For Facebook posts, we need the PAGE access token.
-                const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: accessToken });
+                const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
                 postCount = posts.length;
                  posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;

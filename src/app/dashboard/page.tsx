@@ -43,9 +43,9 @@ function AccountFollowers() {
       
       const followersPromises = accounts.map(async (account) => {
         try {
-          const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+          const pageAccessToken = account.pageAccessToken!;
           
-          if (!accessTokenForRequest) {
+          if (!pageAccessToken) {
             console.warn(`No access token available for ${account.displayName}. Skipping.`);
             return null;
           }
@@ -53,7 +53,7 @@ function AccountFollowers() {
           const analytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: accessTokenForRequest,
+            pageAccessToken: pageAccessToken,
             userAccessToken: userAccessToken,
           });
 
@@ -148,5 +148,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

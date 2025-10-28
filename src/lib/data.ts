@@ -88,6 +88,9 @@ async function syncPostsToFirestoreClient(
             views: (platform === 'Instagram' && post.media_type === 'VIDEO' ? post.plays : (platform === 'Facebook' ? post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value : 0)) || 0,
             timestamp: platform === 'Instagram' ? post.timestamp : post.created_time,
         };
+        
+        // Ensure views are a number, default to 0 if null/undefined
+        postData.views = postData.views || 0;
 
         // Query for an existing document with the same original postId to avoid duplicates.
         const q = query(postsRef, where("postId", "==", postId), where("socialAccountId", "==", socialAccountId));

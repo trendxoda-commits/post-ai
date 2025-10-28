@@ -71,8 +71,9 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         // Step 2: Get posts and aggregate stats from them
         if (platform === 'Instagram') {
             try {
-                // For Instagram media, we need the USER access token.
+                // For Instagram media insights, we need the USER access token.
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
+                // CRITICAL FIX: Pass the correct USER access token to getInstagramMedia
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
                 media.forEach(post => {

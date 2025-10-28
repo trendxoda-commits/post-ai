@@ -51,25 +51,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // Allow access to /admin and other public pages without login
-  const isPublicPage = pathname === '/login' || pathname.startsWith('/admin') || pathname === '/instagram-callback';
-
-  if (isPublicPage) {
-    // Render public pages without the main app shell and without login checks.
-    if (pathname.startsWith('/admin')) {
+  if (pathname.startsWith('/admin')) {
       return <main className="min-h-screen">{children}</main>
-    }
-    if (pathname === '/login') {
-       return (
-        <main className="min-h-screen">
-            <div className="flex flex-col items-center justify-center pt-16">
-              {children}
-            </div>
-        </main>
-      );
-    }
-    if (pathname === '/instagram-callback') {
-      return <main>{children}</main>;
-    }
+  }
+  if (pathname === '/login') {
+      return (
+      <main className="min-h-screen">
+          <div className="flex flex-col items-center justify-center pt-16">
+            {children}
+          </div>
+      </main>
+    );
+  }
+  if (pathname === '/instagram-callback') {
+    return <main>{children}</main>;
   }
 
 

@@ -39,6 +39,11 @@ import {
   executeScheduledPosts as executeScheduledPostsFlow,
   type ExecuteScheduledPostsInput,
 } from '@/ai/flows/schedule-post-execution';
+import {
+    validateToken as validateTokenFlow,
+    type ValidateTokenInput,
+    type ValidateTokenOutput,
+} from '@/ai/flows/validate-token';
 
 
 // --- Instagram Auth ---
@@ -58,6 +63,11 @@ export async function getIgUserDetails(
   input: GetInstagramUserDetailsInput
 ): Promise<GetInstagramUserDetailsOutput> {
   return getIgUserDetailsFlow(input);
+}
+
+// --- Token Validation ---
+export async function validateToken(input: ValidateTokenInput): Promise<ValidateTokenOutput> {
+    return validateTokenFlow(input);
 }
 
 

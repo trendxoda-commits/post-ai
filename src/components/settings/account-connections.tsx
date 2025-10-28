@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlusCircle, Trash2, Loader2, Info, RefreshCw, KeyRound } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Info, RefreshCw, KeyRound, AlertCircle } from 'lucide-react';
 import {
   useFirebase,
   useUser,
@@ -23,10 +23,10 @@ import { collection, doc } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { getAuthUrl, getAccountAnalytics } from '@/app/actions';
-import { useState } from 'react';
+import { getAuthUrl, getAccountAnalytics, validateToken } from '@/app/actions';
+import { useState, useEffect } from 'react';
 
-function ReconnectButton({ isHeaderButton = false }: { isHeaderButton?: boolean }) {
+function ReconnectButton({ isHeaderButton = false, fullWidth = false }: { isHeaderButton?: boolean, fullWidth?: boolean }) {
   const { user } = useUser();
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -55,7 +55,6 @@ function ReconnectButton({ isHeaderButton = false }: { isHeaderButton?: boolean 
 
     try {
       const { url } = await getAuthUrl({ clientId: appId, userId: user.uid });
-      // Redirect the user to the Facebook auth URL
       window.location.href = url;
     } catch (error: any) {
       console.error('Failed to get auth URL', error);
@@ -78,9 +77,9 @@ function ReconnectButton({ isHeaderButton = false }: { isHeaderButton?: boolean 
   }
 
   return (
-     <Button variant="outline" size="sm" onClick={handleConnect} disabled={isLoading || isLoadingCredentials || !hasCredentials}>
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
-        <span className="hidden sm:inline ml-2">Reconnect</span>
+     <Button variant="secondary" size="sm" onClick={handleConnect} disabled={isLoading || isLoadingCredentials || !hasCredentials} className={fullWidth ? "w-full" : ""}>
+        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+        Reconnect Now
     </Button>
   );
 }
@@ -90,6 +89,9 @@ export function AccountConnections() {
   const { user } = useUser();
   const { toast } = useToast();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [isTokenValid, setIsTokenValid] = useState(true);
+  const [isTokenLoading, setIsTokenLoading] = useState(true);
+
 
   const socialAccountsQuery = useMemoFirebase(() => 
     user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
@@ -103,14 +105,35 @@ export function AccountConnections() {
   );
   const { data: apiCredentials, isLoading: isLoadingCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
 
-  const isLoading = isLoadingAccounts || isLoadingCredentials;
+  const isLoading = isLoadingAccounts || isLoadingCredentials || isTokenLoading;
   const hasApiKeys = apiCredentials && apiCredentials.length > 0;
+  const userAccessToken = hasApiKeys ? apiCredentials[0].accessToken : undefined;
+
+
+  useEffect(() => {
+    const checkToken = async () => {
+        if (userAccessToken) {
+            setIsTokenLoading(true);
+            const { isValid } = await validateToken({ accessToken: userAccessToken });
+            setIsTokenValid(isValid);
+            setIsTokenLoading(false);
+        } else {
+            // If there's no token, we don't need to validate it.
+            setIsTokenValid(true);
+            setIsTokenLoading(false);
+        }
+    };
+    // Only run check if we are not loading credentials anymore
+    if (!isLoadingCredentials) {
+        checkToken();
+    }
+  }, [userAccessToken, isLoadingCredentials]);
+
 
   const handleDisconnect = (accountId: string) => {
     if (!user) return;
     const docRef = doc(firestore, 'users', user.uid, 'socialAccounts', accountId);
     
-    // Use the non-blocking delete function
     deleteDocumentNonBlocking(docRef);
 
     toast({
@@ -120,12 +143,7 @@ export function AccountConnections() {
   };
 
   const handleRefreshAnalytics = async (account: SocialAccount) => {
-    if (!user || !apiCredentials || apiCredentials.length === 0) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Cannot refresh without API credentials.' });
-      return;
-    }
-    const userAccessToken = apiCredentials[0].accessToken;
-    if (!userAccessToken || !account.pageAccessToken) {
+    if (!user || !userAccessToken || !account.pageAccessToken) {
         toast({ variant: 'destructive', title: 'Error', description: 'A required access token is missing. Please use "Reconnect" to refresh your main authentication.' });
         return;
     }
@@ -188,16 +206,16 @@ export function AccountConnections() {
                     </AlertDescription>
                 </Alert>
             )}
-             {hasApiKeys && (
-                <Alert variant="default" className="flex items-start">
-                    <KeyRound className="h-4 w-4 mt-1" />
-                    <div className="ml-4 flex-grow">
-                        <AlertTitle>Token Expired?</AlertTitle>
-                        <AlertDescription className="flex items-center justify-between gap-4">
-                           <p>If accounts stop syncing, your main 60-day token may have expired. Click Reconnect to refresh it.</p>
-                           <ReconnectButton />
-                        </AlertDescription>
-                    </div>
+             {hasApiKeys && !isTokenValid && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Connection Expired</AlertTitle>
+                    <AlertDescription>
+                       Your connection to Meta has expired. Please reconnect to continue syncing data and posting content.
+                       <div className="mt-4">
+                        <ReconnectButton fullWidth={true}/>
+                       </div>
+                    </AlertDescription>
                 </Alert>
             )}
             {accounts && accounts.length > 0 ? (
@@ -221,7 +239,7 @@ export function AccountConnections() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id}>
+                    <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || !isTokenValid}>
                         {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         <span className="hidden sm:inline ml-2">Refresh</span>
                     </Button>

@@ -50,6 +50,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
+  // Exclude AppShell from all admin routes
+  if (pathname.startsWith('/admin')) {
+    return <>{children}</>;
+  }
+
   // Allow access to public pages without login
   if (pathname === '/login') {
       return (

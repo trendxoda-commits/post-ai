@@ -47,11 +47,15 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // Using only the most basic, stable permission to avoid scope errors until App Review is complete.
-    // This allows users to connect their accounts. Advanced features will require adding more scopes
-    // and completing Facebook's App Review process.
+    // Request all permissions needed for the app to function fully.
+    // The user has confirmed their app is in Live Mode.
     const scopes = [
         'pages_show_list',
+        'pages_read_engagement',
+        'pages_manage_posts',
+        'instagram_content_publish',
+        'instagram_manage_insights',
+        'business_management'
     ];
 
     const params = new URLSearchParams({

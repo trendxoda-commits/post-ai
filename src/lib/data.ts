@@ -85,7 +85,7 @@ async function syncPostsToFirestoreClient(
             permalink: post.permalink || post.permalink_url,
             likes: (platform === 'Instagram' ? post.like_count : post.likes?.summary.total_count) || 0,
             comments: (platform === 'Instagram' ? post.comments_count : post.comments?.summary.total_count) || 0,
-            views: (platform === 'Instagram' && post.media_type === 'VIDEO' ? post.plays : post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value) || 0,
+            views: (platform === 'Instagram' && post.media_type === 'VIDEO' ? post.plays : (platform === 'Facebook' ? post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value : 0)) || 0,
             timestamp: platform === 'Instagram' ? post.timestamp : post.created_time,
         };
 

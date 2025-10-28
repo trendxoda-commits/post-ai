@@ -77,6 +77,7 @@ export function FollowerChart() {
             accountId: account.accountId,
             platform: account.platform,
             accessToken: accessTokenForRequest,
+            userAccessToken: userAccessToken,
         }).catch(e => {
             console.error(`Failed to get followers for ${account.displayName}`, e);
             return null;
@@ -176,3 +177,5 @@ export function FollowerChart() {
     </Card>
   );
 }
+
+    

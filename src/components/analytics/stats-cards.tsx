@@ -61,6 +61,7 @@ export function StatsCards() {
             accountId: account.accountId,
             platform: account.platform,
             accessToken: accessTokenForRequest,
+            userAccessToken: userAccessToken, // Pass user token for IG insights
         }).then(analytics => ({
             ...analytics,
             displayName: account.displayName
@@ -202,3 +203,5 @@ export function StatsCards() {
     </div>
   );
 }
+
+    

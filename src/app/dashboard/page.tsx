@@ -54,6 +54,7 @@ function AccountFollowers() {
             accountId: account.accountId,
             platform: account.platform,
             accessToken: accessTokenForRequest,
+            userAccessToken: userAccessToken,
           });
 
           return {
@@ -147,3 +148,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

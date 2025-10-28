@@ -66,6 +66,7 @@ function AccountPerformance() {
             accountId: account.accountId,
             platform: account.platform,
             accessToken: accessTokenForRequest,
+            userAccessToken: userAccessToken, // Pass user token for IG insights
           });
 
           const postCount = analytics.postCount > 0 ? analytics.postCount : 1; // Avoid division by zero
@@ -171,3 +172,5 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+    

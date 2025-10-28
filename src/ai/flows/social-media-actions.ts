@@ -22,6 +22,7 @@ const GetAccountAnalyticsInputSchema = z.object({
     accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
     platform: z.enum(["Instagram", "Facebook"]),
     accessToken: z.string().describe("The relevant access token (User Token for IG, Page Token for FB)."),
+    userAccessToken: z.string().optional().describe("The main user access token, required for fetching IG media insights."),
 });
 export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
 
@@ -42,7 +43,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         inputSchema: GetAccountAnalyticsInputSchema,
         outputSchema: AnalyticsOutputSchema,
     },
-    async ({ accountId, platform, accessToken }) => {
+    async ({ accountId, platform, accessToken, userAccessToken }) => {
         let followers = 0;
         let totalLikes = 0;
         let totalComments = 0;
@@ -67,7 +68,8 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         if (platform === 'Instagram') {
             try {
                 // For Instagram, we need the user access token to fetch media
-                const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken });
+                if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
+                const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
@@ -345,3 +347,5 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
+    

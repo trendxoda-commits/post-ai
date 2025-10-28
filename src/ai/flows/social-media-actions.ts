@@ -169,7 +169,8 @@ const getInstagramMediaFlow = ai.defineFlow(
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
         
-        if (item.media_type === 'VIDEO') {
+        // CRITICAL FIX: Fetch insights for both VIDEO and REELS.
+        if (item.media_type === 'VIDEO' || item.media_type === 'REELS') {
             try {
                 // CORRECTED API CALL: Use the /insights endpoint with the correct metric parameter.
                 // It now requests both `video_views` (for feed videos) and `plays` (for Reels).
@@ -184,11 +185,9 @@ const getInstagramMediaFlow = ai.defineFlow(
                     // Find plays as a fallback (for Reels)
                     const playsMetric = insightsData.data?.find((insight: any) => insight.name === 'plays');
 
-                    if (videoViewsMetric && videoViewsMetric.values[0]?.value) {
-                        views = videoViewsMetric.values[0].value;
-                    } else if (playsMetric && playsMetric.values[0]?.value) {
-                        views = playsMetric.values[0].value;
-                    }
+                    // Gracefully handle missing metrics and ensure a number is returned.
+                    views = Number(videoViewsMetric?.values?.[0]?.value || playsMetric?.values?.[0]?.value || 0);
+
                 } else {
                     // Log a warning instead of throwing an error if a single insight call fails
                     console.warn(`Could not fetch views/plays for media ${item.id}:`, await insightsResponse.text());
@@ -387,9 +386,3 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
-
-
-
-
-
-    

@@ -1,5 +1,7 @@
 
+'use client';
 
+import React, { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -99,6 +101,62 @@ const mockUsers = [
 
 // Exporting mock data to be used in other admin pages
 export { mockUsers };
+
+function RecentPosts() {
+  const [recentPosts, setRecentPosts] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Generate dynamic data on client to avoid hydration mismatch
+    const posts = mockUsers
+      .filter(u => u.accounts.length > 0)
+      .slice(0, 3)
+      .map(user => ({
+        id: user.id,
+        avatar: user.avatar,
+        name: user.name,
+        accountName: user.accounts[0].name,
+        likes: Math.floor(Math.random() * 200 + 50),
+      }));
+    setRecentPosts(posts);
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Posts</CardTitle>
+        <CardDescription>A look at the latest content published by users.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-8">
+        {recentPosts.length > 0 ? recentPosts.map(post => (
+          <div className="flex items-center gap-4" key={post.id}>
+            <Avatar className="hidden h-9 w-9 sm:flex">
+              <AvatarImage src={post.avatar} alt="Avatar" />
+              <AvatarFallback>{post.name.slice(0, 2)}</AvatarFallback>
+            </Avatar>
+            <div className="grid gap-1">
+              <p className="text-sm font-medium leading-none">{post.name}</p>
+              <p className="text-sm text-muted-foreground">
+                Published a post to {post.accountName}
+              </p>
+            </div>
+            <div className="ml-auto font-medium text-sm">+{post.likes}</div>
+          </div>
+        )) : Array.from({ length: 3 }).map((_, i) => (
+            <div className="flex items-center gap-4" key={i}>
+                <Avatar className="hidden h-9 w-9 sm:flex">
+                    <AvatarFallback>...</AvatarFallback>
+                </Avatar>
+                 <div className="grid gap-1 w-full">
+                    <p className="text-sm font-medium leading-none">Loading...</p>
+                    <p className="text-sm text-muted-foreground">Fetching recent posts...</p>
+                </div>
+            </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 export default function AdminDashboardPage() {
 
@@ -212,29 +270,7 @@ export default function AdminDashboardPage() {
             </Table>
           </CardContent>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Recent Posts</CardTitle>
-                <CardDescription>A look at the latest content published by users.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-8">
-                {mockUsers.filter(u => u.accounts.length > 0).slice(0,3).map(user => (
-                    <div className="flex items-center gap-4" key={user.id}>
-                        <Avatar className="hidden h-9 w-9 sm:flex">
-                            <AvatarImage src={user.avatar} alt="Avatar" />
-                            <AvatarFallback>{user.name.slice(0,2)}</AvatarFallback>
-                        </Avatar>
-                        <div className="grid gap-1">
-                            <p className="text-sm font-medium leading-none">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                            Published a post to {user.accounts[0].name}
-                            </p>
-                        </div>
-                        <div className="ml-auto font-medium text-sm">+{Math.floor(Math.random() * 200 + 50)}</div>
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
+        <RecentPosts />
       </div>
     </>
   );

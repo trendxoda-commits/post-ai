@@ -59,11 +59,11 @@ export default function AdminPage() {
 
     if (error) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 text-destructive bg-destructive/10 rounded-lg">
+        <div className="flex flex-col items-center justify-center h-64 text-destructive bg-destructive/10 rounded-lg p-4">
           <AlertTriangle className="h-8 w-8 mb-2" />
           <p className="font-semibold">Failed to load user data</p>
           <p className="text-sm text-center max-w-md mt-1">{error}</p>
-           <p className="text-xs text-muted-foreground mt-4">Please ensure your Firebase Admin SDK credentials are correctly set in the `.env` file.</p>
+           <p className="text-xs text-muted-foreground mt-4">Please ensure your Firebase Admin SDK credentials are correctly set in the `.env` file and are valid.</p>
         </div>
       );
     }
@@ -110,7 +110,7 @@ export default function AdminPage() {
                 )}
               </TableCell>
               <TableCell className="text-right">
-                {format(parseISO(user.createdAt), 'PP')}
+                {user.createdAt ? format(parseISO(user.createdAt), 'PP') : 'N/A'}
               </TableCell>
             </TableRow>
           ))}

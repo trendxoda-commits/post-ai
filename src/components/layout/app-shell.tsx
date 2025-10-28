@@ -82,12 +82,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/login');
   }
 
-  // Security Gate for Admin Panel
-  if (pathname.startsWith('/admin') && user.email !== 'mohitmleena2@gmail.com') {
-      redirect('/dashboard');
-  }
-
-
   if (user && pathname === '/login') {
     redirect('/dashboard');
   }

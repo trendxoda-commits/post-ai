@@ -13,6 +13,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/create-post', label: 'Create Post', icon: PlusSquare },
   { href: '/inbox', label: 'Inbox', icon: Inbox },
+  { href: '/content-studio', label: 'Content Studio', icon: Wand2 },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];

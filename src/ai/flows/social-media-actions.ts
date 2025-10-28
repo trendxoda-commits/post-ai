@@ -70,7 +70,10 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
-                    totalViews += post.plays || 0;
+                    // 'plays' is only available for VIDEO type and is fetched inside getInstagramMedia
+                    if (post.media_type === 'VIDEO') {
+                        totalViews += post.plays || 0;
+                    }
                 });
             } catch (e) {
                 console.error(`Error fetching Instagram media for analytics for ${accountId}:`, e);
@@ -124,7 +127,7 @@ const InstagramMediaObjectSchema = z.object({
     timestamp: z.string(),
     like_count: z.number().optional(),
     comments_count: z.number().optional(),
-    plays: z.number().optional(),
+    plays: z.number().optional(), // Now explicitly part of the schema
 });
 
 const GetInstagramMediaOutputSchema = z.object({

@@ -43,69 +43,82 @@ export function Feed() {
 
       for (const account of accounts) {
         if (account.platform === 'Instagram') {
-          const result = await fetchInstagramMedia({
-            instagramUserId: account.accountId,
-            accessToken: userAccessToken,
-          });
+          try {
+            const result = await fetchInstagramMedia({
+              instagramUserId: account.accountId,
+              accessToken: userAccessToken,
+            });
 
-          const igPosts = result.media.map((item): FeedPost => ({
-            id: item.id,
-            accountId: account.id,
-            accountDisplayName: account.displayName,
-            accountAvatar: account.avatar,
-            accountPlatform: 'Instagram',
-            content: item.caption,
-            mediaUrl: item.media_url,
-            mediaType: item.media_type as 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM',
-            likes: item.like_count ?? 0,
-            comments: item.comments_count ?? 0,
-            views: item.plays,
-            timestamp: item.timestamp,
-            permalink: item.permalink,
-          }));
-          allPosts.push(...igPosts);
-
+            const igPosts = result.media.map((item): FeedPost => ({
+              id: item.id,
+              accountId: account.id,
+              accountDisplayName: account.displayName,
+              accountAvatar: account.avatar,
+              accountPlatform: 'Instagram',
+              content: item.caption,
+              mediaUrl: item.media_url,
+              mediaType: item.media_type as 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM',
+              likes: item.like_count ?? 0,
+              comments: item.comments_count ?? 0,
+              views: item.plays ?? 0,
+              timestamp: item.timestamp,
+              permalink: item.permalink,
+            }));
+            allPosts.push(...igPosts);
+          } catch (e: any) {
+             console.error(`Failed to fetch posts for Instagram account ${account.displayName}:`, e);
+             if (e.message && (e.message.includes('permission') || e.message.includes('access token'))) {
+                throw new Error("A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
+             }
+          }
         } else if (account.platform === 'Facebook') {
           // IMPORTANT: Use the PAGE access token for Facebook Graph API calls
           if (!account.pageAccessToken) continue; 
           
-          const result = await fetchFacebookPosts({
-            facebookPageId: account.accountId,
-            pageAccessToken: account.pageAccessToken,
-          });
-
-          const fbPosts = result.posts
-            .filter(item => item.attachments?.data?.[0]?.media?.image?.src || item.attachments?.data?.[0]?.media?.source) // Ensure there's media to display
-            .map((item): FeedPost => {
-                const attachment = item.attachments.data[0];
-                const isVideo = attachment.type === 'video_inline' || !!attachment.media.source;
-                const mediaUrl = isVideo ? attachment.media.source! : attachment.media.image.src;
-
-                let views = 0;
-                if (isVideo && item.insights?.data) {
-                    const viewsInsight = item.insights.data.find((insight: any) => insight.name === 'post_video_views');
-                    if (viewsInsight?.values?.[0]?.value) {
-                        views = viewsInsight.values[0].value;
-                    }
-                }
-                
-                return {
-                    id: item.id,
-                    accountId: account.id,
-                    accountDisplayName: account.displayName,
-                    accountAvatar: account.avatar,
-                    accountPlatform: 'Facebook',
-                    content: item.message,
-                    mediaUrl: mediaUrl,
-                    mediaType: isVideo ? 'VIDEO' : 'IMAGE',
-                    likes: item.likes?.summary.total_count ?? 0,
-                    comments: item.comments?.summary.total_count ?? 0,
-                    views: views,
-                    timestamp: item.created_time,
-                    permalink: item.permalink_url,
-                }
+          try {
+            const result = await fetchFacebookPosts({
+              facebookPageId: account.accountId,
+              pageAccessToken: account.pageAccessToken,
             });
-          allPosts.push(...fbPosts);
+
+            const fbPosts = result.posts
+              .filter(item => item.attachments?.data?.[0]?.media?.image?.src || item.attachments?.data?.[0]?.media?.source) // Ensure there's media to display
+              .map((item): FeedPost => {
+                  const attachment = item.attachments.data[0];
+                  const isVideo = attachment.type === 'video_inline' || !!attachment.media.source;
+                  const mediaUrl = isVideo ? attachment.media.source! : attachment.media.image.src;
+
+                  let views = 0;
+                  if (isVideo && item.insights?.data) {
+                      const viewsInsight = item.insights.data.find((insight: any) => insight.name === 'post_video_views');
+                      if (viewsInsight?.values?.[0]?.value) {
+                          views = viewsInsight.values[0].value;
+                      }
+                  }
+                  
+                  return {
+                      id: item.id,
+                      accountId: account.id,
+                      accountDisplayName: account.displayName,
+                      accountAvatar: account.avatar,
+                      accountPlatform: 'Facebook',
+                      content: item.message,
+                      mediaUrl: mediaUrl,
+                      mediaType: isVideo ? 'VIDEO' : 'IMAGE',
+                      likes: item.likes?.summary.total_count ?? 0,
+                      comments: item.comments?.summary.total_count ?? 0,
+                      views: views,
+                      timestamp: item.created_time,
+                      permalink: item.permalink_url,
+                  }
+              });
+            allPosts.push(...fbPosts);
+           } catch (e: any) {
+             console.error(`Failed to fetch posts for Facebook account ${account.displayName}:`, e);
+             if (e.message && (e.message.includes('permission') || e.message.includes('page public content access'))) {
+                throw new Error("A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
+             }
+          }
         }
       }
       
@@ -116,9 +129,7 @@ export function Feed() {
     } catch (err: any) {
       console.error("Failed to fetch posts:", err);
       let errorMessage = err.message || "An unknown error occurred while fetching posts.";
-      if (err.message && (err.message.includes('pages_read_engagement') || err.message.includes('permission'))) {
-        errorMessage = "A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions."
-      }
+      // The specific error message is now constructed inside the catch blocks for each platform
       setError(errorMessage);
     } finally {
       setIsLoading(false);

@@ -223,18 +223,9 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     
     // Iterate through each page returned by Facebook
     for (const page of pagesData.data) {
-        // Each page is a potential Facebook account that can be added.
-        // It has its own name, ID, and a crucial page-specific access token.
-        allFoundAccounts.push({
-            username: page.name,
-            facebookPageId: page.id,
-            facebookPageName: page.name,
-            pageAccessToken: page.access_token,
-            avatar: page.picture?.data?.url,
-            platform: 'Facebook' as const,
-        });
-
-        // Now, check if this specific page has a linked Instagram Business Account.
+        let igAccountProcessed = false;
+        
+        // First, check if this specific page has a linked Instagram Business Account.
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
@@ -255,6 +246,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
                         avatar: igData.profile_picture_url,
                         platform: 'Instagram' as const,
                     });
+                    igAccountProcessed = true; // Mark that we've handled the IG account for this page
                 } else {
                     const igError: any = await igResponse.json();
                     // This can happen if permissions are partial. Log it but don't crash.
@@ -264,6 +256,19 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
                 // Catch any network errors during the fetch for a single IG account.
                 console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
             }
+        }
+        
+        // Only add the Facebook Page if it's NOT associated with a successfully processed IG account.
+        // This prevents showing both the FB Page and the IG account when they are linked.
+        if (!igAccountProcessed) {
+            allFoundAccounts.push({
+                username: page.name,
+                facebookPageId: page.id,
+                facebookPageName: page.name,
+                pageAccessToken: page.access_token,
+                avatar: page.picture?.data?.url,
+                platform: 'Facebook' as const,
+            });
         }
     }
     

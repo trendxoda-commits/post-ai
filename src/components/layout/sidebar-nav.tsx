@@ -2,11 +2,12 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BarChart2, Settings, PlusSquare, Inbox } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, PlusSquare, Inbox, Shield } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 
 const navItems = [
@@ -15,6 +16,10 @@ const navItems = [
   { href: '/inbox', label: 'Inbox', icon: Inbox },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },
+];
+
+const adminNavItems = [
+    { href: '/admin/dashboard', label: 'Admin', icon: Shield },
 ];
 
 export function SidebarNav() {
@@ -37,6 +42,22 @@ export function SidebarNav() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
+       <SidebarSeparator />
+        {adminNavItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+            <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith('/admin')}
+                tooltip={item.label}
+                className="justify-start"
+            >
+                <Link href={item.href}>
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+                </Link>
+            </SidebarMenuButton>
+            </SidebarMenuItem>
+        ))}
     </SidebarMenu>
   );
 }

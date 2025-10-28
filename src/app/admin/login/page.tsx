@@ -6,13 +6,14 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAdminAuth } from '../layout';
+import { useAdminAuth } from './layout';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -28,7 +29,7 @@ export default function AdminLoginPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -57,6 +58,8 @@ export default function AdminLoginPage() {
             <CardTitle>Admin Login</CardTitle>
             <CardDescription>
               Access the administrator dashboard.
+              <br />
+              Use <strong>admin@example.com</strong> and <strong>adminpassword</strong>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

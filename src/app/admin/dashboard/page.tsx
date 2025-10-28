@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -23,43 +24,69 @@ const firestore = getFirestore(adminApp);
 
 
 async function getAdminDashboardStats() {
-    const usersSnapshot = await firestore.collection('users').get();
-    const totalUsers = usersSnapshot.size;
+    try {
+        const usersSnapshot = await firestore.collection('users').get();
+        const totalUsers = usersSnapshot.size;
 
-    let totalAccounts = 0;
-    const allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+        let totalAccounts = 0;
+        const allUsers = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
 
-    for (const user of allUsers) {
-        const socialAccountsSnapshot = await firestore.collection(`users/${user.id}/socialAccounts`).get();
-        totalAccounts += socialAccountsSnapshot.size;
+        for (const user of allUsers) {
+            const socialAccountsSnapshot = await firestore.collection(`users/${user.id}/socialAccounts`).get();
+            totalAccounts += socialAccountsSnapshot.size;
+        }
+
+        return {
+            totalUsers,
+            totalAccounts,
+            totalPosts: 150, // Placeholder
+            apiStatus: "Healthy" // Placeholder
+        };
+    } catch (error) {
+        console.error("Error fetching admin dashboard stats:", error);
+        // Return 0 values if there's an error to prevent crashing the page
+        return {
+            totalUsers: 0,
+            totalAccounts: 0,
+            totalPosts: 0,
+            apiStatus: "Error"
+        };
     }
-
-    return {
-        totalUsers,
-        totalAccounts,
-        totalPosts: 150, // Placeholder
-        apiStatus: "Healthy" // Placeholder
-    };
 }
 
 
 async function getRecentUsers() {
-    const usersSnapshot = await firestore.collection('users').orderBy('createdAt', 'desc').limit(5).get();
-    
-    const users = await Promise.all(usersSnapshot.docs.map(async (doc) => {
-        const userData = doc.data();
-        const socialAccountsSnapshot = await firestore.collection(`users/${doc.id}/socialAccounts`).get();
-        const connectedAccounts = socialAccountsSnapshot.docs.map(accDoc => accDoc.data().platform);
+    try {
+        const usersSnapshot = await firestore.collection('users').orderBy('createdAt', 'desc').limit(5).get();
+        
+        const users = await Promise.all(usersSnapshot.docs.map(async (doc) => {
+            const userData = doc.data();
+            const socialAccountsSnapshot = await firestore.collection(`users/${doc.id}/socialAccounts`).get();
+            const connectedAccounts = socialAccountsSnapshot.docs.map(accDoc => accDoc.data().platform);
 
-        return {
-            id: doc.id,
-            email: userData.email || 'N/A',
-            createdAt: new Date(userData.createdAt).toLocaleDateString(),
-            connectedAccounts,
-        };
-    }));
+            // Safely create date string
+            let createdAtDate = 'N/A';
+            if (userData.createdAt) {
+                try {
+                    createdAtDate = new Date(userData.createdAt).toLocaleDateString();
+                } catch (e) {
+                    // Ignore if date is invalid
+                }
+            }
 
-    return users;
+            return {
+                id: doc.id,
+                email: userData.email || 'N/A',
+                createdAt: createdAtDate,
+                connectedAccounts,
+            };
+        }));
+
+        return users;
+    } catch (error) {
+        console.error("Error fetching recent users:", error);
+        return [];
+    }
 }
 
 
@@ -159,3 +186,4 @@ export default async function AdminDashboardPage() {
         </div>
     );
 }
+

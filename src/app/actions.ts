@@ -1,11 +1,6 @@
 'use server';
 
 import {
-  getTrendingHashtags,
-  type TrendingHashtagsInput,
-  type TrendingHashtagsOutput,
-} from '@/ai/flows/trending-hashtag-suggestions';
-import {
   getInstagramAuthUrl,
   getAccessToken as getAccessTokenFlow,
   exchangeForLongLivedToken,
@@ -39,13 +34,6 @@ import {
   executeScheduledPosts as executeScheduledPostsFlow,
   type ExecuteScheduledPostsInput,
 } from '@/ai/flows/schedule-post-execution';
-
-// --- Trending Hashtags ---
-export async function generateHashtags(
-  input: TrendingHashtagsInput
-): Promise<TrendingHashtagsOutput> {
-  return getTrendingHashtags(input);
-}
 
 // --- Instagram Auth ---
 export async function getAuthUrl(input: GetInstagramAuthUrlInput) {

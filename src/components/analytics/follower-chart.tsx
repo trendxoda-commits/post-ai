@@ -23,7 +23,7 @@ import {
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import type { SocialAccount, ApiCredential } from '@/lib/types';
+import type { SocialAccount, ApiCredential, AnalyticsData } from '@/lib/types';
 import { subMonths, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { getAccountAnalytics } from '@/app/actions';
@@ -65,7 +65,14 @@ export function FollowerChart() {
       
       let totalFollowers = 0;
       const analyticsPromises = accounts.map(account => {
+        // IMPORTANT: Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
         const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+
+        if (!accessTokenForRequest) {
+            console.warn(`No access token available for ${account.displayName}. Skipping follower count.`);
+            return Promise.resolve(null);
+        }
+
         return getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,

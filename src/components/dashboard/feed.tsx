@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { SocialAccount } from '@/lib/types';
-import { PostCard } from './post-card';
+import { PostCard, FeedPost } from './post-card';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { fetchInstagramMedia, fetchFacebookPosts } from '@/app/actions';
@@ -10,23 +10,6 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-
-// A unified post type for the feed
-export interface FeedPost {
-  id: string;
-  accountId: string;
-  accountDisplayName: string;
-  accountAvatar?: string;
-  accountPlatform: 'Instagram' | 'Facebook';
-  content?: string;
-  mediaUrl: string;
-  mediaType: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM' | 'ALBUM' | 'SHARE';
-  likes: number;
-  comments: number;
-  views?: number;
-  timestamp: string;
-  permalink: string;
-}
 
 export function Feed() {
   const { firestore } = useFirebase();

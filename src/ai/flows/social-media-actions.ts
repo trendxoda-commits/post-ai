@@ -10,6 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import fetch from 'node-fetch';
 
 const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 
@@ -46,97 +47,38 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let totalViews = 0;
         let postCount = 0;
 
+        // Step 1: Get followers count
+        const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${accessToken}`;
+        try {
+            const followersResponse = await fetch(followersUrl);
+            if (followersResponse.ok) {
+                const followersData: any = await followersResponse.json();
+                followers = followersData.followers_count || 0;
+            } else {
+                 console.error(`Failed to fetch followers for ${accountId}:`, await followersResponse.text());
+            }
+        } catch (e) {
+            console.error(`Error fetching followers for ${accountId}:`, e);
+        }
+
+        // Step 2: Get posts and aggregate stats from them
         if (platform === 'Instagram') {
-            // Batch API call for Instagram
-            const batchParams = [
-                {
-                    method: 'GET',
-                    relative_url: `${accountId}?fields=followers_count`,
-                },
-                {
-                    method: 'GET',
-                    // For videos, 'plays' is available via insights. We get it with like_count and comments_count
-                    relative_url: `${accountId}/media?fields=like_count,comments_count,media_type,insights.metric(plays)&limit=25`,
-                }
-            ];
-
-            const batchResponse = await fetch(INSTAGRAM_GRAPH_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    access_token: accessToken,
-                    batch: batchParams,
-                }),
-            });
-            
-            if (!batchResponse.ok) {
-                 const errorData: any = await batchResponse.json();
-                 throw new Error(`Instagram batch request failed: ${errorData.error?.message || 'Unknown error'}`);
-            }
-
-            const batchResult: any[] = await batchResponse.json();
-            
-            // Process followers count response
-            const followersResponse = JSON.parse(batchResult[0].body);
-            if (batchResult[0].code === 200) {
-                followers = followersResponse.followers_count || 0;
-            }
-
-            // Process media response
-            const mediaResponse = JSON.parse(batchResult[1].body);
-            if (batchResult[1].code === 200 && mediaResponse.data) {
-                postCount = mediaResponse.data.length;
-                mediaResponse.data.forEach((post: any) => {
+            try {
+                const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken });
+                postCount = media.length;
+                media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
-                    if (post.media_type === 'VIDEO' && post.insights?.data) {
-                        const playsInsight = post.insights.data.find((d: any) => d.name === 'plays');
-                        totalViews += playsInsight?.values[0]?.value || 0;
-                    }
+                    totalViews += post.plays || 0;
                 });
+            } catch (e) {
+                console.error(`Error fetching Instagram media for analytics for ${accountId}:`, e);
             }
-
         } else if (platform === 'Facebook') {
-            // Batch API call for Facebook
-             const batchParams = [
-                {
-                    method: 'GET',
-                    relative_url: `${accountId}?fields=followers_count`,
-                },
-                {
-                    method: 'GET',
-                    relative_url: `${accountId}/posts?fields=likes.summary(true),comments.summary(true),insights.metric(post_video_views)&limit=25`,
-                }
-            ];
-
-            const batchResponse = await fetch(INSTAGRAM_GRAPH_API_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    access_token: accessToken,
-                    batch: batchParams,
-                }),
-            });
-
-            if (!batchResponse.ok) {
-                 const errorData: any = await batchResponse.json();
-                 throw new Error(`Facebook batch request failed: ${errorData.error?.message || 'Unknown error'}`);
-            }
-            
-            const batchResult: any[] = await batchResponse.json();
-
-            // Process followers count response
-            const followersResponse = JSON.parse(batchResult[0].body);
-            if (batchResult[0].code === 200) {
-                followers = followersResponse.followers_count || 0;
-            }
-
-            // Process posts response
-            const postsResponse = JSON.parse(batchResult[1].body);
-             if (batchResult[1].code === 200 && postsResponse.data) {
-                const postsWithStats = postsResponse.data;
-                postCount = postsWithStats.length;
-                postsWithStats.forEach((post: any) => {
+            try {
+                const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: accessToken });
+                postCount = posts.length;
+                 posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
                     if (post.insights?.data) {
@@ -144,6 +86,8 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                         totalViews += viewsInsight?.values[0]?.value || 0;
                     }
                 });
+            } catch (e) {
+                console.error(`Error fetching Facebook posts for analytics for ${accountId}:`, e);
             }
         }
 

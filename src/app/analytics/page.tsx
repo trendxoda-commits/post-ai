@@ -54,8 +54,13 @@ function AccountPerformance() {
       
       const statsPromises = accounts.map(async (account) => {
         try {
-          // Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
+          // IMPORTANT: Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
           const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+          
+          if (!accessTokenForRequest) {
+            console.warn(`No access token available for ${account.displayName}. Skipping stats fetch.`);
+            return null;
+          }
 
           const analytics = await getAccountAnalytics({
             accountId: account.accountId,

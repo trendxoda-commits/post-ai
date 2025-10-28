@@ -8,7 +8,7 @@ import {
   getLongLivedToken,
   getIgUserDetails,
 } from '@/app/actions';
-import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -22,24 +22,30 @@ enum Status {
 export default function InstagramCallbackPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const { firestore } = useFirebase();
   const { toast } = useToast();
 
   const [status, setStatus] = useState<Status>(Status.PENDING);
   const [error, setError] = useState<string | null>(null);
-  const hasRun = useRef(false); // Ref to prevent double execution in Strict Mode
+  const processing = useRef(false);
 
   useEffect(() => {
-    // Prevent the effect from running twice in development with Strict Mode
-    if (process.env.NODE_ENV === 'development' && hasRun.current) {
-        return;
+    // Exit if still loading user, or if we are already processing, or if user is not logged in.
+    if (isUserLoading || processing.current || !user) {
+      if (!isUserLoading && !user) {
+        setError('You must be logged in to connect an account.');
+        setStatus(Status.ERROR);
+      }
+      return;
     }
-    hasRun.current = true;
-      
+
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const errorParam = searchParams.get('error_description');
+    
+    // Mark that we are starting the process
+    processing.current = true;
 
     if (errorParam) {
       setError(`Authentication failed: ${errorParam}`);
@@ -53,7 +59,7 @@ export default function InstagramCallbackPage() {
     }
 
     // Security check: ensure the state matches the logged-in user's ID.
-    if (!user || state !== user.uid) {
+    if (state !== user.uid) {
       setError('Invalid state parameter. Authentication request mismatch.');
       setStatus(Status.ERROR);
       return;
@@ -122,8 +128,7 @@ export default function InstagramCallbackPage() {
         let newAccountsCount = 0;
         
         for (const account of accounts) {
-            // Use instagramId for IG, facebookPageId for FB
-            const platformSpecificId = account.platform === 'Instagram' ? account.accountId : account.accountId;
+            const platformSpecificId = account.accountId;
             if (!platformSpecificId) continue;
             
             const q = query(socialAccountsRef, where('accountId', '==', platformSpecificId), where('platform', '==', account.platform));
@@ -182,7 +187,7 @@ export default function InstagramCallbackPage() {
     };
 
     handleTokenExchange();
-  }, [searchParams, user, firestore, router, toast]);
+  }, [user, isUserLoading, searchParams, firestore, router, toast]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen space-y-4">

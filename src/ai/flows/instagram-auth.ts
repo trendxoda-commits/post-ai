@@ -47,9 +47,17 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // Using only the most basic, required scope to avoid "Invalid Scopes" error without App Review.
+    // Using the full set of required permissions for all features.
+    // App Review will be required by Facebook for these to work for other users.
     const scopes = [
         'pages_show_list',
+        'pages_read_engagement',
+        'pages_manage_posts',
+        'instagram_basic',
+        'instagram_content_publish',
+        'instagram_manage_insights',
+        'instagram_manage_messages',
+        'business_management'
     ];
 
     const params = new URLSearchParams({

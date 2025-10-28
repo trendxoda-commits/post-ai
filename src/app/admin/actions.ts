@@ -12,25 +12,19 @@ const serviceAccount = {
   privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
-
-// Server-side Firebase initialization for Admin SDK
-let adminApp: App;
-
-// Check if all required service account fields are present
-if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
-    if (!getApps().length) {
-      adminApp = initializeApp({
-        credential: cert(serviceAccount),
-      });
-    } else {
-      adminApp = getApps()[0];
+function getAdminApp(): App {
+    if (getApps().length > 0) {
+        return getApps()[0];
     }
-} else {
-    console.warn("Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.");
+
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+        return initializeApp({
+            credential: cert(serviceAccount),
+        });
+    }
+
+    throw new Error("Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.");
 }
-
-
-const firestore = getApps().length ? getFirestore(adminApp) : null;
 
 export interface UserWithAccounts extends User {
     socialAccounts: SocialAccount[];
@@ -41,11 +35,10 @@ export interface UserWithAccounts extends User {
  * This is a server-side action for the admin panel.
  */
 export async function getAllUsersWithAccounts(): Promise<UserWithAccounts[]> {
-    if (!firestore) {
-        throw new Error("Could not fetch user data. Ensure server credentials are set up correctly in the .env file.");
-    }
-
     try {
+        const adminApp = getAdminApp();
+        const firestore = getFirestore(adminApp);
+        
         const usersSnapshot = await firestore.collection('users').get();
         if (usersSnapshot.empty) {
             return [];
@@ -78,9 +71,12 @@ export async function getAllUsersWithAccounts(): Promise<UserWithAccounts[]> {
         
         return usersWithAccounts;
 
-    } catch (error) {
-        console.error("Error fetching all users with accounts:", error);
+    } catch (error: any) {
+        console.error("Error fetching all users with accounts:", error.message);
         // This could be due to permissions or incorrect service account setup.
-        throw new Error("Could not fetch user data. Ensure server credentials are set up correctly.");
+        if (error.message.includes("SDK credentials")) {
+             throw new Error("Could not fetch user data. Ensure server credentials are set up correctly in the .env file.");
+        }
+        throw new Error(error.message || "An unknown error occurred while fetching user data.");
     }
 }

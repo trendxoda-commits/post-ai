@@ -204,7 +204,6 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     outputSchema: GetInstagramUserDetailsOutputSchema,
 }, async ({ accessToken }) => {
     
-    // Get all pages the user has access to, including their page access tokens and any linked IG accounts
     const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token,picture{url}&access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
 
@@ -221,45 +220,36 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     
     const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
     
-    // Iterate through each page returned by Facebook
     for (const page of pagesData.data) {
         let igAccountProcessed = false;
         
-        // First, check if this specific page has a linked Instagram Business Account.
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
-            // To get the Instagram account's username and picture, we need to make another API call.
-            // We use the USER's long-lived access token for this, as it has the necessary permissions.
             const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
             
             try {
                 const igResponse = await fetch(igUrl);
                 if (igResponse.ok) {
                     const igData: any = await igResponse.json();
-                    // If successful, create a separate account record for Instagram.
                     allFoundAccounts.push({
-                        username: igData.username, // The @handle
+                        username: igData.username,
                         instagramId: instagramBusinessAccountId,
-                        facebookPageId: page.id, // Keep a reference to the parent Facebook page
-                        pageAccessToken: page.access_token, // The page token is needed for IG posting too
+                        facebookPageId: page.id,
+                        pageAccessToken: page.access_token,
                         avatar: igData.profile_picture_url,
                         platform: 'Instagram' as const,
                     });
-                    igAccountProcessed = true; // Mark that we've handled the IG account for this page
+                    igAccountProcessed = true; 
                 } else {
                     const igError: any = await igResponse.json();
-                    // This can happen if permissions are partial. Log it but don't crash.
                     console.warn(`Could not fetch details for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}`);
                 }
             } catch (e) {
-                // Catch any network errors during the fetch for a single IG account.
                 console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
             }
         }
         
-        // Only add the Facebook Page if it's NOT associated with a successfully processed IG account.
-        // This prevents showing both the FB Page and the IG account when they are linked.
         if (!igAccountProcessed) {
             allFoundAccounts.push({
                 username: page.name,
@@ -273,8 +263,6 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     }
     
     if (allFoundAccounts.length === 0) {
-        // This case can happen if the user grants permissions but has no eligible pages or accounts linked.
-        // It's not an error, but we should inform the user.
         throw new Error('No Facebook Page or Instagram Business Account could be processed. Please ensure you have granted the correct permissions and have at least one eligible account.');
     }
 

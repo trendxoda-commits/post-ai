@@ -34,37 +34,42 @@ export type UserWithAccounts = z.infer<typeof UserWithAccountsSchema>;
 
 const GetAllUsersOutputSchema = z.array(UserWithAccountsSchema);
 
-let adminApp: App | null = null;
+let adminApp: App | undefined;
 
-function initializeAdminApp() {
+function getAdminApp(): App {
   if (adminApp) {
     return adminApp;
   }
-  if (getApps().length > 0) {
-    adminApp = getApps()[0];
+
+  const apps = getApps();
+  const existingApp = apps.find(app => app.name === 'admin');
+  if (existingApp) {
+    adminApp = existingApp;
     return adminApp;
   }
 
   const serviceAccount = {
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    // Replace literal \n with actual newlines
     privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   };
 
   if (
-    serviceAccount.projectId &&
-    serviceAccount.clientEmail &&
-    serviceAccount.privateKey
+    !serviceAccount.projectId ||
+    !serviceAccount.clientEmail ||
+    !serviceAccount.privateKey
   ) {
-    adminApp = initializeApp({
-      credential: cert(serviceAccount),
-    });
-    return adminApp;
+    throw new Error(
+      'Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.'
+    );
   }
 
-  throw new Error(
-    'Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.'
-  );
+  adminApp = initializeApp({
+    credential: cert(serviceAccount),
+  }, 'admin');
+  
+  return adminApp;
 }
 
 const getAllUsersWithAccountsFlow = ai.defineFlow(
@@ -75,7 +80,7 @@ const getAllUsersWithAccountsFlow = ai.defineFlow(
   },
   async () => {
     try {
-      const app = initializeAdminApp();
+      const app = getAdminApp();
       const firestore = getFirestore(app);
 
       const usersSnapshot = await firestore.collection('users').get();
@@ -87,7 +92,8 @@ const getAllUsersWithAccountsFlow = ai.defineFlow(
 
       for (const userDoc of usersSnapshot.docs) {
         const user = userDoc.data() as User;
-        user.id = userDoc.id;
+        // The document ID from Firestore is the user's UID.
+        user.id = userDoc.id; 
 
         const socialAccountsSnapshot = await firestore
           .collection(`users/${user.id}/socialAccounts`)
@@ -100,7 +106,9 @@ const getAllUsersWithAccountsFlow = ai.defineFlow(
         });
 
         usersWithAccounts.push({
-          ...user,
+          id: user.id,
+          email: user.email,
+          createdAt: user.createdAt,
           socialAccounts: socialAccounts,
         });
       }
@@ -108,7 +116,7 @@ const getAllUsersWithAccountsFlow = ai.defineFlow(
       return usersWithAccounts;
     } catch (error: any) {
       console.error('Error in getAllUsersWithAccountsFlow:', error);
-      // Re-throw the error to be caught by the caller in actions.ts
+      // Re-throw the error to be caught by the caller
       throw new Error(error.message);
     }
   }

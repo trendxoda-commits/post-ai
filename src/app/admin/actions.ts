@@ -14,11 +14,11 @@ export async function getAllUsersWithAccounts(): Promise<UserWithAccounts[]> {
     const users = await getAllUsersWithAccountsFlow();
     return users;
   } catch (error: any) {
-    console.error('Error fetching all users with accounts via flow:', error.message);
+    console.error('Error fetching all users with accounts via flow:', error);
     // This could be due to permissions or incorrect service account setup.
-    if (error.message.includes('credentials')) {
+    if (error.message && error.message.includes('credentials')) {
       throw new Error(
-        'Could not fetch user data. Ensure server credentials are set up correctly in the .env file.'
+        'Could not fetch user data. Ensure server credentials (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY) are set up correctly in the .env file.'
       );
     }
     throw new Error(

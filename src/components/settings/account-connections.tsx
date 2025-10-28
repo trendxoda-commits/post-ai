@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PlusCircle, Trash2, Loader2, Info, RefreshCw } from 'lucide-react';
+import { PlusCircle, Trash2, Loader2, Info, RefreshCw, KeyRound } from 'lucide-react';
 import {
   useFirebase,
   useUser,
@@ -51,7 +51,7 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
   );
 };
 
-function AddAccountButton() {
+function AddAccountButton({ isReconnecting = false }: { isReconnecting?: boolean }) {
   const { user } = useUser();
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -92,6 +92,15 @@ function AddAccountButton() {
       setIsLoading(false);
     }
   };
+  
+  if (isReconnecting) {
+      return (
+        <Button variant="outline" size="sm" onClick={handleConnect} disabled={isLoading || isLoadingCredentials || !hasCredentials}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+            <span className="hidden sm:inline ml-2">Reconnect</span>
+        </Button>
+      )
+  }
 
   return (
     <Button onClick={handleConnect} disabled={isLoading || isLoadingCredentials || !hasCredentials}>
@@ -124,6 +133,7 @@ export function AccountConnections() {
   const { data: apiCredentials, isLoading: isLoadingCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
 
   const isLoading = isLoadingAccounts || isLoadingCredentials;
+  const hasApiKeys = apiCredentials && apiCredentials.length > 0;
 
   const handleDisconnect = (accountId: string) => {
     if (!user) return;
@@ -198,13 +208,25 @@ export function AccountConnections() {
           </div>
         ) : (
           <div className="space-y-4">
-             {(!apiCredentials || apiCredentials.length === 0) && (
+             {!hasApiKeys && (
                  <Alert>
                     <Info className="h-4 w-4" />
                     <AlertTitle>Set Up API Keys</AlertTitle>
                     <AlertDescription>
                         To connect your social accounts, first add your Meta App credentials in the "API Keys" tab.
                     </AlertDescription>
+                </Alert>
+            )}
+             {hasApiKeys && (
+                <Alert variant="default" className="flex items-start">
+                    <KeyRound className="h-4 w-4" />
+                    <div className="ml-4">
+                        <AlertTitle>Token Expired?</AlertTitle>
+                        <AlertDescription className="flex items-center gap-4">
+                            If your accounts stop syncing data, your main token may have expired (every 60 days). Click Reconnect to refresh it.
+                             <AddAccountButton isReconnecting={true} />
+                        </AlertDescription>
+                    </div>
                 </Alert>
             )}
             {accounts && accounts.length > 0 ? (
@@ -239,7 +261,7 @@ export function AccountConnections() {
                   </div>
                 </div>
               ))
-            ) : apiCredentials && apiCredentials.length > 0 ? (
+            ) : hasApiKeys ? (
               <div className="text-center py-10">
                 <p className="text-muted-foreground">No accounts connected yet.</p>
                 <p className="text-sm text-muted-foreground">

@@ -79,7 +79,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
                     // Correctly aggregate views/plays for videos
-                    if (post.media_type === 'VIDEO') {
+                    if (post.media_type === 'VIDEO' || post.media_type === 'REELS') {
                         totalViews += post.video_views || 0;
                     }
                 });
@@ -171,7 +171,7 @@ const getInstagramMediaFlow = ai.defineFlow(
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
         
-        if (item.media_type === 'VIDEO') {
+        if (item.media_type === 'VIDEO' || item.media_type === 'REELS') {
             try {
                 // The insights call must also use the USER access token.
                 // CRITICAL FIX: Request both 'video_views' and 'plays' and use whichever is available.
@@ -387,6 +387,7 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
 
 
 

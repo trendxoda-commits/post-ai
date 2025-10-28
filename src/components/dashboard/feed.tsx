@@ -129,7 +129,11 @@ export function Feed() {
       setPosts(allPosts);
     } catch (err: any) {
       console.error("Failed to fetch posts:", err);
-      setError(err.message || "An unknown error occurred while fetching posts.");
+      let errorMessage = err.message || "An unknown error occurred while fetching posts.";
+      if (err.message && err.message.includes('pages_read_engagement')) {
+        errorMessage = "Permission missing. Please go to Settings, disconnect the problematic account(s), and reconnect them to grant the required permissions."
+      }
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -185,7 +189,7 @@ export function Feed() {
       {!isLoading && error && (
          <div className="text-center py-10 border rounded-lg border-destructive bg-destructive/10 text-destructive-foreground">
             <p className="font-semibold">Failed to load feed</p>
-            <p className="text-sm">{error}</p>
+            <p className="text-sm px-4">{error}</p>
          </div>
       )}
 

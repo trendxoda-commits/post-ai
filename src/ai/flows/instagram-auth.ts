@@ -44,6 +44,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
         scope: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_content_publish,instagram_manage_insights,business_management',
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
+        auth_type: 'reauthenticate', // Force re-authentication to ensure new permissions are granted
     });
     const url = `https://www.facebook.com/v20.0/dialog/oauth?${params.toString()}`;
     return { url };

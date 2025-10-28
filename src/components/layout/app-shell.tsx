@@ -15,6 +15,7 @@ import { useFirebase, useUser } from '@/firebase';
 import { Button } from '../ui/button';
 import { LogOut } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
+import { FirebaseClientProvider } from '@/firebase';
 
 const AppLogo = () => (
   <svg
@@ -49,6 +50,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { auth } = useFirebase();
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
+
+  // If we are on an admin page, let the admin layout handle everything.
+  // The AdminLayout will include its own FirebaseClientProvider.
+  if (pathname.startsWith('/admin')) {
+    return <>{children}</>;
+  }
 
   // Allow access to public pages without login
   if (pathname === '/login') {

@@ -10,6 +10,7 @@ import {
   SidebarMenuButton,
   SidebarSeparator,
 } from '@/components/ui/sidebar';
+import { useUser } from '@/firebase';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,6 +26,9 @@ const adminNavItems = [
 
 export function SidebarNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const adminEmail = "mohitmleena4@gmail.com";
+
 
   return (
     <SidebarMenu>
@@ -32,7 +36,7 @@ export function SidebarNav() {
         <SidebarMenuItem key={item.href}>
           <SidebarMenuButton
             asChild
-            isActive={pathname.startsWith(item.href)}
+            isActive={pathname.startsWith(item.href) && !pathname.startsWith('/admin')}
             tooltip={item.label}
             className="justify-start"
           >
@@ -43,22 +47,28 @@ export function SidebarNav() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
-      <SidebarSeparator />
-        {adminNavItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith(item.href)}
-                tooltip={item.label}
-                className="justify-start"
-            >
-                <Link href={item.href}>
-                <item.icon className="h-4 w-4" />
-                <span>{item.label}</span>
-                </Link>
-            </SidebarMenuButton>
-            </SidebarMenuItem>
-        ))}
+    
+      {/* Conditionally render admin link */}
+      {user?.email === adminEmail && (
+        <>
+            <SidebarSeparator />
+            {adminNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.href)}
+                    tooltip={item.label}
+                    className="justify-start"
+                >
+                    <Link href={item.href}>
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                    </Link>
+                </SidebarMenuButton>
+                </SidebarMenuItem>
+            ))}
+        </>
+      )}
     </SidebarMenu>
   );
 }

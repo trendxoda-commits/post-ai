@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, redirect } from 'next/navigation';
 import {
   Sheet,
   SheetContent,
@@ -29,6 +29,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const AppLogo = () => (
     <svg
@@ -77,7 +78,28 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const adminEmail = "mohitmleena4@gmail.com";
+
+  // Security Check
+  if (isUserLoading) {
+      return (
+          <div className="flex h-screen w-screen items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <h2 className='text-xl font-bold'>Verifying Admin Access...</h2>
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                  </div>
+              </div>
+          </div>
+      )
+  }
+
+  if (!user || user.email !== adminEmail) {
+      redirect('/dashboard');
+  }
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">

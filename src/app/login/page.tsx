@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -12,12 +13,10 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { doc } from 'firebase/firestore';
@@ -29,8 +28,6 @@ export default function LoginPage() {
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
-  const [signupPassword, setSignupPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAuthError = (error: FirebaseError) => {
@@ -41,16 +38,11 @@ export default function LoginPage() {
         break;
       case 'auth/user-not-found':
       case 'auth/user-disabled':
-        message = 'No account found with this email.';
+      case 'auth/invalid-credential':
+        message = 'Incorrect email or password. Please try again.';
         break;
       case 'auth/wrong-password':
         message = 'Incorrect password. Please try again.';
-        break;
-      case 'auth/email-already-in-use':
-        message = 'This email is already registered. Please log in.';
-        break;
-      case 'auth/weak-password':
-        message = 'The password must be at least 6 characters long.';
         break;
       default:
         message = error.message;
@@ -79,122 +71,46 @@ export default function LoginPage() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        signupEmail,
-        signupPassword
-      );
-      const user = userCredential.user;
-
-      // CRITICAL FIX: Create a document for the user in Firestore
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDocumentNonBlocking(userDocRef, {
-        id: user.uid,
-        email: user.email,
-        createdAt: new Date().toISOString(),
-      }, {});
-
-      toast({
-        title: 'Signup Successful',
-        description: 'Your account has been created.',
-      });
-    } catch (e) {
-      handleAuthError(e as FirebaseError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
-    <Tabs defaultValue="login" className="w-full max-w-[400px]">
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="login">Login</TabsTrigger>
-        <TabsTrigger value="signup">Sign Up</TabsTrigger>
-      </TabsList>
-      <TabsContent value="login">
-        <form onSubmit={handleLogin}>
-          <Card>
+     <form onSubmit={handleLogin}>
+        <Card className="w-full max-w-[400px]">
             <CardHeader>
-              <CardTitle>Login</CardTitle>
-              <CardDescription>
+            <CardTitle>Login</CardTitle>
+            <CardDescription>
                 Access your Social Streamliner dashboard.
-              </CardDescription>
+            </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <div className="space-y-2">
                 <Label htmlFor="login-email">Email</Label>
                 <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                id="login-email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
                 />
-              </div>
-              <div className="space-y-2">
+            </div>
+            <div className="space-y-2">
                 <Label htmlFor="login-password">Password</Label>
                 <Input
-                  id="login-password"
-                  type="password"
-                  required
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
+                id="login-password"
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
                 />
-              </div>
+            </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full" type="submit" disabled={isLoading}>
+            <Button className="w-full" type="submit" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Login
-              </Button>
+            </Button>
             </CardFooter>
-          </Card>
-        </form>
-      </TabsContent>
-      <TabsContent value="signup">
-        <form onSubmit={handleSignup}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Sign Up</CardTitle>
-              <CardDescription>Create an account to get started.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="signup-email">Email</Label>
-                <Input
-                  id="signup-email"
-                  type="email"
-                  placeholder="m@example.com"
-                  required
-                  value={signupEmail}
-                  onChange={(e) => setSignupEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  type="password"
-                  required
-                  value={signupPassword}
-                  onChange={(e) => setSignupPassword(e.target.value)}
-                />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" type="submit" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Sign Up
-              </Button>
-            </CardFooter>
-          </Card>
-        </form>
-      </TabsContent>
-    </Tabs>
+        </Card>
+    </form>
   );
 }

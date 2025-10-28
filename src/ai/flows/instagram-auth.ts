@@ -47,8 +47,9 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // These are the permissions the app needs.
-    // We are only requesting the most basic permission to avoid App Review issues.
+    // Requesting only the most basic scope to ensure login works without advanced app review.
+    // This will allow connecting accounts, but posting/analytics will require adding more scopes
+    // and completing Facebook's App Review process.
     const scopes = [
         'pages_show_list',
     ];

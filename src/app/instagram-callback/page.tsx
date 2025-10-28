@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import {
   getAccessToken,
-  exchangeForLongLivedToken,
+  getLongLivedToken,
   getInstagramUserDetails,
 } from '@/app/actions';
 import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DollarSign, Users, CreditCard, Activity } from 'lucide-react';
+import { Users, Link2, Send, Activity } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
@@ -82,6 +82,10 @@ export { mockUsers };
 
 export default function AdminDashboardPage() {
 
+  const totalUsers = mockUsers.length;
+  const totalAccounts = mockUsers.reduce((sum, user) => sum + user.accounts.length, 0);
+  const totalPosts = 142; // mock number
+
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
         <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
@@ -91,55 +95,55 @@ export default function AdminDashboardPage() {
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                Total Revenue
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">$45,231.89</div>
-                <p className="text-xs text-muted-foreground">
-                +20.1% from last month
-                </p>
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Subscriptions
+                Total Users
                 </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">+2350</div>
+                <div className="text-2xl font-bold">{totalUsers}</div>
                 <p className="text-xs text-muted-foreground">
-                +180.1% from last month
-                </p>
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Sales</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-            </CardHeader
-            >
-            <CardContent>
-                <div className="text-2xl font-bold">+12,234</div>
-                <p className="text-xs text-muted-foreground">
-                +19% from last month
+                Currently on the platform
                 </p>
             </CardContent>
             </Card>
             <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                Active Now
+                Connected Accounts
+                </CardTitle>
+                <Link2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{totalAccounts}</div>
+                <p className="text-xs text-muted-foreground">
+                Across all users
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
+                <Send className="h-4 w-4 text-muted-foreground" />
+            </CardHeader
+            >
+            <CardContent>
+                <div className="text-2xl font-bold">+{totalPosts.toLocaleString()}</div>
+                <p className="text-xs text-muted-foreground">
+                Published across all platforms
+                </p>
+            </CardContent>
+            </Card>
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                API Status
                 </CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">+573</div>
+                <div className="text-2xl font-bold text-green-600">Healthy</div>
                 <p className="text-xs text-muted-foreground">
-                +201 since last hour
+                All systems operational
                 </p>
             </CardContent>
             </Card>
@@ -149,15 +153,15 @@ export default function AdminDashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>All Users</CardTitle>
+            <CardDescription>An overview of all registered users and their connected accounts.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead className="hidden md:table-cell">Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Last Login</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
+                  <TableHead className="text-right">Connected Accounts</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,8 +179,7 @@ export default function AdminDashboardPage() {
                             </div>
                         </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{user.role}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge 
                         variant={user.status === 'Active' ? 'default' : user.status === 'Pending' ? 'secondary' : 'destructive'}
                         className={user.status === 'Active' ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30' : user.status === 'Pending' ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' : 'bg-red-500/20 text-red-700 hover:bg-red-500/30'}
@@ -184,7 +187,12 @@ export default function AdminDashboardPage() {
                         {user.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{user.lastLogin}</TableCell>
+                    <TableCell className="text-right">
+                       <p className="font-medium">{user.accounts.length}</p>
+                       <p className="text-xs text-muted-foreground">
+                          {user.accounts.map(a => a.platform.charAt(0)).join(', ') || 'None'}
+                       </p>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -194,3 +202,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    

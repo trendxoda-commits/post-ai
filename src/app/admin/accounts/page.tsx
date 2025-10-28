@@ -140,6 +140,10 @@ export default function AdminAccountsPage() {
                     <TableHead>Platform</TableHead>
                     <TableHead>User</TableHead>
                     <TableHead className="text-right">Followers</TableHead>
+                    <TableHead className="text-right">Likes</TableHead>
+                    <TableHead className="text-right">Comments</TableHead>
+                    <TableHead className="text-right">Views</TableHead>
+                    <TableHead className="text-right">Posts</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -157,14 +161,16 @@ export default function AdminAccountsPage() {
                         <TableCell>
                           <div className="text-sm text-muted-foreground">{account.user.email || 'N/A'}</div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="font-semibold">{(account.followers || 0).toLocaleString()}</div>
-                        </TableCell>
+                        <TableCell className="text-right font-semibold">{(account.followers || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalLikes || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         {query ? `No accounts found for "${query}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>

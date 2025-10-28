@@ -21,8 +21,9 @@ const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 const GetAccountAnalyticsInputSchema = z.object({
     accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
     platform: z.enum(["Instagram", "Facebook"]),
+    // CRITICAL: This is the Page Access Token for FB, User Access Token for IG followers
     accessToken: z.string().describe("The relevant access token (User Token for IG, Page Token for FB)."),
-    userAccessToken: z.string().optional().describe("The main user access token, required for fetching IG media insights."),
+    userAccessToken: z.string().describe("The main user access token, always required for fetching IG media insights."),
 });
 export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
 
@@ -51,6 +52,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let postCount = 0;
 
         // Step 1: Get followers count
+        // For both platforms, the page/business account ID and a Page Access Token can get follower count.
         const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${accessToken}`;
         try {
             const followersResponse = await fetch(followersUrl);
@@ -67,7 +69,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         // Step 2: Get posts and aggregate stats from them
         if (platform === 'Instagram') {
             try {
-                // For Instagram, we need the user access token to fetch media
+                // For Instagram media, we need the USER access token.
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
@@ -83,7 +85,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             }
         } else if (platform === 'Facebook') {
             try {
-                // For Facebook, we need the page access token
+                // For Facebook posts, we need the PAGE access token.
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: accessToken });
                 postCount = posts.length;
                  posts.forEach(post => {
@@ -118,6 +120,7 @@ export async function getAccountAnalytics(input: GetAccountAnalyticsInput): Prom
 
 const GetInstagramMediaInputSchema = z.object({
   instagramUserId: z.string().describe('The Instagram User ID.'),
+  // CRITICAL: This MUST be the main USER access token, not the page token.
   accessToken: z.string().describe('The user access token.'),
 });
 
@@ -149,6 +152,7 @@ const getInstagramMediaFlow = ai.defineFlow(
   async ({ instagramUserId, accessToken }) => {
     // Request basic fields first. Insights will be fetched conditionally.
     const fields = 'id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count';
+    // CRITICAL: This call to get media REQUIRES the USER access token.
     const url = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media?fields=${fields}&access_token=${accessToken}`;
 
     const response = await fetch(url);
@@ -168,7 +172,7 @@ const getInstagramMediaFlow = ai.defineFlow(
         // Insights for plays are only available for VIDEO
         if (item.media_type === 'VIDEO') {
             try {
-                // NOTE: Insights require the USER access token, not the page token.
+                // NOTE: Insights also require the USER access token.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {
@@ -201,6 +205,7 @@ export async function getInstagramMedia(input: z.infer<typeof GetInstagramMediaI
 
 const GetFacebookPostsInputSchema = z.object({
   facebookPageId: z.string().describe('The Facebook Page ID.'),
+  // CRITICAL: This MUST be the PAGE access token.
   pageAccessToken: z.string().describe('The Page Access Token.'),
 });
 
@@ -263,6 +268,7 @@ export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInp
 // #################### Get Facebook Post Comments Flow ####################
 const GetFacebookPostCommentsInputSchema = z.object({
   postId: z.string().describe('The ID of the Facebook post.'),
+  // CRITICAL: This MUST be the PAGE access token.
   accessToken: z.string().describe('The Page Access Token.'),
 });
 
@@ -307,7 +313,8 @@ export async function getFacebookPostComments(input: z.infer<typeof GetFacebookP
 // #################### Get Instagram Media Comments Flow ####################
 const GetInstagramMediaCommentsInputSchema = z.object({
   mediaId: z.string().describe('The ID of the Instagram media object.'),
-  accessToken: z.string().describe('The User or Page Access Token.'),
+  // CRITICAL: This MUST be the PAGE access token.
+  accessToken: z.string().describe('The Page Access Token.'),
 });
 
 const InstagramCommentSchema = z.object({
@@ -347,5 +354,3 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
-
-    

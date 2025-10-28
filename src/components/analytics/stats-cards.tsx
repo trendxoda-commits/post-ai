@@ -49,8 +49,8 @@ export function StatsCards() {
       let topAccount: { name: string, followers: number } | null = null;
       
       const analyticsPromises = accounts.map(account => {
-        // IMPORTANT: Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
-        const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+        // CRITICAL FIX: Use the PAGE access token for this call.
+        const accessTokenForRequest = account.pageAccessToken!;
         
         if (!accessTokenForRequest) {
             console.warn(`No access token available for ${account.displayName}. Skipping stats fetch.`);
@@ -203,5 +203,3 @@ export function StatsCards() {
     </div>
   );
 }
-
-    

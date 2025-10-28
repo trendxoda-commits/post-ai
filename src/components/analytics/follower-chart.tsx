@@ -65,8 +65,8 @@ export function FollowerChart() {
       
       let totalFollowers = 0;
       const analyticsPromises = accounts.map(account => {
-        // IMPORTANT: Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
-        const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+        // CRITICAL FIX: Use the PAGE access token for this call.
+        const accessTokenForRequest = account.pageAccessToken!;
 
         if (!accessTokenForRequest) {
             console.warn(`No access token available for ${account.displayName}. Skipping follower count.`);
@@ -77,7 +77,7 @@ export function FollowerChart() {
             accountId: account.accountId,
             platform: account.platform,
             accessToken: accessTokenForRequest,
-            userAccessToken: userAccessToken,
+            userAccessToken: userAccessToken, // Still provide user token for internal IG calls
         }).catch(e => {
             console.error(`Failed to get followers for ${account.displayName}`, e);
             return null;
@@ -177,5 +177,3 @@ export function FollowerChart() {
     </Card>
   );
 }
-
-    

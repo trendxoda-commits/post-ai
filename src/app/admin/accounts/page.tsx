@@ -22,43 +22,18 @@ import { Search } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import type { User as FirebaseUser } from 'firebase/auth';
 
 interface FullAccount {
     id: string;
     displayName: string;
     platform: 'Facebook' | 'Instagram';
-    followers: number; // For now, this will be mocked
+    followers: number;
     status: 'Active' | 'Inactive';
     user: {
         id: string;
         email: string;
     };
-}
-
-// NOTE: In a real app, this data would be fetched from a server-side endpoint
-// that uses the Firebase Admin SDK to aggregate data across all users.
-// For this component, we'll fetch on the client side, which is not scalable or secure for production.
-async function getAllAccounts(firestore: any) {
-    const allAccounts: FullAccount[] = [];
-    const usersSnapshot = await getDocs(collection(firestore, 'users'));
-
-    for (const userDoc of usersSnapshot.docs) {
-        const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
-        const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
-        
-        for (const accountDoc of socialAccountsSnapshot.docs) {
-            const accountData = accountDoc.data();
-            allAccounts.push({
-                id: accountDoc.id,
-                displayName: accountData.displayName,
-                platform: accountData.platform,
-                followers: Math.floor(Math.random() * 10000), // Placeholder
-                status: 'Active', // Placeholder
-                user: user
-            });
-        }
-    }
-    return allAccounts;
 }
 
 
@@ -72,21 +47,61 @@ export default function AdminAccountsPage() {
     useEffect(() => {
         if (!firestore) return;
         
-        setIsLoading(true);
-        getAllAccounts(firestore).then(fetchedAccounts => {
-             // Sort by followers descending as a default
-            fetchedAccounts.sort((a, b) => b.followers - a.followers);
-            setAccounts(fetchedAccounts);
-            setFilteredAccounts(fetchedAccounts);
-            setIsLoading(false);
-        });
+        // This is a more robust way to fetch all accounts for an admin panel.
+        // It fetches users, then for each user, fetches their accounts.
+        // NOTE: For a large number of users, this is still inefficient and should be
+        // replaced with a paginated API or a server-side aggregation function.
+        // For the scope of this demo, this is a more stable client-side approach.
+        const fetchAllAccounts = async () => {
+            setIsLoading(true);
+            const allAccounts: FullAccount[] = [];
+            try {
+                const usersSnapshot = await getDocs(collection(firestore, 'users'));
+                
+                for (const userDoc of usersSnapshot.docs) {
+                    const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
+                    const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
+                    
+                    if (socialAccountsSnapshot.empty) {
+                        // If a user has no social accounts, we might still want to represent them.
+                        // For this table, we only care about accounts, so we'll skip them.
+                    } else {
+                        for (const accountDoc of socialAccountsSnapshot.docs) {
+                            const accountData = accountDoc.data();
+                            allAccounts.push({
+                                id: accountDoc.id,
+                                displayName: accountData.displayName || 'Unknown Account',
+                                platform: accountData.platform || 'Facebook',
+                                followers: accountData.followers || 0, // Default to 0 if not present
+                                status: 'Active', // Placeholder
+                                user: user
+                            });
+                        }
+                    }
+                }
+                 // Sort by followers descending as a default
+                allAccounts.sort((a, b) => b.followers - a.followers);
+                setAccounts(allAccounts);
+                setFilteredAccounts(allAccounts);
+
+            } catch (error) {
+                console.error("Failed to fetch accounts:", error);
+                setAccounts([]);
+                setFilteredAccounts([]);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+
+        fetchAllAccounts();
+
     }, [firestore]);
 
     useEffect(() => {
         const lowercasedFilter = searchTerm.toLowerCase();
         const filteredData = accounts.filter(item =>
-            item.displayName.toLowerCase().includes(lowercasedFilter) ||
-            item.user.email.toLowerCase().includes(lowercasedFilter)
+            (item.displayName && item.displayName.toLowerCase().includes(lowercasedFilter)) ||
+            (item.user.email && item.user.email.toLowerCase().includes(lowercasedFilter))
         );
         setFilteredAccounts(filteredData);
     }, [searchTerm, accounts]);
@@ -151,7 +166,7 @@ export default function AdminAccountsPage() {
                                     <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-mono">
-                                    {account.followers.toLocaleString()}
+                                    {(account.followers || 0).toLocaleString()}
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={account.status === 'Active' ? 'secondary' : 'outline'}>

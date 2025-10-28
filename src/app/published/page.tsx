@@ -21,6 +21,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
+import { useMemo } from 'react';
 
 
 function PublishedPostCard({ post, allAccounts }: { post: ScheduledPost, allAccounts: SocialAccount[] }) {

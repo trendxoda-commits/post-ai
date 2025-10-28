@@ -50,8 +50,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
-  // Allow access to /admin without login
-  const isPublicPage = pathname === '/login' || pathname === '/admin' || pathname === '/instagram-callback';
+  // Allow access to /admin and other public pages without login
+  const isPublicPage = pathname === '/login' || pathname.startsWith('/admin') || pathname === '/instagram-callback';
+
+  if (isPublicPage) {
+    // Render public pages without the main app shell and without login checks.
+    if (pathname.startsWith('/admin')) {
+      return <main className="min-h-screen">{children}</main>
+    }
+    if (pathname === '/login') {
+       return (
+        <main className="min-h-screen">
+            <div className="flex flex-col items-center justify-center pt-16">
+              {children}
+            </div>
+        </main>
+      );
+    }
+    if (pathname === '/instagram-callback') {
+      return <main>{children}</main>;
+    }
+  }
+
 
   if (isUserLoading) {
     return (
@@ -66,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && !isPublicPage) {
+  if (!user) {
     redirect('/login');
   }
 
@@ -74,25 +94,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/dashboard');
   }
   
-  // Render pages like /login or /admin without the main app shell
-  if (isPublicPage && pathname !== '/instagram-callback') {
-     return (
-      <main className="min-h-screen">
-        {pathname === '/login' ? (
-          <div className="flex flex-col items-center justify-center pt-16">
-            {children}
-          </div>
-        ) : (
-          children
-        )}
-      </main>
-    );
-  }
-   if (pathname === '/instagram-callback') {
-    return <main>{children}</main>;
-  }
-
-
   const handleLogout = () => {
     auth.signOut();
   };

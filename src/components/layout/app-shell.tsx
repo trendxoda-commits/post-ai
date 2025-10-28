@@ -50,10 +50,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
-  // Exclude AppShell from all admin routes.
-  // This check MUST be at the very top.
+  // Exclude AppShell layout from all admin routes, but ensure they get the provider context.
   if (pathname.startsWith('/admin')) {
-    return <>{children}</>;
+    // Admin pages have their own layout, but need the Firebase context.
+    return (
+        <main className="min-h-screen p-8">
+            {children}
+        </main>
+    );
   }
 
   // Allow access to public pages without login

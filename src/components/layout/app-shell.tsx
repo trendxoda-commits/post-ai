@@ -52,7 +52,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   // If we are on an admin page, let the admin layout handle everything.
-  // The AdminLayout will include its own FirebaseClientProvider.
   if (pathname.startsWith('/admin')) {
     return <>{children}</>;
   }

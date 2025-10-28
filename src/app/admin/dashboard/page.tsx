@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Link2, Send, Activity, MoreHorizontal, ArrowUpRight } from 'lucide-react';
+import { Users, Link2, Send, Activity, MoreHorizontal, ArrowUpRight, ThumbsUp, Eye, MessageSquare, Heart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -123,7 +123,7 @@ function RecentPosts() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Posts</CardTitle>
+        <CardTitle>Recent Activity</CardTitle>
         <CardDescription>A look at the latest content published by users.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-8">
@@ -139,7 +139,10 @@ function RecentPosts() {
                 Published a post to {post.accountName}
               </p>
             </div>
-            <div className="ml-auto font-medium text-sm">+{post.likes}</div>
+            <div className="ml-auto font-medium text-sm flex items-center gap-1">
+                <Heart className="w-4 h-4 text-red-500" />
+                <span>{post.likes}</span>
+            </div>
           </div>
         )) : Array.from({ length: 3 }).map((_, i) => (
             <div className="flex items-center gap-4" key={i}>
@@ -160,34 +163,58 @@ function RecentPosts() {
 
 export default function AdminDashboardPage() {
 
-  const totalUsers = mockUsers.length;
-  const totalAccounts = mockUsers.reduce((sum, user) => sum + user.accounts.length, 0);
+  const totalFollowers = mockUsers.reduce((sum, user) => sum + user.totalFollowers, 0);
+  const totalViews = mockUsers.reduce((sum, user) => sum + user.totalViews, 0);
+  const totalLikes = 125430; // mock
+  const totalComments = 8765; // mock
   const totalPosts = 142; // mock number
+  const totalAccounts = mockUsers.reduce((sum, user) => sum + user.accounts.length, 0);
+
 
   return (
     <>
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Followers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers}</div>
-            <p className="text-xs text-muted-foreground">+2 since last month</p>
+            <div className="text-2xl font-bold">{totalFollowers.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">+5.2% from last month</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalViews.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">+12.1% from last month</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Connected Accounts</CardTitle>
-            <Link2 className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
+            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalAccounts}</div>
-            <p className="text-xs text-muted-foreground">+5 since last month</p>
+            <div className="text-2xl font-bold">{totalLikes.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">+8.3% from last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalComments.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">+10.4% from last month</p>
           </CardContent>
         </Card>
         <Card>
@@ -202,12 +229,12 @@ export default function AdminDashboardPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">API Status</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Connected Accounts</CardTitle>
+            <Link2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">Healthy</div>
-            <p className="text-xs text-muted-foreground">All systems operational</p>
+            <div className="text-2xl font-bold">{totalAccounts}</div>
+            <p className="text-xs text-muted-foreground">+5 since last month</p>
           </CardContent>
         </Card>
       </div>
@@ -232,9 +259,10 @@ export default function AdminDashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead className="hidden xl:table-cell">Status</TableHead>
-                  <TableHead className="hidden xl:table-cell">Role</TableHead>
-                  <TableHead className="text-right">Accounts</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Followers</TableHead>
+                   <TableHead className="text-right hidden md:table-cell">Views</TableHead>
+                  <TableHead className="hidden xl:table-cell text-center">Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -252,7 +280,9 @@ export default function AdminDashboardPage() {
                             </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden xl:table-cell">
+                      <TableCell className="text-right hidden sm:table-cell">{user.totalFollowers.toLocaleString()}</TableCell>
+                       <TableCell className="text-right hidden md:table-cell">{user.totalViews.toLocaleString()}</TableCell>
+                      <TableCell className="hidden xl:table-cell text-center">
                          <Badge 
                             variant={user.status === 'Active' ? 'default' : user.status === 'Pending' ? 'secondary' : 'destructive'}
                             className={user.status === 'Active' ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30' : user.status === 'Pending' ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' : 'bg-red-500/20 text-red-700 hover:bg-red-500/30'}
@@ -260,10 +290,26 @@ export default function AdminDashboardPage() {
                             {user.status}
                           </Badge>
                       </TableCell>
-                      <TableCell className="hidden xl:table-cell">
-                          {user.role}
+                      <TableCell className="text-right">
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                aria-haspopup="true"
+                                size="icon"
+                                variant="ghost"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Toggle menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem>View User</DropdownMenuItem>
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                              <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                       </TableCell>
-                      <TableCell className="text-right">{user.accounts.length}</TableCell>
                     </TableRow>
                 ))}
               </TableBody>
@@ -275,3 +321,5 @@ export default function AdminDashboardPage() {
     </>
   );
 }
+
+    

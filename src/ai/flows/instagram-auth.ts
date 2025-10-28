@@ -71,8 +71,8 @@ const GetInstagramAccessTokenOutputSchema = z.object({
 export type GetInstagramAccessTokenOutput = z.infer<typeof GetInstagramAccessTokenOutputSchema>;
 
 
-const getInstagramAccessTokenFlow = ai.defineFlow({
-    name: 'getInstagramAccessTokenFlow',
+const getAccessTokenFlow = ai.defineFlow({
+    name: 'getAccessTokenFlow',
     inputSchema: GetInstagramAccessTokenInputSchema,
     outputSchema: GetInstagramAccessTokenOutputSchema,
 }, async ({ code, clientId, clientSecret, redirectUri }) => {
@@ -105,7 +105,7 @@ const getInstagramAccessTokenFlow = ai.defineFlow({
 });
 
 export async function getAccessToken(input: GetInstagramAccessTokenInput): Promise<GetInstagramAccessTokenOutput> {
-    return getInstagramAccessTokenFlow(input);
+    return getAccessTokenFlow(input);
 }
 
 
@@ -178,8 +178,8 @@ const GetInstagramUserDetailsOutputSchema = z.object({
 export type GetInstagramUserDetailsOutput = z.infer<typeof GetInstagramUserDetailsOutputSchema>;
 
 
-const getInstagramUserDetailsFlow = ai.defineFlow({
-    name: 'getInstagramUserDetailsFlow',
+const getIgUserDetailsFlow = ai.defineFlow({
+    name: 'getIgUserDetailsFlow',
     inputSchema: GetInstagramUserDetailsInputSchema,
     outputSchema: GetInstagramUserDetailsOutputSchema,
 }, async ({ accessToken }) => {
@@ -202,12 +202,20 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const allFoundAccounts: z.infer<typeof SocialAccountDetailsSchema>[] = [];
     
     for (const page of pagesData.data) {
-        const hasIgAccount = !!page.instagram_business_account;
+        // ALWAYS add the Facebook page itself to the list of accounts
+        allFoundAccounts.push({
+            platform: 'Facebook',
+            accountId: page.id,
+            displayName: page.name,
+            pageAccessToken: page.access_token,
+            avatar: page.picture?.data?.url,
+        });
 
-        if (hasIgAccount) {
+        // THEN, check if the page has a linked IG account and add it as a separate account
+        if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             try {
-                // Fetch IG account details using the main user access token
+                // Fetch IG account details (like username and profile pic)
                 const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
                 const igResponse = await fetch(igUrl);
                 if (igResponse.ok) {
@@ -225,15 +233,6 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
             } catch (e) {
                  console.error(`Error processing IG account ${instagramBusinessAccountId}:`, e);
             }
-        } else {
-            // If the page is NOT connected to an IG account, add it as a Facebook account
-             allFoundAccounts.push({
-                platform: 'Facebook',
-                accountId: page.id,
-                displayName: page.name,
-                pageAccessToken: page.access_token,
-                avatar: page.picture?.data?.url,
-            });
         }
     }
     
@@ -241,5 +240,5 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
 });
 
 export async function getIgUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {
-    return getInstagramUserDetailsFlow(input);
+    return getIgUserDetailsFlow(input);
 }

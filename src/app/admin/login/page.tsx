@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -34,24 +35,21 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate network delay
-    setTimeout(() => {
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        toast({
-          title: 'Admin Login Successful',
-          description: 'Welcome, Admin!',
-        });
-        login(); // Set admin state
-        router.push('/admin/dashboard');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: 'Incorrect email or password.',
-        });
-        setIsLoading(false);
-      }
-    }, 1000);
+    if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+      toast({
+        title: 'Admin Login Successful',
+        description: 'Welcome, Admin!',
+      });
+      login(); // Set admin state
+      router.push('/admin/dashboard');
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'Incorrect email or password.',
+      });
+      setIsLoading(false);
+    }
   };
 
   return (

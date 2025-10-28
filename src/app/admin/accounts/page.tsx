@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Card,
   CardContent,
@@ -15,20 +17,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { firebaseConfig } from '@/firebase/config';
 import type { SocialAccount } from '@/lib/types';
 import { SearchComponent } from './search-component';
-
-// Server-side Firebase initialization
-let adminApp: App;
-if (!getApps().length) {
-  adminApp = initializeApp({ projectId: firebaseConfig.projectId });
-} else {
-  adminApp = getApps()[0];
-}
-const firestore = getFirestore(adminApp);
+import { useEffect, useState } from 'react';
+import { useFirebase } from '@/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 
 interface FullAccountDetails extends SocialAccount {
@@ -39,44 +33,56 @@ interface FullAccountDetails extends SocialAccount {
 }
 
 
-async function getAllAccounts(): Promise<FullAccountDetails[]> {
-    const allAccounts: FullAccountDetails[] = [];
-    try {
-        const usersSnapshot = await firestore.collection('users').get();
-        
-        for (const userDoc of usersSnapshot.docs) {
-            const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
-            const socialAccountsSnapshot = await firestore.collection(`users/${userDoc.id}/socialAccounts`).get();
-            
-            socialAccountsSnapshot.forEach(accountDoc => {
-                const accountData = accountDoc.data() as SocialAccount;
-                allAccounts.push({
-                    ...accountData,
-                    id: accountDoc.id,
-                    user: user,
-                });
-            });
-        }
-        
-        allAccounts.sort((a, b) => a.displayName.localeCompare(b.displayName));
-        return allAccounts;
-
-    } catch (error) {
-        console.error("Failed to fetch accounts on server:", error);
-        return []; // Return empty array on error
-    }
-}
-
-
-export default async function AdminAccountsPage({
+export default function AdminAccountsPage({
   searchParams,
 }: {
   searchParams?: {
     query?: string;
   };
 }) {
+  const { firestore } = useFirebase();
+  const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const allAccounts = await getAllAccounts();
+  useEffect(() => {
+    if (!firestore) return;
+
+    const fetchAllAccounts = async () => {
+        setIsLoading(true);
+        const fetchedAccounts: FullAccountDetails[] = [];
+        try {
+            const usersSnapshot = await getDocs(collection(firestore, 'users'));
+            
+            for (const userDoc of usersSnapshot.docs) {
+                const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
+                const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
+                
+                socialAccountsSnapshot.forEach(accountDoc => {
+                    const accountData = accountDoc.data() as SocialAccount;
+                    fetchedAccounts.push({
+                        ...accountData,
+                        id: accountDoc.id,
+                        user: user,
+                    });
+                });
+            }
+            
+            fetchedAccounts.sort((a, b) => a.displayName.localeCompare(b.displayName));
+            setAllAccounts(fetchedAccounts);
+
+        } catch (error) {
+            console.error("Failed to fetch accounts on client:", error);
+            setAllAccounts([]); // Return empty array on error
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    
+    fetchAllAccounts();
+
+  }, [firestore]);
+
+
   const searchTerm = searchParams?.query || '';
   
   const filteredAccounts = allAccounts.filter(item =>
@@ -106,41 +112,47 @@ export default async function AdminAccountsPage({
             </div>
         </CardHeader>
         <CardContent>
-            <div className="rounded-lg border">
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Account</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Platform</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {filteredAccounts.length > 0 ? (
-                        filteredAccounts.map((account) => (
-                            <TableRow key={account.id}>
-                            <TableCell>
-                                <div className="font-medium">{account.displayName}</div>
-                                <div className="text-xs text-muted-foreground">{account.accountId}</div>
-                            </TableCell>
-                            <TableCell>
-                                <div className="text-sm">{account.user.email}</div>
-                            </TableCell>
-                            <TableCell>
-                                <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
-                            </TableCell>
-                            </TableRow>
-                        ))
-                    ) : (
+            {isLoading ? (
+                 <div className="flex justify-center items-center h-48">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+            ) : (
+                <div className="rounded-lg border">
+                    <Table>
+                    <TableHeader>
                         <TableRow>
-                            <TableCell colSpan={3} className="h-24 text-center">
-                            No accounts found in the database.
-                            </TableCell>
+                        <TableHead>Account</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Platform</TableHead>
                         </TableRow>
-                    )}
-                </TableBody>
-                </Table>
-            </div>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredAccounts.length > 0 ? (
+                            filteredAccounts.map((account) => (
+                                <TableRow key={account.id}>
+                                <TableCell>
+                                    <div className="font-medium">{account.displayName}</div>
+                                    <div className="text-xs text-muted-foreground">{account.accountId}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm">{account.user.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
+                                </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                No accounts found in the database.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                    </Table>
+                </div>
+            )}
         </CardContent>
       </Card>
     </div>

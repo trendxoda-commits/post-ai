@@ -4,9 +4,9 @@
  * @fileOverview Instagram Authentication Flow
  * This file contains Genkit flows for handling Instagram Basic Display API OAuth2 authentication.
  * - getInstagramAuthUrl - Generates a URL for the user to grant access.
- * - getInstagramAccessToken - Exchanges an auth code for a short-lived access token.
+ * - getAccessToken - Exchanges an auth code for a short-lived access token.
  * - exchangeForLongLivedToken - Exchanges a short-lived token for a long-lived one.
- * - getInstagramUserDetails - Fetches user profile details (id, username) using a long-lived token.
+ * - getIgUserDetails - Fetches user profile details (id, username) using a long-lived token.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';

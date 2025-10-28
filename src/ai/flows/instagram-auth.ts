@@ -236,7 +236,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
       return [fbAccount];
     }));
     
-    const flattenedAccounts = accounts.flat();
+    const flattenedAccounts = accounts.flat().filter(acc => acc.platform === 'Instagram');
 
     return { accounts: flattenedAccounts };
 });

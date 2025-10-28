@@ -50,10 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
-  // Allow access to /admin and other public pages without login
-  if (pathname.startsWith('/admin')) {
-      return <main className="min-h-screen">{children}</main>
-  }
+  // Allow access to public pages without login
   if (pathname === '/login') {
       return (
       <main className="min-h-screen">

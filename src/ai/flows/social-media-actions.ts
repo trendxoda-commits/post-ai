@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -77,6 +78,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
+                    // For Instagram, 'plays' is the primary metric for video views.
                     if (post.media_type === 'VIDEO') {
                         totalViews += post.plays || 0;
                     }
@@ -93,10 +95,9 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                  posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
-                    if (post.insights?.data) {
-                        const viewsInsight = post.insights.data.find((d: any) => d.name === 'post_video_views');
-                        totalViews += viewsInsight?.values[0]?.value || 0;
-                    }
+                    // For Facebook, we use insights for video views.
+                    const videoViews = post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
+                    totalViews += videoViews;
                 });
             } catch (e) {
                 console.error(`Error fetching Facebook posts for analytics for ${accountId}:`, e);
@@ -135,7 +136,7 @@ const InstagramMediaObjectSchema = z.object({
     timestamp: z.string(),
     like_count: z.number().optional(),
     comments_count: z.number().optional(),
-    plays: z.number().optional(), // Now explicitly part of the schema
+    plays: z.number().optional(), // Explicitly part of the schema for video plays
 });
 
 const GetInstagramMediaOutputSchema = z.object({
@@ -167,14 +168,13 @@ const getInstagramMediaFlow = ai.defineFlow(
 
     const data: any = await response.json();
     
-    // Process each media item to conditionally fetch insights.
+    // Process each media item to conditionally fetch insights (plays for videos).
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let plays = 0;
         
-        // Insights for plays are only available for VIDEO
+        // Insights for plays are only available for VIDEO and require the USER access token.
         if (item.media_type === 'VIDEO') {
             try {
-                // NOTE: Insights also require the USER access token.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {
@@ -245,7 +245,7 @@ const getFacebookPostsFlow = ai.defineFlow(
   },
   async ({ facebookPageId, pageAccessToken }) => {
     // Requesting attachments, source for videos, and the correct insights metric.
-    const fields = 'id,message,created_time,permalink_url,attachments{media{source,image},type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
+    const fields = 'id,message,created_time,permalink_url,attachments{media,type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
     // CRITICAL FIX: Use the pageAccessToken for this call.
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 

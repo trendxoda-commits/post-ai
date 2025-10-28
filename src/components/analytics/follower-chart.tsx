@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -56,8 +57,9 @@ export function FollowerChart() {
 
   useEffect(() => {
     const generateChartData = async () => {
-      if (!accounts || accounts.length === 0 || !userAccessToken) {
+      if (!accounts || !userAccessToken) {
         setIsLoading(false);
+        setChartData([]);
         return;
       }
       
@@ -116,6 +118,7 @@ export function FollowerChart() {
     }
     else {
         setIsLoading(false);
+        setChartData([]);
     }
   }, [accounts, userAccessToken, user]);
 

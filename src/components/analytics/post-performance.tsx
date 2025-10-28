@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -57,6 +58,9 @@ export function PostPerformance() {
   useEffect(() => {
     const loadPosts = async () => {
       if (!accounts || !userAccessToken) {
+         if (accounts && accounts.length === 0) {
+            setPosts([]);
+        }
         setIsLoading(false);
         return;
       }
@@ -97,7 +101,7 @@ export function PostPerformance() {
                 id: post.id,
                 platform: 'Facebook',
                 content: post.message,
-                mediaUrl: post.attachments?.data[0]?.media?.image?.src || post.attachments?.data[0]?.url,
+                mediaUrl: post.attachments?.data[0]?.media?.image?.src || post.attachments?.data[0]?.media?.source || post.attachments?.data[0]?.url,
                 timestamp: post.created_time,
                 permalink: post.permalink_url,
                 likes: post.likes?.summary.total_count || 0,
@@ -132,6 +136,7 @@ export function PostPerformance() {
         // accounts still loading
     } else {
       setIsLoading(false);
+      setPosts([]);
     }
   }, [accounts, userAccessToken, user, toast]);
 

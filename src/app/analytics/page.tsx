@@ -1,3 +1,4 @@
+
 'use client';
 
 import { StatsCards } from '@/components/analytics/stats-cards';
@@ -47,6 +48,9 @@ function AccountPerformance() {
   useEffect(() => {
     const fetchAccountStats = async () => {
       if (!accounts || !userAccessToken) {
+        if (accounts && accounts.length === 0) {
+            setStats([]); // Explicitly set to empty array if no accounts
+        }
         setIsLoading(false);
         return;
       };
@@ -59,7 +63,16 @@ function AccountPerformance() {
           
           if (!pageAccessToken) {
             console.warn(`No page access token available for ${account.displayName}. Skipping stats fetch.`);
-            return null;
+            return {
+                id: account.id,
+                displayName: account.displayName,
+                avatar: account.avatar,
+                platform: account.platform,
+                followers: 0,
+                avgLikes: 0,
+                avgComments: 0,
+                avgViews: 0,
+            };
           }
 
           const analytics = await getAccountAnalytics({
@@ -82,7 +95,17 @@ function AccountPerformance() {
           };
         } catch (error) {
           console.error(`Failed to fetch stats for ${account.displayName}`, error);
-          return null; // Return null for failed fetches
+          // Return a default object on error so UI can still render the account
+          return {
+            id: account.id,
+            displayName: account.displayName,
+            avatar: account.avatar,
+            platform: account.platform,
+            followers: 0,
+            avgLikes: 0,
+            avgComments: 0,
+            avgViews: 0,
+        };
         }
       });
       
@@ -101,6 +124,7 @@ function AccountPerformance() {
     } else {
       // No accounts or no token
       setIsLoading(false);
+      setStats([]);
     }
   }, [accounts, userAccessToken, user]);
 

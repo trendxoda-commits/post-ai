@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, doc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
 
@@ -47,11 +48,6 @@ export default function AdminAccountsPage() {
     useEffect(() => {
         if (!firestore) return;
         
-        // This is a more robust way to fetch all accounts for an admin panel.
-        // It fetches users, then for each user, fetches their accounts.
-        // NOTE: For a large number of users, this is still inefficient and should be
-        // replaced with a paginated API or a server-side aggregation function.
-        // For the scope of this demo, this is a more stable client-side approach.
         const fetchAllAccounts = async () => {
             setIsLoading(true);
             const allAccounts: FullAccount[] = [];
@@ -68,11 +64,12 @@ export default function AdminAccountsPage() {
                     } else {
                         for (const accountDoc of socialAccountsSnapshot.docs) {
                             const accountData = accountDoc.data();
+                            // Using real data if available, otherwise 0
                             allAccounts.push({
                                 id: accountDoc.id,
                                 displayName: accountData.displayName || 'Unknown Account',
                                 platform: accountData.platform || 'Facebook',
-                                followers: accountData.followers || 0, // Default to 0 if not present
+                                followers: accountData.followers || 0,
                                 status: 'Active', // Placeholder
                                 user: user
                             });

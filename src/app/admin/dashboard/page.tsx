@@ -75,7 +75,16 @@ export default function AdminDashboardPage() {
                 }
                 
                 // Sort users by date client-side (assuming createdAt is a valid date string or timestamp)
-                 fetchedUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                 fetchedUsers.sort((a, b) => {
+                    try {
+                        const dateA = new Date(a.createdAt).getTime();
+                        const dateB = new Date(b.createdAt).getTime();
+                        if (isNaN(dateA) || isNaN(dateB)) return 0;
+                        return dateB - dateA;
+                    } catch (e) {
+                        return 0;
+                    }
+                });
 
 
                 setStats({

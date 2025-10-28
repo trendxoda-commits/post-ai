@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +38,9 @@ export function StatsCards() {
   useEffect(() => {
     const fetchOverallStats = async () => {
        if (!accounts || !userAccessToken) {
+        if (accounts && accounts.length === 0) {
+            setStats({ totalFollowers: 0, engagementRate: 0, topAccount: null });
+        }
         setIsLoading(false);
         return;
       }
@@ -49,7 +53,6 @@ export function StatsCards() {
       let topAccount: { name: string, followers: number } | null = null;
       
       const analyticsPromises = accounts.map(account => {
-        // Correctly use PAGE token for FB and for IG follower count, but provide USER token for IG media fetching
         const pageAccessToken = account.pageAccessToken!;
         
         if (!pageAccessToken) {
@@ -106,6 +109,7 @@ export function StatsCards() {
         // Still loading accounts
     } else {
       setIsLoading(false);
+       setStats({ totalFollowers: 0, engagementRate: 0, topAccount: null });
     }
   }, [accounts, userAccessToken, user]);
 
@@ -136,7 +140,7 @@ export function StatsCards() {
                 <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">N/A</div>
+                <div className="text-2xl font-bold">0</div>
                 <p className="text-xs text-muted-foreground">Connect accounts to see data</p>
                 </CardContent>
             </Card>
@@ -146,7 +150,7 @@ export function StatsCards() {
                 <BarChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">N/A</div>
+                <div className="text-2xl font-bold">0.00%</div>
                  <p className="text-xs text-muted-foreground">No posts to analyze</p>
                 </CardContent>
             </Card>
@@ -174,7 +178,7 @@ export function StatsCards() {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalFollowers.toLocaleString()}</div>
+          <div className="text-2xl font-bold">{(stats.totalFollowers || 0).toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">Across all connected accounts</p>
         </CardContent>
       </Card>
@@ -184,7 +188,7 @@ export function StatsCards() {
           <BarChart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.engagementRate.toFixed(2)}%</div>
+          <div className="text-2xl font-bold">{(stats.engagementRate || 0).toFixed(2)}%</div>
           <p className="text-xs text-muted-foreground">Based on recent posts</p>
         </CardContent>
       </Card>

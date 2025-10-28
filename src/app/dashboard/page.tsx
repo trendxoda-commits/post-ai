@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -35,6 +36,9 @@ function AccountFollowers() {
   useEffect(() => {
     const fetchAccountFollowers = async () => {
       if (!accounts || !userAccessToken) {
+        if (accounts && accounts.length === 0) {
+            setAccountsData([]);
+        }
         setIsLoading(false);
         return;
       };
@@ -47,7 +51,11 @@ function AccountFollowers() {
           
           if (!pageAccessToken) {
             console.warn(`No access token available for ${account.displayName}. Skipping.`);
-            return null;
+            return {
+                name: account.displayName,
+                followers: 0,
+                avatar: account.avatar,
+            };
           }
 
           const analytics = await getAccountAnalytics({
@@ -87,6 +95,7 @@ function AccountFollowers() {
     } else {
       // No accounts or no token
       setIsLoading(false);
+      setAccountsData([]);
     }
   }, [accounts, userAccessToken, user]);
 

@@ -13,17 +13,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirebase } from '@/firebase';
+import { useFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { FirebaseError } from 'firebase/app';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { auth } = useFirebase();
+  const { auth, firestore } = useFirebase();
   const { toast } = useToast();
 
   const [loginEmail, setLoginEmail] = useState('');
@@ -39,6 +40,7 @@ export default function LoginPage() {
         message = 'Please enter a valid email address.';
         break;
       case 'auth/user-not-found':
+      case 'auth/user-disabled':
         message = 'No account found with this email.';
         break;
       case 'auth/wrong-password':
@@ -81,7 +83,21 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, signupEmail, signupPassword);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        signupEmail,
+        signupPassword
+      );
+      const user = userCredential.user;
+
+      // CRITICAL FIX: Create a document for the user in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDocumentNonBlocking(userDocRef, {
+        id: user.uid,
+        email: user.email,
+        createdAt: new Date().toISOString(),
+      }, {});
+
       toast({
         title: 'Signup Successful',
         description: 'Your account has been created.',

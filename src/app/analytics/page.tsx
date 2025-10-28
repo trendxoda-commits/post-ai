@@ -11,6 +11,7 @@ import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAccountAnalytics } from '@/app/actions';
+import { PostPerformance } from '@/components/analytics/post-performance';
 
 // Interface for aggregated stats per account
 export interface AccountStats {
@@ -54,7 +55,7 @@ function AccountPerformance() {
       
       const statsPromises = accounts.map(async (account) => {
         try {
-          // CRITICAL FIX: Use the PAGE access token for all analytics calls, but provide USER token for IG media fetching inside.
+          // CRITICAL: Use the PAGE access token for FB analytics, but provide USER token for IG media fetching inside.
           const accessTokenForRequest = account.pageAccessToken!;
           
           if (!accessTokenForRequest) {
@@ -169,6 +170,7 @@ export default function AnalyticsPage() {
           <AccountPerformance />
         </div>
       </div>
+       <PostPerformance />
     </div>
   );
 }

@@ -16,46 +16,69 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 // Mock data for the dashboard
 const mockUsers = [
   {
+    id: 'user-1',
     name: 'Harish Kumar',
     email: 'harish.k@example.com',
     role: 'Admin',
     status: 'Active',
     lastLogin: '2 hours ago',
-    avatar: 'https://picsum.photos/seed/1/40/40'
+    avatar: 'https://picsum.photos/seed/1/40/40',
+    accounts: [
+      { id: 'acc-1-1', name: 'Harish\'s Insta', platform: 'Instagram' },
+      { id: 'acc-1-2', name: 'Harish\'s Facebook', platform: 'Facebook' },
+    ]
   },
   {
+    id: 'user-2',
     name: 'Sunita Sharma',
     email: 'sunita.s@example.com',
     role: 'Editor',
     status: 'Active',
     lastLogin: '1 day ago',
-    avatar: 'https://picsum.photos/seed/2/40/40'
+    avatar: 'https://picsum.photos/seed/2/40/40',
+     accounts: [
+      { id: 'acc-2-1', name: 'Sunita\'s Travel Blog', platform: 'Instagram' },
+    ]
   },
   {
+    id: 'user-3',
     name: 'Raj Patel',
     email: 'raj.p@example.com',
     role: 'Viewer',
     status: 'Pending',
     lastLogin: '3 days ago',
-    avatar: 'https://picsum.photos/seed/3/40/40'
+    avatar: 'https://picsum.photos/seed/3/40/40',
+     accounts: [
+      { id: 'acc-3-1', name: 'Raj\'s Food Page', platform: 'Facebook' },
+    ]
   },
   {
+    id: 'user-4',
     name: 'Anjali Verma',
     email: 'anjali.v@example.com',
     role: 'Editor',
     status: 'Active',
     lastLogin: '5 hours ago',
-    avatar: 'https://picsum.photos/seed/4/40/40'
+    avatar: 'https://picsum.photos/seed/4/40/40',
+    accounts: [
+      { id: 'acc-4-1', name: 'Anjali\'s Art', platform: 'Instagram' },
+      { id: 'acc-4-2', name: 'Anjali\'s Design Co.', platform: 'Facebook' },
+    ]
   },
   {
+    id: 'user-5',
     name: 'Vikram Singh',
     email: 'vikram.s@example.com',
     role: 'Viewer',
     status: 'Inactive',
     lastLogin: '1 week ago',
-    avatar: 'https://picsum.photos/seed/5/40/40'
+    avatar: 'https://picsum.photos/seed/5/40/40',
+    accounts: []
   }
 ];
+
+// Exporting mock data to be used in other admin pages
+export { mockUsers };
 
 export default function AdminDashboardPage() {
 

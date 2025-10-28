@@ -8,7 +8,7 @@ import {
   getLongLivedToken,
   getIgUserDetails,
 } from '@/app/actions';
-import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -116,28 +116,32 @@ export default function InstagramCallbackPage() {
         
         for (const account of accounts) {
             // Use instagramId for IG, facebookPageId for FB
-            const accountId = account.platform === 'Instagram' ? account.instagramId : account.facebookPageId;
-            if (!accountId) continue;
+            const platformSpecificId = account.platform === 'Instagram' ? account.instagramId : account.facebookPageId;
+            if (!platformSpecificId) continue;
             
-            const q = query(socialAccountsRef, where('accountId', '==', accountId));
+            const q = query(socialAccountsRef, where('accountId', '==', platformSpecificId), where('platform', '==', account.platform));
             const existingAccountSnapshot = await getDocs(q);
 
             if (existingAccountSnapshot.empty) {
-                const newAccountDoc = doc(socialAccountsRef); // Creates a new doc with a random ID
-                await setDoc(newAccountDoc, {
-                    id: newAccountDoc.id, // Explicitly set the ID field
+                const newAccountDocRef = doc(socialAccountsRef);
+                await setDoc(newAccountDocRef, {
+                    id: newAccountDocRef.id,
                     userId: user.uid,
                     platform: account.platform,
                     displayName: account.username,
-                    accountId: accountId,
+                    accountId: platformSpecificId,
                     pageAccessToken: account.pageAccessToken,
-                    avatar: `https://picsum.photos/seed/${accountId}/40/40`,
+                    avatar: account.avatar || `https://picsum.photos/seed/${platformSpecificId}/40/40`,
                 });
                 newAccountsCount++;
             } else {
-                // Optionally, update the existing account's pageAccessToken if it has changed
+                // Optionally, update the existing account's details if they have changed
                 const existingDoc = existingAccountSnapshot.docs[0];
-                await setDoc(existingDoc.ref, { pageAccessToken: account.pageAccessToken, displayName: account.username }, { merge: true });
+                await setDoc(existingDoc.ref, { 
+                    pageAccessToken: account.pageAccessToken, 
+                    displayName: account.username,
+                    avatar: account.avatar || existingDoc.data().avatar,
+                }, { merge: true });
             }
         }
 
@@ -151,7 +155,7 @@ export default function InstagramCallbackPage() {
         } else {
             toast({
               title: 'Accounts Updated',
-              description: 'Your existing accounts have been refreshed.',
+              description: 'Your existing accounts have been refreshed with the latest information.',
             });
         }
         

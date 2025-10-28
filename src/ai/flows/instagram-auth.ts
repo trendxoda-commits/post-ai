@@ -48,7 +48,6 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const redirectUri = getRedirectUri();
     
     // Request all permissions needed for the app to function fully.
-    // The user has confirmed their app is in Live Mode.
     const scopes = [
         'pages_show_list',
         'pages_read_engagement',
@@ -190,6 +189,7 @@ const PageDetailsSchema = z.object({
     facebookPageId: z.string().optional(),
     facebookPageName: z.string().optional(),
     pageAccessToken: z.string().optional(),
+    avatar: z.string().url().optional(),
     platform: z.enum(['Instagram', 'Facebook']),
 });
 
@@ -205,7 +205,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
 }, async ({ accessToken }) => {
     
     // Get all pages the user has access to, including their page access tokens and any linked IG accounts
-    const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token&access_token=${accessToken}`;
+    const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token,picture{url}&access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
 
     if (!pagesResponse.ok) {
@@ -230,6 +230,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
             facebookPageId: page.id,
             facebookPageName: page.name,
             pageAccessToken: page.access_token,
+            avatar: page.picture?.data?.url,
             platform: 'Facebook' as const,
         });
 
@@ -237,9 +238,9 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
-            // To get the Instagram account's username, we need to make another API call.
-            // We use the PAGE's access token for this, as it has the necessary permissions.
-            const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${page.access_token}`;
+            // To get the Instagram account's username and picture, we need to make another API call.
+            // We use the USER's access token for this, as it has the necessary permissions.
+            const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
             
             try {
                 const igResponse = await fetch(igUrl);
@@ -247,16 +248,17 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
                     const igData: any = await igResponse.json();
                     // If successful, create a separate account record for Instagram.
                     allFoundAccounts.push({
-                        username: igData.username,
+                        username: igData.username, // The @handle
                         instagramId: instagramBusinessAccountId,
                         facebookPageId: page.id, // Keep a reference to the parent Facebook page
                         pageAccessToken: page.access_token, // The page token is needed for IG posting too
+                        avatar: igData.profile_picture_url,
                         platform: 'Instagram' as const,
                     });
                 } else {
                     const igError: any = await igResponse.json();
                     // This can happen if permissions are partial. Log it but don't crash.
-                    console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}`);
+                    console.warn(`Could not fetch details for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}`);
                 }
             } catch (e) {
                 // Catch any network errors during the fetch for a single IG account.

@@ -48,13 +48,9 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const redirectUri = getRedirectUri();
     
     // These are the permissions the app needs.
-    // instagram_content_publish and pages_manage_posts require Advanced Access from Facebook App Review.
+    // We are only requesting the most basic permission to avoid App Review issues.
     const scopes = [
         'pages_show_list',
-        'pages_manage_posts',
-        'pages_read_engagement',
-        'instagram_content_publish',
-        'instagram_manage_insights',
     ];
 
     const params = new URLSearchParams({
@@ -262,7 +258,8 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const flattenedAccounts = nestedAccounts.flat();
 
     if (flattenedAccounts.length === 0) {
-        throw new Error('No Facebook Page or Instagram Business Account linked. Please ensure you have linked an Instagram Business account to a Facebook Page in your Facebook Business settings.');
+        // This is a soft error now. The user might just not have any accounts.
+        console.log('No Facebook Page or Instagram Business Account could be processed.');
     }
 
     return { accounts: flattenedAccounts };

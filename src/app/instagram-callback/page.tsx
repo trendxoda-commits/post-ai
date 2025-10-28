@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -33,6 +34,11 @@ export default function InstagramCallbackPage() {
   const processing = useRef(false);
 
   useEffect(() => {
+    // Clean up the URL from Facebook's appended hash
+    if (window.location.hash && window.location.hash === '#_=_') {
+      window.history.replaceState(null, document.title, window.location.pathname + window.location.search);
+    }
+    
     // Exit if still loading user, or if we are already processing, or if user is not logged in.
     if (isUserLoading || !user || processing.current) {
       if (!isUserLoading && !user) {
@@ -231,5 +237,3 @@ export default function InstagramCallbackPage() {
     </div>
   );
 }
-
-    

@@ -73,6 +73,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             try {
                 // For Instagram media insights, we need the USER access token.
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
+                // CRITICAL FIX: Pass the correct userAccessToken to getInstagramMedia
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
                 media.forEach(post => {

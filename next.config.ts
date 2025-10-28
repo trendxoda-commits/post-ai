@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
         hostname: '**.cdninstagram.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.pexels.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

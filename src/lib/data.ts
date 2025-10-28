@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import {
@@ -85,7 +86,7 @@ async function syncPostsToFirestoreClient(
             permalink: post.permalink || post.permalink_url,
             likes: (platform === 'Instagram' ? post.like_count : post.likes?.summary.total_count) || 0,
             comments: (platform === 'Instagram' ? post.comments_count : post.comments?.summary.total_count) || 0,
-            views: (platform === 'Instagram' ? (post.plays || 0) : (post.insights?.post_video_views || 0)),
+            views: (platform === 'Instagram' ? (post.video_views || 0) : (post.insights?.post_video_views || 0)),
             timestamp: platform === 'Instagram' ? post.timestamp : post.created_time,
         };
         

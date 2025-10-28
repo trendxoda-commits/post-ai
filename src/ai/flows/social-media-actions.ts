@@ -71,16 +71,16 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             try {
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
                 
-                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (plays)
+                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (plays/video_views)
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 
                 postCount = media.length;
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
-                    // Correctly aggregate plays for videos
+                    // Correctly aggregate views/plays for videos
                     if (post.media_type === 'VIDEO') {
-                        totalViews += post.plays || 0;
+                        totalViews += post.video_views || 0;
                     }
                 });
             } catch (e) {
@@ -137,7 +137,7 @@ const InstagramMediaObjectSchema = z.object({
     timestamp: z.string(),
     like_count: z.number().optional(),
     comments_count: z.number().optional(),
-    plays: z.number().optional(), // Explicitly part of the schema for video plays
+    video_views: z.number().optional(), // Using video_views as the primary field for all video types
 });
 
 const GetInstagramMediaOutputSchema = z.object({
@@ -169,31 +169,38 @@ const getInstagramMediaFlow = ai.defineFlow(
     const data: any = await response.json();
     
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
-        let plays = 0;
+        let views = 0;
         
         if (item.media_type === 'VIDEO') {
             try {
                 // The insights call must also use the USER access token.
-                // CRITICAL FIX: The API call structure was incorrect. We need to query the media item itself
-                // with the `insights` field and the `plays` metric.
-                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
+                // CRITICAL FIX: Request both 'video_views' and 'plays' and use whichever is available.
+                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=video_views,plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 
                 if (insightsResponse.ok) {
                     const insightsData: any = await insightsResponse.json();
-                    // The data structure is nested: insights -> data -> values
-                    plays = insightsData.data?.find((insight: any) => insight.name === 'plays')?.values[0]?.value || 0;
+                    // Find video_views first, if not available, find plays.
+                    const videoViewsMetric = insightsData.data?.find((insight: any) => insight.name === 'video_views');
+                    const playsMetric = insightsData.data?.find((insight: any) => insight.name === 'plays');
+
+                    if (videoViewsMetric) {
+                        views = videoViewsMetric.values[0]?.value || 0;
+                    } else if (playsMetric) {
+                        views = playsMetric.values[0]?.value || 0;
+                    }
+
                 } else {
-                    console.warn(`Could not fetch plays for media ${item.id}:`, await insightsResponse.text());
+                    console.warn(`Could not fetch views/plays for media ${item.id}:`, await insightsResponse.text());
                 }
             } catch (e) {
-                console.warn(`Could not fetch plays for media ${item.id}:`, e);
+                console.warn(`Could not fetch views/plays for media ${item.id}:`, e);
             }
         }
 
         return {
             ...item,
-            plays: plays,
+            video_views: views, // Standardize on one field name
         };
     });
 
@@ -380,6 +387,7 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
 
 
 

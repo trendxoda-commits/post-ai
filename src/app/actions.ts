@@ -9,7 +9,7 @@ import {
   getInstagramAuthUrl,
   getInstagramAccessToken,
   exchangeForLongLivedToken,
-  getIgUserDetails,
+  getIgUserDetails as getIgUserDetailsFlow,
   type GetInstagramAuthUrlInput,
   type GetInstagramAccessTokenInput,
   type ExchangeForLongLivedTokenInput,
@@ -39,7 +39,6 @@ import {
   executeScheduledPosts as executeScheduledPostsFlow,
   type ExecuteScheduledPostsInput,
 } from '@/ai/flows/schedule-post-execution';
-import type { z } from 'zod';
 
 // --- Trending Hashtags ---
 export async function generateHashtags(
@@ -64,7 +63,7 @@ export async function getLongLivedToken(input: ExchangeForLongLivedTokenInput) {
 export async function getIgUserDetails(
   input: GetInstagramUserDetailsInput
 ): Promise<GetInstagramUserDetailsOutput> {
-  return getIgUserDetails(input);
+  return getIgUserDetailsFlow(input);
 }
 
 // --- Social Media Posting ---

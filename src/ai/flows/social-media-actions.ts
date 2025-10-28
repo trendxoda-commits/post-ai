@@ -98,7 +98,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                     totalComments += post.comments?.summary.total_count || 0;
                     // For Facebook, we use insights for video views.
                     const videoViews = post.insights?.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
-                    totalViews += videoViews; // CRITICAL FIX: This line was missing
+                    totalViews += videoViews;
                 });
             } catch (e) {
                 console.error(`Error fetching Facebook posts for analytics for ${accountId}:`, e);

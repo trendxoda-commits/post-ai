@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { postToFacebook, postToInstagram, executeScheduledPosts } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { PostCard, FeedPost } from '@/components/dashboard/post-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -194,24 +193,6 @@ export default function CreatePostPage() {
   };
 
 
-    // Create a mock post object for the preview
-  const previewPost: FeedPost = {
-    id: 'preview-post',
-    accountId: selectedAccountIds[0] || 'user',
-    accountDisplayName: accounts?.find(a => a.id === selectedAccountIds[0])?.displayName || 'Your Account',
-    accountAvatar: accounts?.find(a => a.id === selectedAccountIds[0])?.avatar || `https://picsum.photos/seed/avatar/40/40`,
-    accountPlatform: 'Instagram', // Default to IG for preview styling
-    content: content || 'Your caption will appear here...',
-    mediaUrl: mediaUrl,
-    mediaType: mediaType,
-    likes: 0,
-    comments: 0,
-    views: 0,
-    timestamp: new Date().toISOString(),
-    permalink: '#',
-  };
-
-
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -312,19 +293,6 @@ export default function CreatePostPage() {
               </div>
             </CardContent>
           </Card>
-          
-           {/* Live Preview */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Live Preview</CardTitle>
-                    <CardDescription>This is how your post will approximately look on Instagram.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="w-full max-w-sm mx-auto">
-                        <PostCard post={previewPost} isPreview={true} />
-                    </div>
-                </CardContent>
-            </Card>
         </div>
 
         <div className="lg:col-span-1 space-y-6">

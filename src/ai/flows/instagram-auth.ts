@@ -47,9 +47,13 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // Request only the most basic permission to ensure login works without advanced access.
     const scopes = [
         'pages_show_list',
+        'pages_read_engagement',
+        'pages_manage_posts',
+        'instagram_content_publish',
+        'instagram_manage_insights',
+        'business_management'
     ];
 
     const params = new URLSearchParams({

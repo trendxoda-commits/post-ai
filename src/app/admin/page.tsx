@@ -63,7 +63,7 @@ export default function AdminPage() {
           <AlertTriangle className="h-8 w-8 mb-2" />
           <p className="font-semibold">Failed to load user data</p>
           <p className="text-sm text-center max-w-md mt-1">{error}</p>
-           <p className="text-xs text-muted-foreground mt-4">Please ensure your Firebase Admin SDK credentials are correctly set in the `.env` file and are valid.</p>
+           <p className="text-xs text-muted-foreground mt-4 text-center">Please ensure your Firebase Admin SDK credentials are correctly set in the `.env` file as `FIREBASE_SERVICE_ACCOUNT_BASE64`. This should be the Base64-encoded string of your entire service account JSON file.</p>
         </div>
       );
     }

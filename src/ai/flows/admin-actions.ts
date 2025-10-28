@@ -36,39 +36,43 @@ export type UserWithAccounts = z.infer<typeof UserWithAccountsSchema>;
 const GetAllUsersOutputSchema = z.array(UserWithAccountsSchema);
 
 
-// Helper function to initialize Firebase Admin SDK within the flow.
-// It ensures that initialization happens only once.
+/**
+ * Initializes and returns the Firebase Admin App instance, ensuring it's a singleton.
+ * This function now uses a single Base64-encoded service account environment variable
+ * to avoid formatting issues with private keys in .env files.
+ *
+ * @returns {App} The initialized Firebase Admin App.
+ * @throws {Error} If the FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable is not set.
+ */
 function getAdminApp(): App {
   if (getApps().length > 0) {
     return getApps()[0];
   }
 
-  // Directly read from process.env, which is populated by `dotenv` at the start of dev.ts
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY,
-  };
+  const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-  // Validate that all required environment variables are set
-  if (
-    !serviceAccount.projectId ||
-    !serviceAccount.clientEmail ||
-    !serviceAccount.privateKey
-  ) {
+  if (!serviceAccountBase64) {
     throw new Error(
-      'Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.'
+      'Firebase Admin SDK credentials are not set. Please set the FIREBASE_SERVICE_ACCOUNT_BASE64 environment variable.'
     );
   }
 
-  return initializeApp({
-    // The private key needs to have its newlines properly formatted.
-    credential: cert({
-      projectId: serviceAccount.projectId,
-      clientEmail: serviceAccount.clientEmail,
-      privateKey: serviceAccount.privateKey.replace(/\\n/g, '\n'),
-    }),
-  });
+  try {
+    const serviceAccountJson = Buffer.from(
+      serviceAccountBase64,
+      'base64'
+    ).toString('utf8');
+    const serviceAccount = JSON.parse(serviceAccountJson);
+
+    return initializeApp({
+      credential: cert(serviceAccount),
+    });
+  } catch (error: any) {
+    console.error('Failed to parse or initialize Firebase Admin SDK credentials:', error);
+    throw new Error(
+      `Could not initialize Firebase Admin SDK. Ensure FIREBASE_SERVICE_ACCOUNT_BASE64 is a valid Base64-encoded service account JSON. Details: ${error.message}`
+    );
+  }
 }
 
 

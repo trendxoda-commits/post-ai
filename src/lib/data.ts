@@ -110,3 +110,5 @@ async function syncPostsToFirestoreClient(
     await batch.commit();
     console.log(`Synced ${posts.length} posts for account ${socialAccountId}.`);
 }
+
+    

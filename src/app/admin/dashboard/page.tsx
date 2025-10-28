@@ -1,4 +1,5 @@
 
+
 import {
   Table,
   TableBody,
@@ -9,8 +10,16 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Link2, Send, Activity } from 'lucide-react';
+import { Users, Link2, Send, Activity, MoreHorizontal } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 
 // Mock data for the dashboard
@@ -23,6 +32,8 @@ const mockUsers = [
     status: 'Active',
     lastLogin: '2 hours ago',
     avatar: 'https://picsum.photos/seed/1/40/40',
+    totalFollowers: 12500,
+    totalViews: 250000,
     accounts: [
       { id: 'acc-1-1', name: 'Harish\'s Insta', platform: 'Instagram' },
       { id: 'acc-1-2', name: 'Harish\'s Facebook', platform: 'Facebook' },
@@ -36,6 +47,8 @@ const mockUsers = [
     status: 'Active',
     lastLogin: '1 day ago',
     avatar: 'https://picsum.photos/seed/2/40/40',
+    totalFollowers: 7800,
+    totalViews: 120000,
      accounts: [
       { id: 'acc-2-1', name: 'Sunita\'s Travel Blog', platform: 'Instagram' },
     ]
@@ -48,6 +61,8 @@ const mockUsers = [
     status: 'Pending',
     lastLogin: '3 days ago',
     avatar: 'https://picsum.photos/seed/3/40/40',
+    totalFollowers: 1200,
+    totalViews: 15000,
      accounts: [
       { id: 'acc-3-1', name: 'Raj\'s Food Page', platform: 'Facebook' },
     ]
@@ -60,6 +75,8 @@ const mockUsers = [
     status: 'Active',
     lastLogin: '5 hours ago',
     avatar: 'https://picsum.photos/seed/4/40/40',
+    totalFollowers: 25000,
+    totalViews: 1200000,
     accounts: [
       { id: 'acc-4-1', name: 'Anjali\'s Art', platform: 'Instagram' },
       { id: 'acc-4-2', name: 'Anjali\'s Design Co.', platform: 'Facebook' },
@@ -73,6 +90,8 @@ const mockUsers = [
     status: 'Inactive',
     lastLogin: '1 week ago',
     avatar: 'https://picsum.photos/seed/5/40/40',
+    totalFollowers: 0,
+    totalViews: 0,
     accounts: []
   }
 ];
@@ -161,7 +180,12 @@ export default function AdminDashboardPage() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="text-right">Connected Accounts</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Total Followers</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Total Views</TableHead>
+                  <TableHead className="text-right">Accounts</TableHead>
+                   <TableHead className="w-[100px]">
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -187,11 +211,37 @@ export default function AdminDashboardPage() {
                         {user.status}
                       </Badge>
                     </TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-medium">
+                        {(user.totalFollowers || 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-right font-medium">
+                        {(user.totalViews || 0).toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right">
                        <p className="font-medium">{user.accounts.length}</p>
                        <p className="text-xs text-muted-foreground">
                           {user.accounts.map(a => a.platform.charAt(0)).join(', ') || 'None'}
                        </p>
+                    </TableCell>
+                     <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            aria-haspopup="true"
+                            size="icon"
+                            variant="ghost"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem>View User</DropdownMenuItem>
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem>Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -23,7 +23,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
-import { collectionGroup, query, getDocs, doc, setDoc, where } from 'firebase/firestore';
+import { collection, collectionGroup, query, getDocs, doc, setDoc, where } from 'firebase/firestore';
 import type { SocialAccount, User, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';

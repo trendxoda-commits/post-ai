@@ -47,10 +47,20 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
+    // These are the permissions the app needs.
+    // instagram_content_publish and pages_manage_posts require Advanced Access from Facebook App Review.
+    const scopes = [
+        'pages_show_list',
+        'pages_manage_posts',
+        'pages_read_engagement',
+        'instagram_content_publish',
+        'instagram_manage_insights',
+    ];
+
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: 'pages_show_list,instagram_basic',
+        scope: scopes.join(','),
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
     });
@@ -250,6 +260,10 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     
     const nestedAccounts = await Promise.all(accountPromises);
     const flattenedAccounts = nestedAccounts.flat();
+
+    if (flattenedAccounts.length === 0) {
+        throw new Error('No Facebook Page or Instagram Business Account linked. Please ensure you have linked an Instagram Business account to a Facebook Page in your Facebook Business settings.');
+    }
 
     return { accounts: flattenedAccounts };
 });

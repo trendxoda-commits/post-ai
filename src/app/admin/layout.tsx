@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -29,11 +30,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check session storage to persist login state across reloads
-    const loggedIn = sessionStorage.getItem('isAdminLoggedIn');
-    if (loggedIn === 'true') {
-      setIsAdmin(true);
-    }
+    // Automatically log in the admin for development convenience
+    login();
   }, []);
 
   const login = () => {

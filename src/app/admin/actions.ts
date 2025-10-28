@@ -9,20 +9,25 @@ import type { User, SocialAccount } from '@/lib/types';
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  // Correctly handle escaped newlines from environment variables.
   privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
 };
 
 function getAdminApp(): App {
+    // If there's already an initialized app, return it.
     if (getApps().length > 0) {
         return getApps()[0];
     }
 
+    // Validate that all necessary parts of the service account are present.
     if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+        // Initialize the app with the credentials.
         return initializeApp({
             credential: cert(serviceAccount),
         });
     }
 
+    // If credentials are not set, throw a specific error.
     throw new Error("Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.");
 }
 
@@ -74,7 +79,7 @@ export async function getAllUsersWithAccounts(): Promise<UserWithAccounts[]> {
     } catch (error: any) {
         console.error("Error fetching all users with accounts:", error.message);
         // This could be due to permissions or incorrect service account setup.
-        if (error.message.includes("SDK credentials")) {
+        if (error.message.includes("credentials")) {
              throw new Error("Could not fetch user data. Ensure server credentials are set up correctly in the .env file.");
         }
         throw new Error(error.message || "An unknown error occurred while fetching user data.");

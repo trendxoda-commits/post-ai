@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs, query, type User as FirestoreUser } from 'firebase/firestore';
+import { collection, getDocs, query, Timestamp } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -30,6 +30,13 @@ interface AppUser {
     createdAt: string;
 }
 
+// A more specific type for the data coming from Firestore
+interface FirestoreUserData {
+    email: string;
+    createdAt: Timestamp; // Expecting a Firestore Timestamp
+    // other fields might exist, but we only care about these
+}
+
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
     const [users, setUsers] = useState<AppUser[]>([]);
@@ -39,7 +46,11 @@ export default function AdminDashboardPage() {
 
 
     useEffect(() => {
-        if (!firestore) return; // Don't run if firestore is not available yet
+        if (!firestore) {
+            // Firestore is not ready yet, wait for it.
+            // The loading state is already true, so we just return.
+            return; 
+        }
 
         const fetchUsers = async () => {
             setIsLoading(true);
@@ -47,18 +58,21 @@ export default function AdminDashboardPage() {
                 const usersCollectionRef = collection(firestore, 'users');
                 const usersSnapshot = await getDocs(usersCollectionRef);
 
-                const allUsers: AppUser[] = [];
-                 for (const userDoc of usersSnapshot.docs) {
-                    const userData = userDoc.data() as FirestoreUser;
+                const allUsers: AppUser[] = usersSnapshot.docs.map(userDoc => {
+                    const userData = userDoc.data() as FirestoreUserData;
+                    
+                    // Safely handle the timestamp
+                    let formattedDate = 'Unknown';
+                    if (userData.createdAt && typeof userData.createdAt.toDate === 'function') {
+                       formattedDate = format(userData.createdAt.toDate(), "PPP");
+                    }
 
-                    // Fetch user details from a potential sub-collection or from the main doc itself
-                    // This is a simplified example. In a real app, user details might be structured differently.
-                    allUsers.push({
+                    return {
                         id: userDoc.id,
                         email: userData.email || 'No email provided',
-                        createdAt: userData.createdAt ? format(new Date(userData.createdAt), "PPP") : 'Unknown',
-                    });
-                }
+                        createdAt: formattedDate,
+                    };
+                });
                 setUsers(allUsers);
             } catch (error) {
                 console.error("Failed to fetch users:", error);
@@ -68,7 +82,7 @@ export default function AdminDashboardPage() {
         };
 
         fetchUsers();
-    }, [firestore]); // Re-run the effect when firestore instance is available
+    }, [firestore]); // This effect will re-run when firestore becomes available.
     
     const handleLogout = () => {
         logout();

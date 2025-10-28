@@ -55,7 +55,6 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let postCount = 0;
 
         // Step 1: Get followers count
-        // For both platforms, the page/business account ID and a Page Access Token can get follower count.
         const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${pageAccessToken}`;
         try {
             const followersResponse = await fetch(followersUrl);
@@ -72,35 +71,43 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         // Step 2: Get posts and aggregate stats from them
         if (platform === 'Instagram') {
             try {
-                // For Instagram media insights, we need the USER access token.
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
-                // CRITICAL FIX: Pass the correct userAccessToken to getInstagramMedia
+                // Pass the correct userAccessToken to get media and its insights (plays)
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 postCount = media.length;
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
-                    // For Instagram, 'plays' is the primary metric for video views.
                     if (post.media_type === 'VIDEO') {
-                        totalViews += post.plays || 0;
+                        totalViews += post.plays || 0; // Correctly aggregate plays for videos
                     }
                 });
             } catch (e) {
                 console.error(`Error fetching Instagram media for analytics for ${accountId}:`, e);
             }
         } else if (platform === 'Facebook') {
-            try {
-                // For Facebook posts, we need the PAGE access token.
+             try {
                 if (!pageAccessToken) throw new Error("Page access token is required for Facebook analytics.");
+
+                // Get total likes and comments from posts
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
                 postCount = posts.length;
                  posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
-                    // For Facebook, we use insights for video views.
-                    const videoViews = post.insights?.post_video_views || 0;
-                    totalViews += videoViews;
                 });
+                
+                // Get total video views directly from page insights - THE CORRECT WAY
+                const pageInsightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}/insights?metric=page_video_views&period=month&access_token=${pageAccessToken}`;
+                const insightsResponse = await fetch(pageInsightsUrl);
+                 if (insightsResponse.ok) {
+                    const insightsData: any = await insightsResponse.json();
+                    // The value is usually the latest one in the values array for the given period
+                    totalViews = insightsData.data?.[0]?.values?.slice(-1)[0]?.value || 0;
+                } else {
+                    console.error(`Failed to fetch page video views for ${accountId}:`, await insightsResponse.text());
+                }
+
             } catch (e) {
                 console.error(`Error fetching Facebook posts for analytics for ${accountId}:`, e);
             }
@@ -157,7 +164,6 @@ const getInstagramMediaFlow = ai.defineFlow(
   async ({ instagramUserId, accessToken }) => {
     // Request basic fields first. Insights will be fetched conditionally.
     const fields = 'id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count';
-    // CRITICAL: This call to get media REQUIRES the USER access token.
     const url = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media?fields=${fields}&access_token=${accessToken}`;
 
     const response = await fetch(url);
@@ -170,14 +176,12 @@ const getInstagramMediaFlow = ai.defineFlow(
 
     const data: any = await response.json();
     
-    // Process each media item to conditionally fetch insights (plays for videos).
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let plays = 0;
         
-        // Insights for plays are only available for VIDEO and require the USER access token.
         if (item.media_type === 'VIDEO') {
             try {
-                // CRITICAL FIX: The insights call must also use the USER access token (passed in as `accessToken` to this flow).
+                // The insights call must also use the USER access token.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {

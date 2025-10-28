@@ -15,7 +15,6 @@ import { useFirebase, useUser } from '@/firebase';
 import { Button } from '../ui/button';
 import { LogOut } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const AppLogo = () => (
   <svg
@@ -53,6 +52,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Allow access to public pages without login
   if (pathname === '/login') {
+      if (isUserLoading) {
+        return (
+            <div className="flex h-screen w-screen items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
+                    <AppLogo />
+                </div>
+                <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
+      }
+      if (user) {
+        redirect('/dashboard');
+      }
       return (
       <main className="min-h-screen">
           <div className="flex flex-col items-center justify-center pt-16">
@@ -81,10 +95,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   
   if (!user) {
     redirect('/login');
-  }
-
-  if (user && pathname === '/login') {
-    redirect('/dashboard');
   }
   
   const handleLogout = () => {

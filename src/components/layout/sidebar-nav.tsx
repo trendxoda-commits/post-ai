@@ -2,12 +2,14 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BarChart2, Settings, PlusSquare, Inbox } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, PlusSquare, Inbox, ShieldCheck } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
+import { useUser } from '@/firebase';
+
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -17,8 +19,15 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
+const adminNavItem = {
+    href: '/admin', label: 'Admin', icon: ShieldCheck
+}
+
 export function SidebarNav() {
   const pathname = usePathname();
+  const { user } = useUser();
+  
+  const isAdmin = user?.email === 'mohitmleena2@gmail.com';
 
   return (
     <SidebarMenu>
@@ -37,6 +46,21 @@ export function SidebarNav() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
+      {isAdmin && (
+        <SidebarMenuItem>
+            <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith(adminNavItem.href)}
+                tooltip={adminNavItem.label}
+                className="justify-start"
+            >
+                <Link href={adminNavItem.href}>
+                    <adminNavItem.icon className="h-4 w-4" />
+                    <span>{adminNavItem.label}</span>
+                </Link>
+            </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>
   );
 }

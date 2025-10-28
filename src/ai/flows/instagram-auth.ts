@@ -239,7 +239,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
             // To get the Instagram account's username and picture, we need to make another API call.
-            // We use the USER's access token for this, as it has the necessary permissions.
+            // We use the USER's long-lived access token for this, as it has the necessary permissions.
             const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
             
             try {

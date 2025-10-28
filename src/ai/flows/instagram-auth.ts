@@ -50,10 +50,6 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     // Request only the most basic permission to ensure login works without advanced access.
     const scopes = [
         'pages_show_list',
-        'pages_read_engagement',
-        'instagram_content_publish',
-        'pages_manage_posts',
-        'instagram_manage_insights',
     ];
 
     const params = new URLSearchParams({

@@ -221,11 +221,13 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
     
     for (const page of pagesData.data) {
-        let igAccountProcessed = false;
+        // Logic: If a page has a linked IG business account, we prioritize the IG account.
+        // If not, we add the FB Page itself. This prevents showing both when the FB page is just a container for IG.
         
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
+            // Use the main user access token to get details for the IG account.
             const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
             
             try {
@@ -235,22 +237,38 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
                     allFoundAccounts.push({
                         username: igData.username,
                         instagramId: instagramBusinessAccountId,
-                        facebookPageId: page.id,
-                        pageAccessToken: page.access_token,
+                        facebookPageId: page.id, // Keep FB page ID for context
+                        pageAccessToken: page.access_token, // Crucially, use the PAGE access token
                         avatar: igData.profile_picture_url,
                         platform: 'Instagram' as const,
                     });
-                    igAccountProcessed = true; 
                 } else {
                     const igError: any = await igResponse.json();
-                    console.warn(`Could not fetch details for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}`);
+                    console.warn(`Could not fetch details for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}. The associated Facebook Page '${page.name}' will be added instead.`);
+                    // Fallback to adding the Facebook page if IG details fail
+                    allFoundAccounts.push({
+                        username: page.name,
+                        facebookPageId: page.id,
+                        facebookPageName: page.name,
+                        pageAccessToken: page.access_token,
+                        avatar: page.picture?.data?.url,
+                        platform: 'Facebook' as const,
+                    });
                 }
             } catch (e) {
                 console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
+                 // Fallback to adding the Facebook page on error
+                 allFoundAccounts.push({
+                    username: page.name,
+                    facebookPageId: page.id,
+                    facebookPageName: page.name,
+                    pageAccessToken: page.access_token,
+                    avatar: page.picture?.data?.url,
+                    platform: 'Facebook' as const,
+                });
             }
-        }
-        
-        if (!igAccountProcessed) {
+        } else {
+            // If there's no linked Instagram account, add the Facebook page.
             allFoundAccounts.push({
                 username: page.name,
                 facebookPageId: page.id,
@@ -263,7 +281,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     }
     
     if (allFoundAccounts.length === 0) {
-        throw new Error('No Facebook Page or Instagram Business Account could be processed. Please ensure you have granted the correct permissions and have at least one eligible account.');
+        throw new Error('No compatible Facebook Page or Instagram Business Account could be found. Please ensure you have granted the correct permissions and have at least one eligible account.');
     }
 
     return { accounts: allFoundAccounts };

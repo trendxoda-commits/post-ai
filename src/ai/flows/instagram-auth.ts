@@ -50,7 +50,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: 'instagram_basic,pages_show_list',
+        scope: 'pages_show_list',
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
     });

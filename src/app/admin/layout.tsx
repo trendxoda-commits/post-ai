@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 const navLinks = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: Home },
   { href: '/admin/create-post', label: 'Create Post', icon: PlusSquare },
-  { href: '#', label: 'Users', icon: Users },
+  { href: '/admin/accounts', label: 'Accounts', icon: Users },
   { href: '#', label: 'Analytics', icon: LineChart },
   { href: '#', label: 'Settings', icon: Settings },
 ];

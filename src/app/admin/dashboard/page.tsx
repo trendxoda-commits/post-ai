@@ -14,9 +14,6 @@ import { Loader2 } from 'lucide-react';
 interface DashboardStats {
   totalUsers: number;
   totalAccounts: number;
-  totalPosts: number;
-  totalLikes: number;
-  totalComments: number;
   apiStatus: string;
 }
 
@@ -49,8 +46,6 @@ export default function AdminDashboardPage() {
                 }
 
                 // Fetch recent users
-                // Note: Firestore client-side SDK doesn't support orderBy on a different field than a where clause without an index.
-                // For this admin dashboard, we'll fetch all and sort client-side. A production app would have an index.
                 const fetchedUsers: RecentUser[] = [];
                 for (const doc of usersSnapshot.docs) {
                     const userData = doc.data();
@@ -74,7 +69,7 @@ export default function AdminDashboardPage() {
                     });
                 }
                 
-                // Sort users by date client-side (assuming createdAt is a valid date string or timestamp)
+                // Sort users by date client-side
                  fetchedUsers.sort((a, b) => {
                     try {
                         const dateA = new Date(a.createdAt).getTime();
@@ -90,9 +85,6 @@ export default function AdminDashboardPage() {
                 setStats({
                     totalUsers,
                     totalAccounts,
-                    totalPosts: 150, // Placeholder
-                    totalLikes: 12050, // Placeholder
-                    totalComments: 2300, // Placeholder
                     apiStatus: "Healthy"
                 });
                 setRecentUsers(fetchedUsers.slice(0, 5));
@@ -102,9 +94,6 @@ export default function AdminDashboardPage() {
                 setStats({
                     totalUsers: 0,
                     totalAccounts: 0,
-                    totalPosts: 0,
-                    totalLikes: 0,
-                    totalComments: 0,
                     apiStatus: "Error"
                 });
             } finally {
@@ -121,7 +110,7 @@ export default function AdminDashboardPage() {
             
             {isLoading ? (
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {[...Array(6)].map((_, i) => (
+                    {[...Array(3)].map((_, i) => (
                         <Card key={i}><CardHeader><div className="h-4 bg-muted rounded w-2/4" /></CardHeader><CardContent><div className="h-7 bg-muted rounded w-1/3 mb-2" /><div className="h-3 bg-muted rounded w-3/4" /></CardContent></Card>
                     ))}
                  </div>
@@ -145,36 +134,6 @@ export default function AdminDashboardPage() {
                         <CardContent>
                             <div className="text-2xl font-bold">{stats.totalAccounts.toLocaleString()}</div>
                             <p className="text-xs text-muted-foreground">Across all users</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-                            <Newspaper className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalPosts.toLocaleString()}</div>
-                            <p className="text-xs text-muted-foreground">(Demo) Scheduled & published</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
-                            <Heart className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalLikes.toLocaleString()}</div>
-                            <p className="text-xs text-muted-foreground">(Demo) Across all posts</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
-                            <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.totalComments.toLocaleString()}</div>
-                            <p className="text-xs text-muted-foreground">(Demo) Across all posts</p>
                         </CardContent>
                     </Card>
                     <Card>

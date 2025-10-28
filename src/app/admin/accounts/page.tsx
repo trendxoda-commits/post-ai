@@ -23,7 +23,6 @@ import { Search } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-import type { User as FirebaseUser } from 'firebase/auth';
 
 interface FullAccount {
     id: string;
@@ -58,26 +57,23 @@ export default function AdminAccountsPage() {
                     const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
                     const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
                     
-                    if (socialAccountsSnapshot.empty) {
-                        // If a user has no social accounts, we might still want to represent them.
-                        // For this table, we only care about accounts, so we'll skip them.
-                    } else {
+                    if (!socialAccountsSnapshot.empty) {
                         for (const accountDoc of socialAccountsSnapshot.docs) {
                             const accountData = accountDoc.data();
-                            // Using real data if available, otherwise 0
+                            // Using real data for display, with fallbacks. Follower count is not fetched to avoid API limits.
                             allAccounts.push({
                                 id: accountDoc.id,
                                 displayName: accountData.displayName || 'Unknown Account',
                                 platform: accountData.platform || 'Facebook',
-                                followers: accountData.followers || 0,
-                                status: 'Active', // Placeholder
+                                followers: 0, // Set to 0 as we are not fetching this for all accounts.
+                                status: 'Active', // Default status
                                 user: user
                             });
                         }
                     }
                 }
-                 // Sort by followers descending as a default
-                allAccounts.sort((a, b) => b.followers - a.followers);
+                 // Sort by name as a default
+                allAccounts.sort((a, b) => a.displayName.localeCompare(b.displayName));
                 setAccounts(allAccounts);
                 setFilteredAccounts(allAccounts);
 
@@ -163,7 +159,7 @@ export default function AdminAccountsPage() {
                                     <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-mono">
-                                    {(account.followers || 0).toLocaleString()}
+                                    {account.followers.toLocaleString()}
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={account.status === 'Active' ? 'secondary' : 'outline'}>

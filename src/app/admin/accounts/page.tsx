@@ -21,15 +21,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import type { SocialAccount, User } from '@/lib/types';
 
-interface FullAccount {
-    id: string;
-    displayName: string;
-    platform: 'Facebook' | 'Instagram';
-    followers: number;
-    status: 'Active' | 'Inactive';
+
+interface FullAccountDetails extends SocialAccount {
     user: {
         id: string;
         email: string;
@@ -39,8 +36,8 @@ interface FullAccount {
 
 export default function AdminAccountsPage() {
     const { firestore } = useFirebase();
-    const [accounts, setAccounts] = useState<FullAccount[]>([]);
-    const [filteredAccounts, setFilteredAccounts] = useState<FullAccount[]>([]);
+    const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
+    const [filteredAccounts, setFilteredAccounts] = useState<FullAccountDetails[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
@@ -49,7 +46,7 @@ export default function AdminAccountsPage() {
         
         const fetchAllAccounts = async () => {
             setIsLoading(true);
-            const allAccounts: FullAccount[] = [];
+            const allAccounts: FullAccountDetails[] = [];
             try {
                 const usersSnapshot = await getDocs(collection(firestore, 'users'));
                 
@@ -57,22 +54,16 @@ export default function AdminAccountsPage() {
                     const user = { id: userDoc.id, email: userDoc.data().email || 'N/A' };
                     const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
                     
-                    if (!socialAccountsSnapshot.empty) {
-                        for (const accountDoc of socialAccountsSnapshot.docs) {
-                            const accountData = accountDoc.data();
-                            // Using real data for display, with fallbacks. Follower count is not fetched to avoid API limits.
-                            allAccounts.push({
-                                id: accountDoc.id,
-                                displayName: accountData.displayName || 'Unknown Account',
-                                platform: accountData.platform || 'Facebook',
-                                followers: 0, // Set to 0 as we are not fetching this for all accounts.
-                                status: 'Active', // Default status
-                                user: user
-                            });
-                        }
-                    }
+                    socialAccountsSnapshot.forEach(accountDoc => {
+                        const accountData = accountDoc.data() as SocialAccount;
+                        allAccounts.push({
+                            ...accountData,
+                            id: accountDoc.id,
+                            user: user,
+                        });
+                    });
                 }
-                 // Sort by name as a default
+                
                 allAccounts.sort((a, b) => a.displayName.localeCompare(b.displayName));
                 setAccounts(allAccounts);
                 setFilteredAccounts(allAccounts);
@@ -93,8 +84,8 @@ export default function AdminAccountsPage() {
     useEffect(() => {
         const lowercasedFilter = searchTerm.toLowerCase();
         const filteredData = accounts.filter(item =>
-            (item.displayName && item.displayName.toLowerCase().includes(lowercasedFilter)) ||
-            (item.user.email && item.user.email.toLowerCase().includes(lowercasedFilter))
+            item.displayName.toLowerCase().includes(lowercasedFilter) ||
+            item.user.email.toLowerCase().includes(lowercasedFilter)
         );
         setFilteredAccounts(filteredData);
     }, [searchTerm, accounts]);
@@ -113,7 +104,7 @@ export default function AdminAccountsPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <CardTitle>All Connected Accounts</CardTitle>
-                    <CardDescription>Search and manage all connected accounts.</CardDescription>
+                    <CardDescription>Search and manage all connected accounts from the database.</CardDescription>
                 </div>
                  <div className="relative w-full max-w-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -138,9 +129,8 @@ export default function AdminAccountsPage() {
                     <TableHeader>
                         <TableRow>
                         <TableHead>Account</TableHead>
+                        <TableHead>User</TableHead>
                         <TableHead>Platform</TableHead>
-                        <TableHead className="text-right">Followers</TableHead>
-                        <TableHead>Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -148,30 +138,21 @@ export default function AdminAccountsPage() {
                             filteredAccounts.map((account) => (
                                 <TableRow key={account.id}>
                                 <TableCell>
-                                    <div className="grid gap-0.5">
-                                        <p className="font-medium">{account.displayName}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {account.user.email}
-                                        </p>
-                                    </div>
+                                    <div className="font-medium">{account.displayName}</div>
+                                    <div className="text-xs text-muted-foreground">{account.accountId}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="text-sm">{account.user.email}</div>
                                 </TableCell>
                                 <TableCell>
                                     <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right font-mono">
-                                    {account.followers.toLocaleString()}
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={account.status === 'Active' ? 'secondary' : 'outline'}>
-                                        {account.status}
-                                    </Badge>
                                 </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                No accounts found.
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                No accounts found in the database.
                                 </TableCell>
                             </TableRow>
                         )}

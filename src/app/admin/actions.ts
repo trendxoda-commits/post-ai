@@ -1,3 +1,4 @@
+
 'use server';
 
 import { initializeApp, getApps, App, cert } from 'firebase-admin/app';
@@ -17,24 +18,24 @@ function getAdminApp(): App {
   if (getApps().length > 0) {
     return getApps()[0];
   }
-
-  // Securely get credentials from environment variables
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'), // Important for Vercel/similar envs
-  };
+  
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const projectId = process.env.FIREBASE_PROJECT_ID;
 
   // Validate that all required environment variables are set
-  if (
-    !serviceAccount.projectId ||
-    !serviceAccount.clientEmail ||
-    !serviceAccount.privateKey
-  ) {
+  if (!privateKey || !clientEmail || !projectId) {
     throw new Error(
-      'Firebase Admin SDK credentials are not fully set in .env. Admin features will not work.'
+      'Firebase Admin SDK credentials (FIREBASE_PRIVATE_KEY, FIREBASE_CLIENT_EMAIL, FIREBASE_PROJECT_ID) are not fully set in .env. Admin features will not work.'
     );
   }
+
+  // The private key needs to have its newlines properly formatted.
+  const serviceAccount = {
+    projectId: projectId,
+    clientEmail: clientEmail,
+    privateKey: privateKey.replace(/\\n/g, '\n'),
+  };
 
   return initializeApp({
     credential: cert(serviceAccount),

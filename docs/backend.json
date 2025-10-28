@@ -101,6 +101,31 @@
         "pageAccessToken": {
           "type": "string",
           "description": "The Page Access Token for API calls, encrypted."
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the account's profile picture."
+        },
+        "followers": {
+          "type": "number",
+          "description": "The number of followers the account has."
+        },
+        "totalLikes": {
+          "type": "number",
+          "description": "Aggregated number of likes on recent posts."
+        },
+        "totalComments": {
+          "type": "number",
+          "description": "Aggregated number of comments on recent posts."
+        },
+        "totalViews": {
+          "type": "number",
+          "description": "Aggregated number of views on recent video posts."
+        },
+        "postCount": {
+          "type": "number",
+          "description": "The number of recent posts analyzed."
         }
       },
       "required": [

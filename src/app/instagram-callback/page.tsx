@@ -7,6 +7,7 @@ import {
   getAccessToken,
   getLongLivedToken,
   getIgUserDetails,
+  getAccountAnalytics,
 } from '@/app/actions';
 import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -123,7 +124,7 @@ export default function InstagramCallbackPage() {
             return;
         }
 
-        // 6. Save the new accounts to Firestore, checking for duplicates.
+        // 6. Save the new accounts to Firestore, checking for duplicates and fetching initial analytics.
         const socialAccountsRef = collection(firestore, 'users', user.uid, 'socialAccounts');
         let newAccountsCount = 0;
         
@@ -131,30 +132,38 @@ export default function InstagramCallbackPage() {
             const platformSpecificId = account.accountId;
             if (!platformSpecificId) continue;
             
+            // Fetch initial analytics for the account
+            const analytics = await getAccountAnalytics({
+                accountId: account.accountId,
+                platform: account.platform,
+                pageAccessToken: account.pageAccessToken!,
+                userAccessToken: longLivedToken,
+            });
+
+            const accountData = {
+                userId: user.uid,
+                platform: account.platform,
+                displayName: account.displayName,
+                accountId: account.accountId,
+                pageAccessToken: account.pageAccessToken,
+                avatar: account.avatar || `https://picsum.photos/seed/${account.accountId}/40/40`,
+                ...analytics, // Spread the fetched analytics data
+            };
+            
             const q = query(socialAccountsRef, where('accountId', '==', platformSpecificId), where('platform', '==', account.platform));
             const existingAccountSnapshot = await getDocs(q);
 
             if (existingAccountSnapshot.empty) {
                 const newAccountDocRef = doc(socialAccountsRef);
-                // Save the new account with all details, including the pageAccessToken
                 await setDoc(newAccountDocRef, {
+                    ...accountData,
                     id: newAccountDocRef.id,
-                    userId: user.uid,
-                    platform: account.platform,
-                    displayName: account.displayName,
-                    accountId: account.accountId,
-                    pageAccessToken: account.pageAccessToken, // Crucial for future API calls
-                    avatar: account.avatar || `https://picsum.photos/seed/${account.accountId}/40/40`,
                 });
                 newAccountsCount++;
             } else {
-                // IMPORTANT: Update the existing account's details, especially the pageAccessToken, which might have been refreshed.
+                // IMPORTANT: Update the existing account's details, especially the pageAccessToken and analytics.
                 const existingDoc = existingAccountSnapshot.docs[0];
-                await setDoc(existingDoc.ref, { 
-                    displayName: account.displayName,
-                    pageAccessToken: account.pageAccessToken, 
-                    avatar: account.avatar || existingDoc.data().avatar,
-                }, { merge: true });
+                await setDoc(existingDoc.ref, accountData, { merge: true });
             }
         }
 

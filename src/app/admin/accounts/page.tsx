@@ -28,6 +28,7 @@ interface FullAccountDetails {
   id: string;
   displayName: string;
   platform: 'Instagram' | 'Facebook';
+  followers?: number;
   user: {
     id: string;
     email: string;
@@ -100,6 +101,7 @@ export default function AdminAccountsPage() {
                     <TableHead>Account</TableHead>
                     <TableHead>Platform</TableHead>
                     <TableHead>User</TableHead>
+                    <TableHead className="text-right">Followers</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -117,11 +119,14 @@ export default function AdminAccountsPage() {
                         <TableCell>
                           <div className="text-sm text-muted-foreground">{account.user.email}</div>
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="font-semibold">{(account.followers || 0).toLocaleString()}</div>
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={3} className="h-24 text-center">
+                      <TableCell colSpan={4} className="h-24 text-center">
                         {query ? `No accounts found for "${query}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>

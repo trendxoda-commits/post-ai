@@ -32,6 +32,7 @@ const FullAccountDetailsSchema = z.object({
   id: z.string(),
   displayName: z.string(),
   platform: z.enum(['Instagram', 'Facebook']),
+  followers: z.number().optional(),
   user: z.object({
     id: z.string(),
     email: z.string(),
@@ -71,6 +72,7 @@ const getAdminAllAccountsFlow = ai.defineFlow(
           id: accountDoc.id,
           displayName: account.displayName,
           platform: account.platform,
+          followers: account.followers,
           user: user,
         });
       });

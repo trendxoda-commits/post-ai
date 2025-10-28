@@ -11,7 +11,12 @@ export type SocialAccount = {
   accountId: string;
   displayName: string;
   avatar?: string;
-  pageAccessToken?: string; 
+  pageAccessToken?: string;
+  followers?: number;
+  totalLikes?: number;
+  totalComments?: number;
+  totalViews?: number;
+  postCount?: number;
 };
 
 export type ApiCredential = {

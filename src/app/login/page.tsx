@@ -26,9 +26,9 @@ export default function LoginPage() {
   const { auth } = useFirebase();
   const { toast } = useToast();
 
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginEmail, setLoginEmail] = useState('mohitmleena2@gmail.com');
   const [loginPassword, setLoginPassword] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
+  const [signupEmail, setSignupEmail] = useState('mohitmleena2@gmail.com');
   const [signupPassword, setSignupPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 

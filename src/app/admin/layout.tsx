@@ -51,6 +51,7 @@ const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/accounts', label: 'Accounts', icon: Users },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
+    { href: '/admin/create-post', label: 'Create Post', icon: PlusSquare },
   ];
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {

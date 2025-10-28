@@ -1,0 +1,290 @@
+
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Loader2,
+  Link as LinkIcon,
+  ChevronDown,
+} from 'lucide-react';
+import { useFirebase } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import type { SocialAccount, User } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { postToFacebook, postToInstagram } from '@/app/actions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
+
+
+// This interface will hold the merged account and user data
+interface FullAccountDetails extends SocialAccount {
+  user: {
+    id: string;
+    email?: string;
+  };
+}
+
+export default function AdminCreatePostPage() {
+  const [content, setContent] = useState('');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [isPosting, setIsPosting] = useState(false);
+  const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
+  const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
+
+  const { toast } = useToast();
+  const { firestore } = useFirebase();
+
+  useEffect(() => {
+    if (!firestore) return;
+
+    const fetchAllAccounts = async () => {
+      setIsLoadingAccounts(true);
+      try {
+        const usersSnapshot = await getDocs(collection(firestore, 'users'));
+        const userMap = new Map<string, string | undefined>();
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data() as User;
+            userMap.set(doc.id, userData.email);
+        });
+
+        const accountsQuery = collectionGroup(firestore, 'socialAccounts');
+        const accountsSnapshot = await getDocs(accountsQuery);
+        
+        const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
+          const accountData = accountDoc.data() as SocialAccount;
+          const userId = accountDoc.ref.parent.parent!.id;
+
+          return {
+            ...accountData,
+            id: accountDoc.id,
+            user: {
+              id: userId,
+              email: userMap.get(userId),
+            },
+          };
+        });
+        
+        setAllAccounts(fetchedAccounts);
+      } catch (error) {
+        console.error("Failed to fetch accounts:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Fetching Accounts',
+            description: 'Could not load social accounts from the database.'
+        })
+      } finally {
+        setIsLoadingAccounts(false);
+      }
+    };
+    
+    fetchAllAccounts();
+  }, [firestore, toast]);
+
+
+  // Auto-detect media type from URL
+  useEffect(() => {
+    if (mediaUrl.match(/\.(mp4|mov|avi)$/i)) {
+      setMediaType('VIDEO');
+    } else {
+      setMediaType('IMAGE');
+    }
+  }, [mediaUrl]);
+
+
+  const resetForm = () => {
+    setContent('');
+    setMediaUrl('');
+    setMediaType('IMAGE');
+    setSelectedAccountIds([]);
+  };
+
+  const handlePostNow = async () => {
+    if (selectedAccountIds.length === 0 || !mediaUrl) {
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Please select at least one account and provide a media URL to post.",
+      });
+      return;
+    }
+
+    setIsPosting(true);
+    let successfulPostsCount = 0;
+
+    for (const accountId of selectedAccountIds) {
+      const selectedAccount = allAccounts.find(acc => acc.id === accountId);
+      if (!selectedAccount || !selectedAccount.pageAccessToken) {
+        toast({ variant: "destructive", title: `Error with ${selectedAccount?.displayName}`, description: "Account is invalid or missing permissions." });
+        continue;
+      }
+
+      try {
+        if (selectedAccount.platform === 'Facebook') {
+          await postToFacebook({
+            facebookPageId: selectedAccount.accountId,
+            mediaUrl,
+            caption: content,
+            pageAccessToken: selectedAccount.pageAccessToken,
+            mediaType,
+          });
+        } else { // Instagram
+          await postToInstagram({
+            instagramUserId: selectedAccount.accountId,
+            mediaUrl,
+            caption: content,
+            pageAccessToken: selectedAccount.pageAccessToken,
+            mediaType,
+          });
+        }
+        successfulPostsCount++;
+      } catch (error: any) {
+        console.error(`Error posting to ${selectedAccount.displayName}:`, error);
+        toast({
+          variant: "destructive",
+          title: `Error Posting to ${selectedAccount.displayName}`,
+          description: error.message || 'There was an issue posting your content. Please try again.',
+        });
+      }
+    }
+
+    setIsPosting(false);
+
+    if (successfulPostsCount > 0) {
+        toast({
+            title: 'Post Successful!',
+            description: `${successfulPostsCount} post(s) have been published.`,
+        });
+    }
+
+    if (successfulPostsCount === selectedAccountIds.length) { // Only reset if all were successful
+      resetForm();
+    }
+  };
+
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold font-headline">Create Post (Admin)</h1>
+        <p className="text-muted-foreground max-w-2xl">
+          Publish content to any connected account across the entire platform.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Step 1: Select Accounts */}
+          <Card>
+            <CardHeader>
+              <CardTitle>1. Select Accounts</CardTitle>
+              <CardDescription>Choose which social media accounts you want to post to from all users.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between" disabled={isLoadingAccounts}>
+                    <span>
+                      {isLoadingAccounts ? 'Loading accounts...' :
+                       selectedAccountIds.length > 0
+                        ? `${selectedAccountIds.length} account(s) selected`
+                        : 'Select accounts to post to'}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                  <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                   {allAccounts.length > 0 ? (
+                    <>
+                    <DropdownMenuCheckboxItem
+                        checked={selectedAccountIds.length === allAccounts.length}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) => {
+                            setSelectedAccountIds(checked ? allAccounts.map(a => a.id) : []);
+                        }}
+                    >
+                        Select All
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuSeparator />
+                    {allAccounts.map(account => (
+                        <DropdownMenuCheckboxItem
+                        key={account.id}
+                        checked={selectedAccountIds.includes(account.id)}
+                        onSelect={(e) => e.preventDefault()}
+                        onCheckedChange={(checked) => {
+                            setSelectedAccountIds(prev =>
+                            checked
+                                ? [...prev, account.id]
+                                : prev.filter(id => id !== account.id)
+                            );
+                        }}
+                        >
+                        <Avatar className="h-6 w-6 mr-2">
+                            <AvatarImage src={account.avatar} alt={account.displayName} />
+                            <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                            <span className="font-semibold">{account.displayName}</span>
+                            <span className="text-xs text-muted-foreground">{account.user.email}</span>
+                        </div>
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                    </>
+                  ) : (
+                    <div className="p-2 text-sm text-center text-muted-foreground">
+                      No accounts connected by any user.
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardContent>
+          </Card>
+
+          {/* Step 2: Craft Post */}
+          <Card>
+            <CardHeader>
+              <CardTitle>2. Craft Your Post</CardTitle>
+              <CardDescription>Write your content and add a link to your media.</CardDescription>
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <Textarea
+                id="content"
+                placeholder="What's on your mind?"
+                className="min-h-[150px]"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+              />
+              <div className="relative">
+                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input id="media-url" placeholder="Add a public media URL (e.g., .../image.jpg or .../video.mp4)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1 space-y-6">
+          {/* Step 3: Publish */}
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Publish</CardTitle>
+              <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+

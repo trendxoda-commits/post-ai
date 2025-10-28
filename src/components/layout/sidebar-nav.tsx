@@ -17,6 +17,7 @@ const navItems = [
   { href: '/inbox', label: 'Inbox', icon: Inbox },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/dashboard', label: 'Admin', icon: ShieldCheck },
 ];
 
 export function SidebarNav() {

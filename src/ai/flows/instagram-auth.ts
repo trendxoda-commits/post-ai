@@ -47,14 +47,9 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
+    // Using only the most basic, required scope to avoid "Invalid Scopes" error without App Review.
     const scopes = [
         'pages_show_list',
-        'instagram_content_publish',
-        'pages_manage_posts',
-        'instagram_manage_comments',
-        'pages_read_engagement',
-        'instagram_manage_insights',
-        'business_management'
     ];
 
     const params = new URLSearchParams({
@@ -203,6 +198,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     outputSchema: GetInstagramUserDetailsOutputSchema,
 }, async ({ accessToken }) => {
     
+    // Get all pages the user has access to, including their page access tokens and any linked IG accounts
     const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token&access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
 
@@ -219,8 +215,10 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     
     const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
     
+    // Iterate through each page returned by Facebook
     for (const page of pagesData.data) {
-        // Each page is a potential Facebook account to be added.
+        // Each page is a potential Facebook account that can be added.
+        // It has its own name, ID, and a crucial page-specific access token.
         allFoundAccounts.push({
             username: page.name,
             facebookPageId: page.id,
@@ -229,37 +227,42 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
             platform: 'Facebook' as const,
         });
 
-        // If a page has a linked IG account, create a separate record for it.
+        // Now, check if this specific page has a linked Instagram Business Account.
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             
-            // Use the PAGE access token for IG queries, as it's often required.
+            // To get the Instagram account's username, we need to make another API call.
+            // We use the PAGE's access token for this, as it has the necessary permissions.
             const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${page.access_token}`;
             
             try {
                 const igResponse = await fetch(igUrl);
                 if (igResponse.ok) {
                     const igData: any = await igResponse.json();
+                    // If successful, create a separate account record for Instagram.
                     allFoundAccounts.push({
                         username: igData.username,
                         instagramId: instagramBusinessAccountId,
-                        facebookPageId: page.id, // Keep track of the parent page
+                        facebookPageId: page.id, // Keep a reference to the parent Facebook page
                         pageAccessToken: page.access_token, // The page token is needed for IG posting too
                         platform: 'Instagram' as const,
                     });
                 } else {
                     const igError: any = await igResponse.json();
-                    console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. It might be a permission issue. Error: ${igError.error?.message}`);
+                    // This can happen if permissions are partial. Log it but don't crash.
+                    console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}`);
                 }
             } catch (e) {
+                // Catch any network errors during the fetch for a single IG account.
                 console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
             }
         }
     }
     
     if (allFoundAccounts.length === 0) {
-        // This can happen if the user granted permissions but has no eligible pages/accounts.
-        throw new Error('No Facebook Page or Instagram Business Account could be processed. Please ensure you have granted the correct permissions.');
+        // This case can happen if the user grants permissions but has no eligible pages or accounts linked.
+        // It's not an error, but we should inform the user.
+        throw new Error('No Facebook Page or Instagram Business Account could be processed. Please ensure you have granted the correct permissions and have at least one eligible account.');
     }
 
     return { accounts: allFoundAccounts };

@@ -7,7 +7,6 @@ import {
   Home,
   LineChart,
   Package2,
-  Settings,
   Users,
   PlusSquare,
   Menu,
@@ -33,7 +32,6 @@ const navLinks = [
   { href: '/admin/create-post', label: 'Create Post', icon: PlusSquare },
   { href: '/admin/accounts', label: 'Accounts', icon: Users },
   { href: '/admin/analytics', label: 'Analytics', icon: LineChart },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 function NavLink({ href, label, icon: Icon, isActive }: { href: string, label: string, icon: React.ElementType, isActive: boolean }) {

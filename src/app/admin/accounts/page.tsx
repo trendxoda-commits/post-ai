@@ -22,8 +22,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
-import { useFirebase, useCollection } from '@/firebase';
-import { collectionGroup, query, getDocs, doc, getDoc, collection, setDoc, where } from 'firebase/firestore';
+import { useFirebase } from '@/firebase';
+import { collectionGroup, query, getDocs, doc, setDoc, where } from 'firebase/firestore';
 import type { SocialAccount, User, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
@@ -99,18 +99,18 @@ export default function AdminAccountsPage() {
   }, [firestore]);
 
 
-  const query = searchParams.get('query')?.toLowerCase() || '';
+  const searchQuery = searchParams.get('query')?.toLowerCase() || '';
 
   const filteredAccounts = useMemo(() => {
-    if (!query) {
+    if (!searchQuery) {
       return accounts;
     }
     return accounts.filter(
       (account) =>
-        account.displayName.toLowerCase().includes(query) ||
-        (account.user.email && account.user.email.toLowerCase().includes(query))
+        account.displayName.toLowerCase().includes(searchQuery) ||
+        (account.user.email && account.user.email.toLowerCase().includes(searchQuery))
     );
-  }, [accounts, query]);
+  }, [accounts, searchQuery]);
 
 
    const handleRefreshAnalytics = async (account: FullAccountDetails) => {
@@ -242,7 +242,7 @@ export default function AdminAccountsPage() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={9} className="h-24 text-center">
-                        {query ? `No accounts found for "${query}".` : "No accounts have been connected yet."}
+                        {searchQuery ? `No accounts found for "${searchQuery}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>
                   )}

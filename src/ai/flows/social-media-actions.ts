@@ -23,10 +23,8 @@ const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 const GetAccountAnalyticsInputSchema = z.object({
     accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
     platform: z.enum(["Instagram", "Facebook"]),
-    // CRITICAL: This is the Page Access Token for FB, and also needed for IG followers
-    pageAccessToken: z.string().describe("The relevant PAGE access token, always required."),
-    // CRITICAL: This is the USER Access Token for IG media insights
-    userAccessToken: z.string().describe("The main USER access token, required for fetching IG media insights."),
+    pageAccessToken: z.string().describe("The relevant PAGE access token, always required for page-level data and actions."),
+    userAccessToken: z.string().describe("The main USER access token, required for fetching IG media insights and other user-level data."),
 });
 export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
 
@@ -379,5 +377,3 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
-
-    

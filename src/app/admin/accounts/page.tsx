@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -31,11 +32,10 @@ export default function AdminAccountsPage() {
   );
 
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">All Accounts</h2>
+    <>
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Accounts</h1>
       </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Connected Social Accounts</CardTitle>
@@ -49,7 +49,7 @@ export default function AdminAccountsPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by account or user name..."
-                className="pl-10"
+                className="pl-10 max-w-sm"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -61,7 +61,7 @@ export default function AdminAccountsPage() {
                 <TableHead>Account</TableHead>
                 <TableHead className="hidden sm:table-cell">Platform</TableHead>
                 <TableHead className="text-right">Followers</TableHead>
-                <TableHead className="hidden sm:table-cell text-center">Status</TableHead>
+                <TableHead className="hidden sm:table-cell text-center">User Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -80,7 +80,7 @@ export default function AdminAccountsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
-                    <Badge variant={account.platform === 'Instagram' ? 'secondary' : 'default'} className={account.platform === 'Facebook' ? 'bg-blue-600/80' : 'bg-pink-600/80'}>
+                    <Badge variant={account.platform === 'Instagram' ? 'secondary' : 'default'} className={account.platform === 'Facebook' ? 'bg-blue-600/80 text-primary-foreground' : 'bg-pink-600/80 text-primary-foreground'}>
                       {account.platform}
                     </Badge>
                   </TableCell>
@@ -106,6 +106,6 @@ export default function AdminAccountsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </>
   );
 }

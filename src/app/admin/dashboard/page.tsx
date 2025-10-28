@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Link2, Send, Activity, MoreHorizontal } from 'lucide-react';
+import { Users, Link2, Send, Activity, MoreHorizontal, ArrowUpRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Link from 'next/link';
 
 
 // Mock data for the dashboard
@@ -106,153 +107,135 @@ export default function AdminDashboardPage() {
   const totalPosts = 142; // mock number
 
   return (
-    <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        
-        {/* Stat Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Total Users
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                Currently on the platform
-                </p>
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                Connected Accounts
-                </CardTitle>
-                <Link2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{totalAccounts}</div>
-                <p className="text-xs text-muted-foreground">
-                Across all users
-                </p>
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
-                <Send className="h-4 w-4 text-muted-foreground" />
-            </CardHeader
-            >
-            <CardContent>
-                <div className="text-2xl font-bold">+{totalPosts.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">
-                Published across all platforms
-                </p>
-            </CardContent>
-            </Card>
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                API Status
-                </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold text-green-600">Healthy</div>
-                <p className="text-xs text-muted-foreground">
-                All systems operational
-                </p>
-            </CardContent>
-            </Card>
-        </div>
-
-        {/* Users Table */}
+    <>
+      <div className="flex items-center">
+        <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
-            <CardDescription>An overview of all registered users and their connected accounts.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalUsers}</div>
+            <p className="text-xs text-muted-foreground">+2 since last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Connected Accounts</CardTitle>
+            <Link2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalAccounts}</div>
+            <p className="text-xs text-muted-foreground">+5 since last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Posts</CardTitle>
+            <Send className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+{totalPosts}</div>
+            <p className="text-xs text-muted-foreground">+23 since last month</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">API Status</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">Healthy</div>
+            <p className="text-xs text-muted-foreground">All systems operational</p>
+          </CardContent>
+        </Card>
+      </div>
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+        <Card className="xl:col-span-2">
+          <CardHeader className="flex flex-row items-center">
+            <div className="grid gap-2">
+              <CardTitle>Users</CardTitle>
+              <CardDescription>
+                An overview of all registered users on the platform.
+              </CardDescription>
+            </div>
+            <Button asChild size="sm" className="ml-auto gap-1">
+              <Link href="/admin/accounts">
+                View All
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead className="hidden sm:table-cell">Status</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Total Followers</TableHead>
-                  <TableHead className="hidden md:table-cell text-right">Total Views</TableHead>
+                  <TableHead className="hidden xl:table-cell">Status</TableHead>
+                  <TableHead className="hidden xl:table-cell">Role</TableHead>
                   <TableHead className="text-right">Accounts</TableHead>
-                   <TableHead className="w-[100px]">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockUsers.map((user) => (
-                  <TableRow key={user.email}>
-                    <TableCell>
+                {mockUsers.slice(0, 5).map(user => (
+                   <TableRow key={user.id}>
+                      <TableCell>
                         <div className="flex items-center gap-3">
-                            <Avatar className="h-9 w-9">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                            <Avatar className="hidden h-9 w-9 sm:flex">
+                                <AvatarImage src={user.avatar} alt="Avatar" />
+                                <AvatarFallback>{user.name.slice(0,2)}</AvatarFallback>
                             </Avatar>
-                            <div className="grid gap-0.5">
-                                <p className="font-medium">{user.name}</p>
-                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                            <div className="grid gap-1">
+                                <p className="text-sm font-medium leading-none">{user.name}</p>
+                                <p className="text-sm text-muted-foreground">{user.email}</p>
                             </div>
                         </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Badge 
-                        variant={user.status === 'Active' ? 'default' : user.status === 'Pending' ? 'secondary' : 'destructive'}
-                        className={user.status === 'Active' ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30' : user.status === 'Pending' ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' : 'bg-red-500/20 text-red-700 hover:bg-red-500/30'}
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-medium">
-                        {(user.totalFollowers || 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-right font-medium">
-                        {(user.totalViews || 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                       <p className="font-medium">{user.accounts.length}</p>
-                       <p className="text-xs text-muted-foreground">
-                          {user.accounts.map(a => a.platform.charAt(0)).join(', ') || 'None'}
-                       </p>
-                    </TableCell>
-                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            aria-haspopup="true"
-                            size="icon"
-                            variant="ghost"
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                         <Badge 
+                            variant={user.status === 'Active' ? 'default' : user.status === 'Pending' ? 'secondary' : 'destructive'}
+                            className={user.status === 'Active' ? 'bg-green-500/20 text-green-700 hover:bg-green-500/30' : user.status === 'Pending' ? 'bg-amber-500/20 text-amber-700 hover:bg-amber-500/30' : 'bg-red-500/20 text-red-700 hover:bg-red-500/30'}
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Toggle menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View User</DropdownMenuItem>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                            {user.status}
+                          </Badge>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                          {user.role}
+                      </TableCell>
+                      <TableCell className="text-right">{user.accounts.length}</TableCell>
+                    </TableRow>
                 ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-    </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Recent Posts</CardTitle>
+                <CardDescription>A look at the latest content published by users.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-8">
+                {mockUsers.filter(u => u.accounts.length > 0).slice(0,3).map(user => (
+                    <div className="flex items-center gap-4" key={user.id}>
+                        <Avatar className="hidden h-9 w-9 sm:flex">
+                            <AvatarImage src={user.avatar} alt="Avatar" />
+                            <AvatarFallback>{user.name.slice(0,2)}</AvatarFallback>
+                        </Avatar>
+                        <div className="grid gap-1">
+                            <p className="text-sm font-medium leading-none">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                            Published a post to {user.accounts[0].name}
+                            </p>
+                        </div>
+                        <div className="ml-auto font-medium text-sm">+{Math.floor(Math.random() * 200 + 50)}</div>
+                    </div>
+                ))}
+            </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }
-
-    
-
-    

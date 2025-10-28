@@ -47,14 +47,10 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // Requesting all necessary scopes for full functionality.
-    // This will require the app to pass Facebook's App Review process to be used by non-admin users.
+    // Requesting only the essential scope to ensure login works without advanced permissions.
+    // Advanced permissions require App Review by Facebook.
     const scopes = [
         'pages_show_list',
-        'instagram_content_publish',
-        'pages_manage_posts',
-        'pages_read_engagement',
-        'instagram_manage_insights',
     ];
 
     const params = new URLSearchParams({
@@ -263,7 +259,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
 
     if (flattenedAccounts.length === 0) {
         // This is a soft error now. The user might just not have any accounts.
-        console.log('No Facebook Page or Instagram Business Account could be processed.');
+        throw new Error('No Facebook Page or Instagram Business Account could be processed.');
     }
 
     return { accounts: flattenedAccounts };

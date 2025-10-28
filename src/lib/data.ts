@@ -7,31 +7,18 @@ import {
 } from '@/ai/flows/social-media-actions';
 import { getFirestore as getAdminFirestore, WriteBatch } from 'firebase-admin/firestore';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { collection, query, where, getDocs, doc, writeBatch, Firestore, getFirestore } from 'firebase/firestore';
 import type { SocialAccount, SocialPost } from './types';
 import { firebaseConfig } from '@/firebase/config';
 
-// Server-side Firebase Admin initialization
-function getFirebaseAdmin() {
-    if (getApps().length > 0) {
-        return { firestore: getAdminFirestore(getApps()[0]) };
-    }
-    // This initialization should work in a server environment where GOOGLE_APPLICATION_CREDENTIALS is set.
-    const adminApp = initializeApp({ projectId: firebaseConfig.projectId });
-    return { firestore: getAdminFirestore(adminApp) };
-}
-
-
-/**
- * Fetches recent posts for all connected accounts for a given user and syncs them with Firestore.
- * This is designed to be called as a background task.
- * @param userId The ID of the user.
- * @param userAccessToken The user's long-lived Meta access token.
- */
-export async function syncUserPosts(userId: string, userAccessToken: string) {
-    const { firestore } = getFirebaseAdmin();
-    
-    const accountsRef = firestore.collection('users').doc(userId).collection('socialAccounts');
-    const accountsSnapshot = await accountsRef.get();
+// This function is now client-side and uses the client SDK
+export async function clientSideSyncUserPosts(
+    firestore: Firestore,
+    userId: string,
+    userAccessToken: string
+) {
+    const accountsRef = collection(firestore, 'users', userId, 'socialAccounts');
+    const accountsSnapshot = await getDocs(accountsRef);
 
     if (accountsSnapshot.empty) {
         console.log(`No social accounts found for user ${userId}. Skipping post sync.`);
@@ -59,7 +46,7 @@ export async function syncUserPosts(userId: string, userAccessToken: string) {
             }
 
             if (fetchedPosts.length > 0) {
-                await syncPostsToFirestore(firestore, userId, account.id, account.platform, fetchedPosts);
+                await syncPostsToFirestoreClient(firestore, userId, account.id, account.platform, fetchedPosts);
             }
 
         } catch (error) {
@@ -68,19 +55,20 @@ export async function syncUserPosts(userId: string, userAccessToken: string) {
     }
 }
 
+
 /**
- * Syncs a batch of fetched posts to the socialPosts subcollection in Firestore.
+ * Syncs a batch of fetched posts to the socialPosts subcollection in Firestore using the CLIENT SDK.
  * It uses the post's platform-specific ID to avoid duplicates.
  */
-async function syncPostsToFirestore(
-    firestore: ReturnType<typeof getAdminFirestore>,
+async function syncPostsToFirestoreClient(
+    firestore: Firestore,
     userId: string,
     socialAccountId: string,
     platform: 'Instagram' | 'Facebook',
     posts: any[]
 ) {
-    const postsRef = firestore.collection(`users/${userId}/socialPosts`);
-    const batch: WriteBatch = firestore.batch();
+    const postsRef = collection(firestore, `users/${userId}/socialPosts`);
+    const batch = writeBatch(firestore);
 
     for (const post of posts) {
         const postId = post.id;
@@ -102,12 +90,12 @@ async function syncPostsToFirestore(
         };
 
         // Query for an existing document with the same original postId to avoid duplicates.
-        const q = postsRef.where("postId", "==", postId).where("socialAccountId", "==", socialAccountId);
-        const existingDocs = await q.get();
+        const q = query(postsRef, where("postId", "==", postId), where("socialAccountId", "==", socialAccountId));
+        const existingDocs = await getDocs(q);
 
         if (existingDocs.empty) {
             // If it doesn't exist, create a new document.
-            const newDocRef = postsRef.doc(); // Firestore generates a new ID
+            const newDocRef = doc(postsRef); // Firestore generates a new ID
             batch.set(newDocRef, postData);
         } else {
             // If it exists, update the existing document.

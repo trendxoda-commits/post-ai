@@ -14,7 +14,7 @@ import { doc, collection, setDoc, getDocs, query, where } from 'firebase/firesto
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { syncUserPosts } from '@/lib/data';
+import { clientSideSyncUserPosts } from '@/lib/data';
 
 enum Status {
   PENDING,
@@ -40,7 +40,7 @@ export default function InstagramCallbackPage() {
     }
     
     // Exit if still loading user, or if we are already processing, or if user is not logged in.
-    if (isUserLoading || !user || processing.current) {
+    if (isUserLoading || !user || !firestore || processing.current) {
       if (!isUserLoading && !user) {
         setError('You must be logged in to connect an account.');
         setStatus(Status.ERROR);
@@ -174,9 +174,9 @@ export default function InstagramCallbackPage() {
             }
         }
         
-        // 7. Trigger a background sync of posts for the user
+        // 7. Trigger a CLIENT-SIDE sync of posts for the user
         // This is a "fire-and-forget" call. We don't wait for it to finish.
-        syncUserPosts(user.uid, longLivedToken);
+        clientSideSyncUserPosts(firestore, user.uid, longLivedToken);
 
         setStatus(Status.SUCCESS);
         
@@ -208,7 +208,7 @@ export default function InstagramCallbackPage() {
     };
 
     handleTokenExchange();
-  }, [user, isUserLoading, searchParams, firestore, router, toast]);
+  }, [user, isUserLoading, firestore, searchParams, router, toast]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen space-y-4">

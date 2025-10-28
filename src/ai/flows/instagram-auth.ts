@@ -8,23 +8,10 @@
  * - exchangeForLongLivedToken - Exchanges a short-lived token for a long-lived one.
  * - getInstagramUserDetails - Fetches user profile details (id, username) using a long-lived token.
  */
-
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import fetch from 'node-fetch';
 import { URLSearchParams } from 'url';
-import crypto from 'crypto';
-
-// Helper to construct the redirect URI consistently
-const getRedirectUri = () => {
-    if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
-        throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
-    }
-    // Clean up potential double slashes
-    const baseUrl = process.env.NEXT_PUBLIC_URL.endsWith('/') ? process.env.NEXT_PUBLIC_URL.slice(0, -1) : process.env.NEXT_PUBLIC_URL;
-    const path = process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI.startsWith('/') ? process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI : '/' + process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI;
-    return `${baseUrl}${path}`;
-}
-
 
 // #################### Get Auth URL Flow ####################
 const GetInstagramAuthUrlInputSchema = z.object({
@@ -45,22 +32,16 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     outputSchema: GetInstagramAuthUrlOutputSchema,
   },
   async ({ clientId, userId }) => {
-    const redirectUri = getRedirectUri();
-    
-    // Request all permissions needed for the app to function fully.
-    const scopes = [
-        'pages_show_list',
-        'pages_read_engagement',
-        'pages_manage_posts',
-        'instagram_content_publish',
-        'instagram_manage_insights',
-        'business_management'
-    ];
+    // This flow now correctly uses the NEXT_PUBLIC_ prefixed variables, as it's initiated from the client-side context.
+    if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
+        throw new Error('NEXT_PUBLIC_URL or NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI is not set in the .env file. The app owner needs to configure this.');
+    }
+    const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
 
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: scopes.join(','),
+        scope: 'instagram_basic,pages_show_list,instagram_content_publish,pages_manage_posts,pages_read_engagement',
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
     });
@@ -80,6 +61,7 @@ const GetInstagramAccessTokenInputSchema = z.object({
     code: z.string().describe('The authorization code from the redirect.'),
     clientId: z.string(),
     clientSecret: z.string(),
+    redirectUri: z.string().url(),
 });
 export type GetInstagramAccessTokenInput = z.infer<typeof GetInstagramAccessTokenInputSchema>;
 
@@ -93,9 +75,8 @@ const getInstagramAccessTokenFlow = ai.defineFlow({
     name: 'getInstagramAccessTokenFlow',
     inputSchema: GetInstagramAccessTokenInputSchema,
     outputSchema: GetInstagramAccessTokenOutputSchema,
-}, async ({ code, clientId, clientSecret }) => {
-    const redirectUri = getRedirectUri();
-
+}, async ({ code, clientId, clientSecret, redirectUri }) => {
+    
     const url = `https://graph.facebook.com/v20.0/oauth/access_token`;
     const params = new URLSearchParams({
         client_id: clientId,
@@ -183,18 +164,12 @@ const GetInstagramUserDetailsInputSchema = z.object({
 });
 export type GetInstagramUserDetailsInput = z.infer<typeof GetInstagramUserDetailsInputSchema>;
 
-const PageDetailsSchema = z.object({
+const GetInstagramUserDetailsOutputSchema = z.object({
     username: z.string(),
     instagramId: z.string().optional(),
     facebookPageId: z.string().optional(),
     facebookPageName: z.string().optional(),
     pageAccessToken: z.string().optional(),
-    avatar: z.string().url().optional(),
-    platform: z.enum(['Instagram', 'Facebook']),
-});
-
-const GetInstagramUserDetailsOutputSchema = z.object({
-    accounts: z.array(PageDetailsSchema)
 });
 export type GetInstagramUserDetailsOutput = z.infer<typeof GetInstagramUserDetailsOutputSchema>;
 
@@ -204,87 +179,65 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     outputSchema: GetInstagramUserDetailsOutputSchema,
 }, async ({ accessToken }) => {
     
-    const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token,picture{url}&access_token=${accessToken}`;
+    // Step 1: Get the user's Facebook Pages that they have granted permission for.
+    const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token&access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
-
     if (!pagesResponse.ok) {
         const errorData : any = await pagesResponse.json();
-        throw new Error(`Failed to fetch Facebook pages: ${errorData.error?.message || 'An active access token must be used to query information about the current user.'}`);
+        throw new Error(`Failed to fetch Facebook pages: ${errorData.error?.message || 'An active access token must be used.'}`);
     }
-    
     const pagesData: any = await pagesResponse.json();
     
     if (!pagesData.data || pagesData.data.length === 0) {
-        return { accounts: [] };
+        throw new Error('No Facebook Page linked to this account. Please go to Facebook Business settings and link a Page with an Instagram Business account.');
     }
     
-    const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
-    
-    for (const page of pagesData.data) {
-        // Logic: If a page has a linked IG business account, we prioritize the IG account.
-        // If not, we add the FB Page itself. This prevents showing both when the FB page is just a container for IG.
-        
-        if (page.instagram_business_account) {
-            const instagramBusinessAccountId = page.instagram_business_account.id;
-            
-            // Use the main user access token to get details for the IG account.
-            const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
-            
-            try {
-                const igResponse = await fetch(igUrl);
-                if (igResponse.ok) {
-                    const igData: any = await igResponse.json();
-                    allFoundAccounts.push({
-                        username: igData.username,
-                        instagramId: instagramBusinessAccountId,
-                        facebookPageId: page.id, // Keep FB page ID for context
-                        pageAccessToken: page.access_token, // Crucially, use the PAGE access token
-                        avatar: igData.profile_picture_url,
-                        platform: 'Instagram' as const,
-                    });
-                } else {
-                    const igError: any = await igResponse.json();
-                    console.warn(`Could not fetch details for IG account ${instagramBusinessAccountId}. Error: ${igError.error?.message}. The associated Facebook Page '${page.name}' will be added instead.`);
-                    // Fallback to adding the Facebook page if IG details fail
-                    allFoundAccounts.push({
-                        username: page.name,
-                        facebookPageId: page.id,
-                        facebookPageName: page.name,
-                        pageAccessToken: page.access_token,
-                        avatar: page.picture?.data?.url,
-                        platform: 'Facebook' as const,
-                    });
-                }
-            } catch (e) {
-                console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
-                 // Fallback to adding the Facebook page on error
-                 allFoundAccounts.push({
-                    username: page.name,
-                    facebookPageId: page.id,
-                    facebookPageName: page.name,
-                    pageAccessToken: page.access_token,
-                    avatar: page.picture?.data?.url,
-                    platform: 'Facebook' as const,
-                });
-            }
-        } else {
-            // If there's no linked Instagram account, add the Facebook page.
-            allFoundAccounts.push({
-                username: page.name,
-                facebookPageId: page.id,
-                facebookPageName: page.name,
-                pageAccessToken: page.access_token,
-                avatar: page.picture?.data?.url,
-                platform: 'Facebook' as const,
-            });
+    // Step 2: Find the first page that has an Instagram Business Account linked.
+    const pageWithIg = pagesData.data.find((page: any) => page.instagram_business_account);
+
+    if (!pageWithIg) {
+        // Fallback to basic display API if no business account is linked
+        const basicUrl = `https://graph.instagram.com/me?fields=id,username&access_token=${accessToken}`;
+        const basicResponse = await fetch(basicUrl);
+        if (!basicResponse.ok) {
+             const errorData: any = await basicResponse.json();
+            throw new Error(`Failed to get Instagram user details: ${errorData.error?.message || 'Unknown error'}`);
+        }
+        const basicData: any = await basicResponse.json();
+        return {
+            username: basicData.username,
+            instagramId: basicData.id
         }
     }
-    
-    if (allFoundAccounts.length === 0) {
-        throw new Error('No compatible Facebook Page or Instagram Business Account could be found. Please ensure you have granted the correct permissions and have at least one eligible account.');
+
+    const instagramBusinessAccountId = pageWithIg.instagram_business_account.id;
+    const facebookPageId = pageWithIg.id;
+    const facebookPageName = pageWithIg.name;
+    const pageAccessToken = pageWithIg.access_token; // This is the Page Access Token we need
+
+    if (!pageAccessToken) {
+        throw new Error('Could not retrieve Page Access Token for the linked page.');
     }
 
-    return { accounts: allFoundAccounts };
+    // Step 3: Use the Instagram Business Account ID to get the username.
+    const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${accessToken}`;
+    const igResponse = await fetch(igUrl);
+
+    if (!igResponse.ok) {
+        const errorData: any = await igResponse.json();
+        console.error('Failed to get Instagram user details:', errorData);
+        throw new Error(`Failed to get Instagram user details: ${errorData.error?.message || 'Unknown error'}`);
+    }
+    
+    const data: any = await igResponse.json();
+    
+    return { 
+        username: data.username, 
+        instagramId: instagramBusinessAccountId, 
+        facebookPageId: facebookPageId, 
+        facebookPageName: facebookPageName,
+        pageAccessToken: pageAccessToken, // Return the page access token
+    };
 });
 
 export async function getInstagramUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {

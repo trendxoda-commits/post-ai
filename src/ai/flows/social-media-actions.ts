@@ -64,6 +64,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         // Step 2: Get posts and aggregate stats from them
         if (platform === 'Instagram') {
             try {
+                // For Instagram, we need the user access token to fetch media
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken });
                 postCount = media.length;
                 media.forEach(post => {
@@ -76,6 +77,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             }
         } else if (platform === 'Facebook') {
             try {
+                // For Facebook, we need the page access token
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: accessToken });
                 postCount = posts.length;
                  posts.forEach(post => {
@@ -160,6 +162,7 @@ const getInstagramMediaFlow = ai.defineFlow(
         // Insights for plays are only available for VIDEO
         if (item.media_type === 'VIDEO') {
             try {
+                // NOTE: Insights require the USER access token, not the page token.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {
@@ -230,6 +233,7 @@ const getFacebookPostsFlow = ai.defineFlow(
   async ({ facebookPageId, pageAccessToken }) => {
     // Requesting attachments, source for videos, and the correct insights metric.
     const fields = 'id,message,created_time,permalink_url,attachments{media{source,image},type,url},likes.summary(true),comments.summary(true),insights.metric(post_video_views)';
+    // CRITICAL FIX: Use the pageAccessToken for this call, not a generic accessToken.
     const url = `${INSTAGRAM_GRAPH_API_URL}/${facebookPageId}/posts?fields=${fields}&access_token=${pageAccessToken}`;
 
     const response = await fetch(url);

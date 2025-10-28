@@ -14,7 +14,7 @@ import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
-import type { SocialAccount, ApiCredential, ScheduledPost } from '@/lib/types';
+import type { SocialAccount, ScheduledPost } from '@/lib/types';
 
 
 const ExecuteScheduledPostsInputSchema = z.object({
@@ -50,7 +50,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
     // 1. Fetch all pending scheduled posts for the user that are due
     const now = new Date().toISOString();
-    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('status', '==', 'scheduled').where('scheduledTime', '<=', now);
+    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('scheduledTime', '<=', now);
 
     const querySnapshot = await postsQuery.get();
     if (querySnapshot.empty) {
@@ -66,7 +66,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
         // Mark all as failed since we can't do anything
         for (const postDoc of querySnapshot.docs) {
           failedPosts.push(postDoc.id);
-          await postDoc.ref.update({ status: 'failed' });
+          await postDoc.ref.delete(); // Delete failed post
         }
         return { publishedPosts, failedPosts };
     }
@@ -122,12 +122,12 @@ const executeScheduledPostsFlow = ai.defineFlow(
         }
       }
       
-      // 4. Update the post status based on the outcome
+      // 4. Delete the post from the schedule after attempting to publish
+      await postDoc.ref.delete();
+
       if (allSucceeded) {
-        await postDoc.ref.update({ status: 'published' });
         publishedPosts.push(postId);
       } else {
-        await postDoc.ref.update({ status: 'failed' });
         failedPosts.push(postId);
       }
     }
@@ -143,5 +143,3 @@ export async function executeScheduledPosts(input: ExecuteScheduledPostsInput): 
   // Immediately return a response to the client.
   return { publishedPosts: [], failedPosts: [] };
 }
-
-    

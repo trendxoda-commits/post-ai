@@ -90,8 +90,7 @@ export default function CreatePostPage() {
 
 
     setIsPosting(true);
-    const postTime = new Date();
-    const successfulPosts: string[] = [];
+    let successfulPostsCount = 0;
 
     for (const accountId of selectedAccountIds) {
       const selectedAccount = accounts?.find(acc => acc.id === accountId);
@@ -118,7 +117,7 @@ export default function CreatePostPage() {
             mediaType,
           });
         }
-        successfulPosts.push(accountId);
+        successfulPostsCount++;
       } catch (error: any) {
         console.error(`Error posting to ${selectedAccount.displayName}:`, error);
         toast({
@@ -129,39 +128,16 @@ export default function CreatePostPage() {
       }
     }
 
-    // After all posts are attempted, save a single record for the successful ones
-    if (successfulPosts.length > 0) {
-      try {
-        const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
-        await addDoc(scheduledPostsRef, {
-          userId: user.uid,
-          content: content,
-          mediaUrl: mediaUrl,
-          mediaType: mediaType,
-          scheduledTime: postTime.toISOString(),
-          socialAccountIds: successfulPosts, // Only save accounts that succeeded
-          createdAt: postTime.toISOString(),
-          status: 'published', // Set status to 'published'
-        });
-        toast({
-          title: 'Post Successful!',
-          description: `${successfulPosts.length} post(s) have been published and saved to history.`,
-        });
-
-      } catch (error: any) {
-         console.error('Error saving published post record:', error);
-         toast({
-            variant: 'destructive',
-            title: 'Failed to Save Post History',
-            description: 'Your post was published, but we could not save it to your history.',
-         });
-      }
-    }
-
-
     setIsPosting(false);
 
-    if (successfulPosts.length === selectedAccountIds.length) { // Only reset if all were successful
+    if (successfulPostsCount > 0) {
+        toast({
+            title: 'Post Successful!',
+            description: `${successfulPostsCount} post(s) have been published.`,
+        });
+    }
+
+    if (successfulPostsCount === selectedAccountIds.length) { // Only reset if all were successful
       resetForm();
     }
   };
@@ -193,7 +169,6 @@ export default function CreatePostPage() {
         scheduledTime: scheduledDateTime.toISOString(),
         socialAccountIds: selectedAccountIds,
         createdAt: new Date().toISOString(),
-        status: 'scheduled', // Set initial status
       });
       
       // Fire-and-forget call to the scheduler agent to check for due posts
@@ -386,5 +361,3 @@ export default function CreatePostPage() {
     </div>
   );
 }
-
-    

@@ -21,9 +21,10 @@ const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 const GetAccountAnalyticsInputSchema = z.object({
     accountId: z.string().describe("The unique platform-specific ID for the account (Instagram ID or Facebook Page ID)."),
     platform: z.enum(["Instagram", "Facebook"]),
-    // CRITICAL: This is the Page Access Token for FB, User Access Token for IG followers
-    pageAccessToken: z.string().describe("The relevant PAGE access token, always required for Facebook and for IG followers."),
-    userAccessToken: z.string().describe("The main USER access token, always required for fetching IG media insights."),
+    // CRITICAL: This is the Page Access Token for FB, and also needed for IG followers
+    pageAccessToken: z.string().describe("The relevant PAGE access token, always required."),
+    // CRITICAL: This is the USER Access Token for IG media insights
+    userAccessToken: z.string().describe("The main USER access token, required for fetching IG media insights."),
 });
 export type GetAccountAnalyticsInput = z.infer<typeof GetAccountAnalyticsInputSchema>;
 
@@ -86,6 +87,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         } else if (platform === 'Facebook') {
             try {
                 // For Facebook posts, we need the PAGE access token.
+                if (!pageAccessToken) throw new Error("Page access token is required for Facebook analytics.");
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
                 postCount = posts.length;
                  posts.forEach(post => {

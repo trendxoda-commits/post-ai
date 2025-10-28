@@ -32,7 +32,7 @@ export default function InstagramCallbackPage() {
 
   useEffect(() => {
     // Exit if still loading user, or if we are already processing, or if user is not logged in.
-    if (isUserLoading || processing.current || !user) {
+    if (isUserLoading || !user || processing.current) {
       if (!isUserLoading && !user) {
         setError('You must be logged in to connect an account.');
         setStatus(Status.ERROR);
@@ -136,18 +136,19 @@ export default function InstagramCallbackPage() {
 
             if (existingAccountSnapshot.empty) {
                 const newAccountDocRef = doc(socialAccountsRef);
+                // Save the new account with all details, including the pageAccessToken
                 await setDoc(newAccountDocRef, {
                     id: newAccountDocRef.id,
                     userId: user.uid,
                     platform: account.platform,
                     displayName: account.displayName,
                     accountId: platformSpecificId,
-                    pageAccessToken: account.pageAccessToken,
+                    pageAccessToken: account.pageAccessToken, // Crucial for future API calls
                     avatar: account.avatar || `https://picsum.photos/seed/${platformSpecificId}/40/40`,
                 });
                 newAccountsCount++;
             } else {
-                // Optionally, update the existing account's details if they have changed
+                // IMPORTANT: Update the existing account's details, especially the pageAccessToken, which might have been refreshed.
                 const existingDoc = existingAccountSnapshot.docs[0];
                 await setDoc(existingDoc.ref, { 
                     pageAccessToken: account.pageAccessToken, 
@@ -167,7 +168,7 @@ export default function InstagramCallbackPage() {
         } else {
             toast({
               title: 'Accounts Updated',
-              description: 'Your existing accounts have been refreshed with the latest information.',
+              description: 'Your existing accounts have been refreshed with the latest information and permissions.',
             });
         }
         

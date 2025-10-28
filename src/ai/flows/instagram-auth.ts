@@ -208,7 +208,7 @@ const getIgUserDetailsFlow = ai.defineFlow({
             platform: 'Facebook',
             accountId: page.id,
             displayName: page.name,
-            pageAccessToken: page.access_token,
+            pageAccessToken: page.access_token, // This is the all-important Page Access Token
             avatar: page.picture?.data?.url,
         });
 

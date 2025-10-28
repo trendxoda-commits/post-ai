@@ -6,7 +6,7 @@ import { useFirebase, useUser } from '@/firebase';
 import {
   getAccessToken,
   getLongLivedToken,
-  getInstagramUserDetails,
+  getIgUserDetails,
 } from '@/app/actions';
 import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';

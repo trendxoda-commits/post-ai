@@ -83,9 +83,12 @@ export function Feed() {
           allPosts.push(...igPosts);
 
         } else if (account.platform === 'Facebook') {
+          // IMPORTANT: Use the PAGE access token for Facebook Graph API calls
+          if (!account.pageAccessToken) continue; 
+          
           const result = await fetchFacebookPosts({
             facebookPageId: account.accountId,
-            pageAccessToken: account.pageAccessToken!,
+            pageAccessToken: account.pageAccessToken,
           });
 
           const fbPosts = result.posts
@@ -130,8 +133,8 @@ export function Feed() {
     } catch (err: any) {
       console.error("Failed to fetch posts:", err);
       let errorMessage = err.message || "An unknown error occurred while fetching posts.";
-      if (err.message && err.message.includes('pages_read_engagement')) {
-        errorMessage = "Permission missing. Please go to Settings, disconnect the problematic account(s), and reconnect them to grant the required permissions."
+      if (err.message && (err.message.includes('pages_read_engagement') || err.message.includes('permission'))) {
+        errorMessage = "A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions."
       }
       setError(errorMessage);
     } finally {

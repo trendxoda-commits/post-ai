@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, BarChart, TrendingUp, Loader2 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import type { SocialAccount } from '@/lib/types';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useEffect, useState } from 'react';
 import { getAccountAnalytics } from '@/app/actions';
 
@@ -30,7 +30,7 @@ export function StatsCards() {
   const apiCredentialsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
   , [firestore, user]);
-  const { data: apiCredentials } = useCollection(apiCredentialsQuery);
+  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
   const userAccessToken = apiCredentials?.[0]?.accessToken;
 
 
@@ -48,11 +48,12 @@ export function StatsCards() {
       let totalPosts = 0;
       let topAccount: { name: string, followers: number } | null = null;
       
-      const analyticsPromises = accounts.map(account => 
-        getAccountAnalytics({
+      const analyticsPromises = accounts.map(account => {
+        const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+        return getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+            accessToken: accessTokenForRequest,
         }).then(analytics => ({
             ...analytics,
             displayName: account.displayName
@@ -60,7 +61,7 @@ export function StatsCards() {
             console.error(`Failed to fetch analytics for ${account.displayName}`, error);
             return null;
         })
-      );
+      });
       
       const results = await Promise.all(analyticsPromises);
 

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
-import type { SocialAccount } from '@/lib/types';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getAccountAnalytics } from '@/app/actions';
@@ -39,7 +39,7 @@ function AccountPerformance() {
   const apiCredentialsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
   , [firestore, user]);
-  const { data: apiCredentials } = useCollection(apiCredentialsQuery);
+  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
   const userAccessToken = apiCredentials?.[0]?.accessToken;
 
 
@@ -54,10 +54,13 @@ function AccountPerformance() {
       
       const statsPromises = accounts.map(async (account) => {
         try {
+          // Use the Page Access Token for Facebook pages, and the main User Access Token for Instagram
+          const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+
           const analytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+            accessToken: accessTokenForRequest,
           });
 
           const postCount = analytics.postCount > 0 ? analytics.postCount : 1; // Avoid division by zero

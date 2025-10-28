@@ -23,7 +23,7 @@ import {
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import type { SocialAccount, AnalyticsData } from '@/lib/types';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { subMonths, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import { getAccountAnalytics } from '@/app/actions';
@@ -50,7 +50,7 @@ export function FollowerChart() {
   const apiCredentialsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
   , [firestore, user]);
-  const { data: apiCredentials } = useCollection(apiCredentialsQuery);
+  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
   const userAccessToken = apiCredentials?.[0]?.accessToken;
 
 
@@ -64,16 +64,17 @@ export function FollowerChart() {
       setIsLoading(true);
       
       let totalFollowers = 0;
-      const analyticsPromises = accounts.map(account => 
-        getAccountAnalytics({
+      const analyticsPromises = accounts.map(account => {
+        const accessTokenForRequest = account.platform === 'Facebook' ? account.pageAccessToken! : userAccessToken;
+        return getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            accessToken: account.platform === 'Instagram' ? userAccessToken : account.pageAccessToken!,
+            accessToken: accessTokenForRequest,
         }).catch(e => {
             console.error(`Failed to get followers for ${account.displayName}`, e);
             return null;
         })
-      );
+      });
       
       const results = await Promise.all(analyticsPromises);
       results.forEach(result => {

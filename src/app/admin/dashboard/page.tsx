@@ -6,10 +6,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, Link as LinkIcon, Newspaper, CheckCircle2, Heart, MessageCircle, Eye } from 'lucide-react';
+import { Users, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, collectionGroup } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import type { User } from '@/lib/types';
+
 
 interface DashboardStats {
   totalUsers: number;
@@ -19,10 +21,11 @@ interface DashboardStats {
 
 interface RecentUser {
   id: string;
-  email: string;
+  email: string | undefined;
   createdAt: string;
-  connectedAccounts: string[];
+  connectedAccounts: number;
 }
+
 
 export default function AdminDashboardPage() {
     const { firestore } = useFirebase();
@@ -36,26 +39,28 @@ export default function AdminDashboardPage() {
         async function fetchData() {
             setIsLoading(true);
             try {
-                // Fetch stats
+                // Fetch stats using collectionGroup for efficiency
                 const usersSnapshot = await getDocs(collection(firestore, 'users'));
+                const accountsSnapshot = await getDocs(collectionGroup(firestore, 'socialAccounts'));
+                
                 const totalUsers = usersSnapshot.size;
-                let totalAccounts = 0;
-                for (const userDoc of usersSnapshot.docs) {
-                    const socialAccountsSnapshot = await getDocs(collection(userDoc.ref, 'socialAccounts'));
-                    totalAccounts += socialAccountsSnapshot.size;
-                }
+                const totalAccounts = accountsSnapshot.size;
+                
+                 setStats({
+                    totalUsers,
+                    totalAccounts,
+                    apiStatus: "Healthy"
+                });
 
                 // Fetch recent users
                 const fetchedUsers: RecentUser[] = [];
                 for (const doc of usersSnapshot.docs) {
-                    const userData = doc.data();
+                    const userData = doc.data() as User;
                     const socialAccountsSnapshot = await getDocs(collection(doc.ref, 'socialAccounts'));
-                    const connectedAccounts = socialAccountsSnapshot.docs.map(accDoc => accDoc.data().platform);
+                    const connectedAccountsCount = socialAccountsSnapshot.size;
 
                     let createdAtDate = 'N/A';
-                    if (userData.createdAt?.toDate) { // Check if it's a Firestore Timestamp
-                        createdAtDate = userData.createdAt.toDate().toLocaleDateString();
-                    } else if (userData.createdAt) {
+                     if (userData.createdAt) {
                         try {
                            createdAtDate = new Date(userData.createdAt).toLocaleDateString();
                         } catch (e) { /* ignore invalid date */ }
@@ -63,9 +68,9 @@ export default function AdminDashboardPage() {
 
                     fetchedUsers.push({
                         id: doc.id,
-                        email: userData.email || 'N/A',
+                        email: userData.email,
                         createdAt: createdAtDate,
-                        connectedAccounts,
+                        connectedAccounts: connectedAccountsCount,
                     });
                 }
                 
@@ -81,12 +86,6 @@ export default function AdminDashboardPage() {
                     }
                 });
 
-
-                setStats({
-                    totalUsers,
-                    totalAccounts,
-                    apiStatus: "Healthy"
-                });
                 setRecentUsers(fetchedUsers.slice(0, 5));
 
             } catch (error) {
@@ -174,17 +173,11 @@ export default function AdminDashboardPage() {
                                 {recentUsers.length > 0 ? recentUsers.map((user) => (
                                     <TableRow key={user.id}>
                                         <TableCell>
-                                            <div className="font-medium">{user.email}</div>
+                                            <div className="font-medium">{user.email || 'N/A'}</div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                {user.connectedAccounts.length > 0 ? (
-                                                    user.connectedAccounts.map((platform, i) => (
-                                                        <Badge key={i} variant={platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{platform}</Badge>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">None</span>
-                                                )}
+                                                <Badge variant="secondary">{user.connectedAccounts}</Badge>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right text-muted-foreground">{user.createdAt}</TableCell>

@@ -39,6 +39,8 @@ export default function AdminDashboardPage() {
 
 
     useEffect(() => {
+        if (!firestore) return; // Don't run if firestore is not available yet
+
         const fetchUsers = async () => {
             setIsLoading(true);
             try {
@@ -66,7 +68,7 @@ export default function AdminDashboardPage() {
         };
 
         fetchUsers();
-    }, [firestore]);
+    }, [firestore]); // Re-run the effect when firestore instance is available
     
     const handleLogout = () => {
         logout();

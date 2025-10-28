@@ -71,7 +71,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             try {
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
                 
-                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (plays/video_views)
+                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (video_views/plays)
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 
                 postCount = media.length;
@@ -169,17 +169,19 @@ const getInstagramMediaFlow = ai.defineFlow(
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
         
-        if (item.media_type === 'VIDEO') { // Only 'VIDEO' type can have video_views/plays
+        if (item.media_type === 'VIDEO') {
             try {
-                // The insights call must also use the USER access token.
-                // CRITICAL FIX: Request both 'video_views' and 'plays' and use whichever is available.
+                // CORRECTED API CALL: Use the /insights endpoint with the correct metric parameter.
+                // It now requests both `video_views` (for feed videos) and `plays` (for Reels).
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=video_views,plays&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 
                 if (insightsResponse.ok) {
                     const insightsData: any = await insightsResponse.json();
-                    // Find video_views first, if not available, find plays.
+                    
+                    // Find video_views first (for regular videos)
                     const videoViewsMetric = insightsData.data?.find((insight: any) => insight.name === 'video_views');
+                    // Find plays as a fallback (for Reels)
                     const playsMetric = insightsData.data?.find((insight: any) => insight.name === 'plays');
 
                     if (videoViewsMetric) {
@@ -188,10 +190,11 @@ const getInstagramMediaFlow = ai.defineFlow(
                         views = playsMetric.values[0]?.value || 0;
                     }
                 } else {
+                    // Log a warning instead of throwing an error if a single insight call fails
                     console.warn(`Could not fetch views/plays for media ${item.id}:`, await insightsResponse.text());
                 }
             } catch (e) {
-                console.warn(`Could not fetch views/plays for media ${item.id}:`, e);
+                 console.warn(`Error fetching insights for media ${item.id}:`, e);
             }
         }
 
@@ -384,4 +387,5 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
 

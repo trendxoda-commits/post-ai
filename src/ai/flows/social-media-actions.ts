@@ -43,8 +43,8 @@ export type AnalyticsOutput = z.infer<typeof AnalyticsOutputSchema>;
 const getAccountAnalyticsFlow = ai.defineFlow(
     {
         name: 'getAccountAnalyticsFlow',
-        inputSchema: GetAccountAnalyticsInputSchema,
         outputSchema: AnalyticsOutputSchema,
+        inputSchema: GetAccountAnalyticsInputSchema,
     },
     async ({ accountId, platform, pageAccessToken, userAccessToken }) => {
         let followers = 0;
@@ -378,3 +378,5 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
+    

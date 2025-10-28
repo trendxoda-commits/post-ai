@@ -79,9 +79,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
                     // Correctly aggregate views/plays for videos
-                    if (post.media_type === 'VIDEO' || post.media_type === 'REELS') {
-                        totalViews += post.video_views || 0;
-                    }
+                    totalViews += post.video_views || 0; // The `getInstagramMedia` flow now standardizes this field.
                 });
             } catch (e) {
                 console.error(`Error fetching Instagram media for analytics for ${accountId}:`, e);
@@ -137,7 +135,7 @@ const InstagramMediaObjectSchema = z.object({
     timestamp: z.string(),
     like_count: z.number().optional(),
     comments_count: z.number().optional(),
-    video_views: z.number().optional(), // Using video_views as the primary field for all video types
+    video_views: z.number().optional(), // Standardized field for all video types
 });
 
 const GetInstagramMediaOutputSchema = z.object({
@@ -171,7 +169,7 @@ const getInstagramMediaFlow = ai.defineFlow(
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
         
-        if (item.media_type === 'VIDEO' || item.media_type === 'REELS') {
+        if (item.media_type === 'VIDEO') { // Only 'VIDEO' type can have video_views/plays
             try {
                 // The insights call must also use the USER access token.
                 // CRITICAL FIX: Request both 'video_views' and 'plays' and use whichever is available.
@@ -189,7 +187,6 @@ const getInstagramMediaFlow = ai.defineFlow(
                     } else if (playsMetric) {
                         views = playsMetric.values[0]?.value || 0;
                     }
-
                 } else {
                     console.warn(`Could not fetch views/plays for media ${item.id}:`, await insightsResponse.text());
                 }
@@ -387,10 +384,4 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
-
-
-
-
-
-
 

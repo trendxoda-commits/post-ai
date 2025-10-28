@@ -19,33 +19,63 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
-import { getAdminAllAccounts } from '@/app/actions';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
+import { useFirebase } from '@/firebase';
+import { collectionGroup, getDocs, doc, getDoc } from 'firebase/firestore';
+import type { SocialAccount, User } from '@/lib/types';
 
-// This matches the output from our new admin action
-interface FullAccountDetails {
-  id: string;
-  displayName: string;
-  platform: 'Instagram' | 'Facebook';
-  followers?: number;
+
+// This interface will hold the merged account and user data
+interface FullAccountDetails extends SocialAccount {
   user: {
     id: string;
-    email: string;
+    email?: string;
   };
 }
 
+
 export default function AdminAccountsPage() {
+  const { firestore } = useFirebase();
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!firestore) return;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { accounts: fetchedAccounts } = await getAdminAllAccounts();
+        // 1. Use a collectionGroup query to get all 'socialAccounts' across all users
+        const accountsQuery = collectionGroup(firestore, 'socialAccounts');
+        const accountsSnapshot = await getDocs(accountsQuery);
+        
+        const fetchedAccounts: FullAccountDetails[] = [];
+
+        // 2. For each account, fetch its parent user document to get the email
+        for (const accountDoc of accountsSnapshot.docs) {
+          const accountData = accountDoc.data() as SocialAccount;
+          const userRef = accountDoc.ref.parent.parent; // This gets the user document reference
+
+          if (userRef) {
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists()) {
+              const userData = userDoc.data() as User;
+              fetchedAccounts.push({
+                ...accountData,
+                id: accountDoc.id, // Ensure the account's own ID is used
+                user: {
+                  id: userDoc.id,
+                  email: userData.email,
+                },
+              });
+            }
+          }
+        }
+        
         setAccounts(fetchedAccounts);
+
       } catch (error) {
         console.error("Failed to fetch admin accounts:", error);
         setAccounts([]); // Set to empty array on error
@@ -54,7 +84,8 @@ export default function AdminAccountsPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [firestore]);
+
 
   const query = searchParams.get('query')?.toLowerCase() || '';
 
@@ -65,7 +96,7 @@ export default function AdminAccountsPage() {
     return accounts.filter(
       (account) =>
         account.displayName.toLowerCase().includes(query) ||
-        account.user.email.toLowerCase().includes(query)
+        (account.user.email && account.user.email.toLowerCase().includes(query))
     );
   }, [accounts, query]);
 
@@ -117,7 +148,7 @@ export default function AdminAccountsPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm text-muted-foreground">{account.user.email}</div>
+                          <div className="text-sm text-muted-foreground">{account.user.email || 'N/A'}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="font-semibold">{(account.followers || 0).toLocaleString()}</div>

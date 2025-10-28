@@ -39,10 +39,6 @@ import {
   executeScheduledPosts as executeScheduledPostsFlow,
   type ExecuteScheduledPostsInput,
 } from '@/ai/flows/schedule-post-execution';
-import {
-    getAdminAllAccounts as getAdminAllAccountsFlow,
-    type GetAdminAllAccountsOutput,
-} from '@/ai/flows/admin-actions';
 
 
 // --- Instagram Auth ---
@@ -114,9 +110,4 @@ export async function getAccountAnalytics(
     input: GetAccountAnalyticsInput
 ): Promise<AnalyticsOutput> {
     return getAccountAnalyticsFlow(input);
-}
-
-// --- Admin Actions ---
-export async function getAdminAllAccounts(): Promise<GetAdminAllAccountsOutput> {
-    return getAdminAllAccountsFlow();
 }

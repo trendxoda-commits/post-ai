@@ -88,7 +88,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
              try {
                 if (!pageAccessToken) throw new Error("Page access token is required for Facebook analytics.");
 
-                // Get total likes and comments from posts
+                // CRITICAL FIX: Pass the correct pageAccessToken to get posts and insights
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
                 postCount = posts.length;
                 posts.forEach(post => {
@@ -184,10 +184,10 @@ const getInstagramMediaFlow = ai.defineFlow(
                     // Find plays as a fallback (for Reels)
                     const playsMetric = insightsData.data?.find((insight: any) => insight.name === 'plays');
 
-                    if (videoViewsMetric) {
-                        views = videoViewsMetric.values[0]?.value || 0;
-                    } else if (playsMetric) {
-                        views = playsMetric.values[0]?.value || 0;
+                    if (videoViewsMetric && videoViewsMetric.values[0]?.value) {
+                        views = videoViewsMetric.values[0].value;
+                    } else if (playsMetric && playsMetric.values[0]?.value) {
+                        views = playsMetric.values[0].value;
                     }
                 } else {
                     // Log a warning instead of throwing an error if a single insight call fails
@@ -274,7 +274,7 @@ const getFacebookPostsFlow = ai.defineFlow(
         const isVideo = post.attachments?.data[0]?.type?.includes('video');
         if (isVideo) {
             try {
-                // CRITICAL FIX: Fetch insights for each video post individually.
+                // CRITICAL FIX: Fetch insights for each video post individually using the correct pageAccessToken.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${post.id}/insights?metric=post_video_views&access_token=${pageAccessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
                 if (insightsResponse.ok) {
@@ -387,5 +387,6 @@ const getInstagramMediaCommentsFlow = ai.defineFlow(
 export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
     return getInstagramMediaCommentsFlow(input);
 }
+
 
 

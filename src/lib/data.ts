@@ -5,9 +5,20 @@ import {
     getInstagramMedia as getInstagramMediaFlow,
     getFacebookPosts as getFacebookPostsFlow,
 } from '@/ai/flows/social-media-actions';
-import { getFirestore, collection, writeBatch, query, where, getDocs } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { getFirestore as getAdminFirestore, WriteBatch } from 'firebase-admin/firestore';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
 import type { SocialAccount, SocialPost } from './types';
+import { firebaseConfig } from '@/firebase/config';
+
+// Server-side Firebase Admin initialization
+function getFirebaseAdmin() {
+    if (getApps().length > 0) {
+        return { firestore: getAdminFirestore(getApps()[0]) };
+    }
+    // This initialization should work in a server environment where GOOGLE_APPLICATION_CREDENTIALS is set.
+    const adminApp = initializeApp({ projectId: firebaseConfig.projectId });
+    return { firestore: getAdminFirestore(adminApp) };
+}
 
 
 /**
@@ -17,10 +28,11 @@ import type { SocialAccount, SocialPost } from './types';
  * @param userAccessToken The user's long-lived Meta access token.
  */
 export async function syncUserPosts(userId: string, userAccessToken: string) {
-    const { firestore } = initializeFirebase();
+    const { firestore } = getFirebaseAdmin();
     
-    const accountsRef = collection(firestore, 'users', userId, 'socialAccounts');
-    const accountsSnapshot = await getDocs(accountsRef);
+    const accountsRef = firestore.collection('users').doc(userId).collection('socialAccounts');
+    const accountsSnapshot = await accountsRef.get();
+
     if (accountsSnapshot.empty) {
         console.log(`No social accounts found for user ${userId}. Skipping post sync.`);
         return;
@@ -61,14 +73,14 @@ export async function syncUserPosts(userId: string, userAccessToken: string) {
  * It uses the post's platform-specific ID to avoid duplicates.
  */
 async function syncPostsToFirestore(
-    firestore: any,
+    firestore: ReturnType<typeof getAdminFirestore>,
     userId: string,
     socialAccountId: string,
     platform: 'Instagram' | 'Facebook',
     posts: any[]
 ) {
-    const postsRef = collection(firestore, `users/${userId}/socialPosts`);
-    const batch = writeBatch(firestore);
+    const postsRef = firestore.collection(`users/${userId}/socialPosts`);
+    const batch: WriteBatch = firestore.batch();
 
     for (const post of posts) {
         const postId = post.id;
@@ -90,12 +102,12 @@ async function syncPostsToFirestore(
         };
 
         // Query for an existing document with the same original postId to avoid duplicates.
-        const q = query(postsRef, where("postId", "==", postId), where("socialAccountId", "==", socialAccountId));
-        const existingDocs = await getDocs(q);
+        const q = postsRef.where("postId", "==", postId).where("socialAccountId", "==", socialAccountId);
+        const existingDocs = await q.get();
 
         if (existingDocs.empty) {
             // If it doesn't exist, create a new document.
-            const newDocRef = doc(postsRef); // Firestore generates a new ID
+            const newDocRef = postsRef.doc(); // Firestore generates a new ID
             batch.set(newDocRef, postData);
         } else {
             // If it exists, update the existing document.
@@ -107,5 +119,3 @@ async function syncPostsToFirestore(
     await batch.commit();
     console.log(`Synced ${posts.length} posts for account ${socialAccountId}.`);
 }
-
-    

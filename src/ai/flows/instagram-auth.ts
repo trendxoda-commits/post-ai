@@ -47,10 +47,9 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
   async ({ clientId, userId }) => {
     const redirectUri = getRedirectUri();
     
-    // Requesting only the essential scope to ensure login works without advanced permissions.
-    // Advanced permissions require App Review by Facebook.
     const scopes = [
         'pages_show_list',
+        'pages_read_engagement'
     ];
 
     const params = new URLSearchParams({
@@ -199,70 +198,68 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     outputSchema: GetInstagramUserDetailsOutputSchema,
 }, async ({ accessToken }) => {
     
-    // Step 1: Get the user's Facebook Pages that they have granted permission for.
     const pagesUrl = `https://graph.facebook.com/me/accounts?fields=instagram_business_account,name,access_token&access_token=${accessToken}`;
     const pagesResponse = await fetch(pagesUrl);
+
     if (!pagesResponse.ok) {
         const errorData : any = await pagesResponse.json();
         throw new Error(`Failed to fetch Facebook pages: ${errorData.error?.message || 'An active access token must be used to query information about the current user.'}`);
     }
+    
     const pagesData: any = await pagesResponse.json();
     
-    // If no pages are found, don't crash. Just return an empty list.
     if (!pagesData.data || pagesData.data.length === 0) {
-        console.log('No Facebook Pages found for this user, or permissions not granted.');
+        // If no pages are found, don't crash. Just return an empty list.
+        // This is a valid scenario.
         return { accounts: [] };
     }
     
-    const accountPromises = pagesData.data.map(async (page: any) => {
-      const results: z.infer<typeof PageDetailsSchema>[] = [];
-      
-      // Each page is a potential Facebook account
-      const fbAccount = {
-          username: page.name,
-          facebookPageId: page.id,
-          facebookPageName: page.name,
-          pageAccessToken: page.access_token,
-          platform: 'Facebook' as const,
-      };
-      results.push(fbAccount);
-
-      // If a page has a linked IG account, create a separate record for it
-      if (page.instagram_business_account) {
-        const instagramBusinessAccountId = page.instagram_business_account.id;
-        // Use the PAGE access token for IG queries, as it's often more reliable
-        const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${page.access_token}`;
-        try {
-            const igResponse = await fetch(igUrl);
-            if (igResponse.ok) {
-              const igData: any = await igResponse.json();
-              const igAccount = {
-                username: igData.username,
-                instagramId: instagramBusinessAccountId,
-                facebookPageId: page.id, // Keep track of the parent page
-                pageAccessToken: page.access_token,
-                platform: 'Instagram' as const,
-              };
-              results.push(igAccount);
-            } else {
-                console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. It might be a permission issue.`);
-            }
-        } catch (e) {
-            console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
-        }
-      }
-      return results;
-    });
+    const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];
     
-    const nestedAccounts = await Promise.all(accountPromises);
-    const flattenedAccounts = nestedAccounts.flat();
+    for (const page of pagesData.data) {
+        // Each page is a potential Facebook account to be added.
+        allFoundAccounts.push({
+            username: page.name,
+            facebookPageId: page.id,
+            facebookPageName: page.name,
+            pageAccessToken: page.access_token,
+            platform: 'Facebook' as const,
+        });
 
-    if (flattenedAccounts.length === 0) {
-        // This is a soft error now. The user might just not have any accounts.
-        throw new Error('No Facebook Page or Instagram Business Account could be processed.');
+        // If a page has a linked IG account, create a separate record for it.
+        if (page.instagram_business_account) {
+            const instagramBusinessAccountId = page.instagram_business_account.id;
+            
+            // Use the PAGE access token for IG queries, as it's often required.
+            const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${page.access_token}`;
+            
+            try {
+                const igResponse = await fetch(igUrl);
+                if (igResponse.ok) {
+                    const igData: any = await igResponse.json();
+                    allFoundAccounts.push({
+                        username: igData.username,
+                        instagramId: instagramBusinessAccountId,
+                        facebookPageId: page.id, // Keep track of the parent page
+                        pageAccessToken: page.access_token, // The page token is needed for IG posting too
+                        platform: 'Instagram' as const,
+                    });
+                } else {
+                    const igError: any = await igResponse.json();
+                    console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. It might be a permission issue. Error: ${igError.error?.message}`);
+                }
+            } catch (e) {
+                console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
+            }
+        }
+    }
+    
+    if (allFoundAccounts.length === 0) {
+        // This can happen if the user granted permissions but has no eligible pages/accounts.
+        console.log('No Facebook Page or Instagram Business Account could be processed.');
     }
 
-    return { accounts: flattenedAccounts };
+    return { accounts: allFoundAccounts };
 });
 
 export async function getInstagramUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {

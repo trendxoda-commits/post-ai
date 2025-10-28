@@ -240,6 +240,6 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     return { accounts: allFoundAccounts };
 });
 
-export async function getInstagramUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {
+export async function getIgUserDetails(input: GetInstagramUserDetailsInput): Promise<GetInstagramUserDetailsOutput> {
     return getInstagramUserDetailsFlow(input);
 }

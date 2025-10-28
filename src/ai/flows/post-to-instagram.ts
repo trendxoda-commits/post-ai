@@ -2,8 +2,8 @@
 
 /**
  * @fileOverview Instagram Post Flow
- * This file contains a Genkit flow for posting an image to Instagram.
- * - postToInstagram - Posts an image to a user's Instagram account.
+ * This file contains a Genkit flow for posting an image or video to Instagram.
+ * - postToInstagram - Posts media to a user's Instagram account.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,9 +12,10 @@ import fetch from 'node-fetch';
 
 const PostToInstagramInputSchema = z.object({
   instagramUserId: z.string().describe('The Instagram User ID.'),
-  mediaUrl: z.string().url().describe('The public URL of the image to post.'),
+  mediaUrl: z.string().url().describe('The public URL of the media to post.'),
+  mediaType: z.enum(['IMAGE', 'VIDEO']).describe('The type of media being posted.'),
   caption: z.string().optional().describe('The caption for the post.'),
-  accessToken: z.string().describe('The user access token with instagram_content_publish permission.'),
+  pageAccessToken: z.string().describe('The Page Access Token with instagram_content_publish permission.'),
 });
 export type PostToInstagramInput = z.infer<typeof PostToInstagramInputSchema>;
 
@@ -31,18 +32,25 @@ const postToInstagramFlow = ai.defineFlow(
     inputSchema: PostToInstagramInputSchema,
     outputSchema: PostToInstagramOutputSchema,
   },
-  async ({ instagramUserId, mediaUrl, caption, accessToken }) => {
-    if (!accessToken) {
-      throw new Error('Instagram Access Token is required.');
+  async ({ instagramUserId, mediaUrl, mediaType, caption, pageAccessToken }) => {
+    if (!pageAccessToken) {
+      throw new Error('Instagram Page Access Token is required.');
     }
     
     // Step 1: Create a container for the media
     const containerUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media`;
     
     const containerParams = new URLSearchParams({
-        image_url: mediaUrl,
-        access_token: accessToken,
+        access_token: pageAccessToken,
     });
+
+    if (mediaType === 'VIDEO') {
+        containerParams.append('media_type', 'VIDEO');
+        containerParams.append('video_url', mediaUrl);
+    } else { // IMAGE
+        containerParams.append('image_url', mediaUrl);
+    }
+
     if (caption) {
         containerParams.append('caption', caption);
     }
@@ -68,12 +76,12 @@ const postToInstagramFlow = ai.defineFlow(
     // Step 2: Poll for container status until it is 'FINISHED'
     let containerStatus = '';
     let pollingAttempts = 0;
-    const maxPollingAttempts = 10;
+    const maxPollingAttempts = 20; // Increased attempts for video processing
 
     while (containerStatus !== 'FINISHED' && pollingAttempts < maxPollingAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for 3 seconds
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
         
-        const statusUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=status_code&access_token=${accessToken}`;
+        const statusUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=status_code&access_token=${pageAccessToken}`;
         const statusResponse = await fetch(statusUrl);
         const statusData: any = await statusResponse.json();
         
@@ -94,7 +102,7 @@ const postToInstagramFlow = ai.defineFlow(
     const publishUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media_publish`;
     const publishParams = new URLSearchParams({
       creation_id: creationId,
-      access_token: accessToken,
+      access_token: pageAccessToken,
     });
     
     const publishResponse = await fetch(publishUrl, {

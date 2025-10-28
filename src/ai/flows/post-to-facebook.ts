@@ -2,8 +2,8 @@
 
 /**
  * @fileOverview Facebook Post Flow
- * This file contains a Genkit flow for posting an image to a Facebook Page.
- * - postToFacebook - Posts an image to a user's Facebook Page.
+ * This file contains a Genkit flow for posting an image or video to a Facebook Page.
+ * - postToFacebook - Posts media to a user's Facebook Page.
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
@@ -11,7 +11,8 @@ import fetch from 'node-fetch';
 
 const PostToFacebookInputSchema = z.object({
   facebookPageId: z.string().describe('The ID of the Facebook Page.'),
-  mediaUrl: z.string().url().describe('The public URL of the image to post.'),
+  mediaUrl: z.string().url().describe('The public URL of the media to post.'),
+  mediaType: z.enum(['IMAGE', 'VIDEO']).describe('The type of media being posted.'),
   caption: z.string().optional().describe('The caption for the post.'),
   pageAccessToken: z.string().describe('The Page Access Token with pages_manage_posts permission.'),
 });
@@ -30,18 +31,28 @@ const postToFacebookFlow = ai.defineFlow(
     inputSchema: PostToFacebookInputSchema,
     outputSchema: PostToFacebookOutputSchema,
   },
-  async ({ facebookPageId, mediaUrl, caption, pageAccessToken }) => {
+  async ({ facebookPageId, mediaUrl, mediaType, caption, pageAccessToken }) => {
     
-    // Use the Page Access Token directly to post the photo.
-    const postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
-    
+    let postUrl: string;
     const params = new URLSearchParams({
-        url: mediaUrl,
-        access_token: pageAccessToken, // Use the page access token here
+        access_token: pageAccessToken,
     });
+     if (caption) {
+        params.append('description', caption); // 'description' for videos, 'caption' for photos
+    }
 
-    if (caption) {
-        params.append('caption', caption);
+    if (mediaType === 'VIDEO') {
+        postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/videos`;
+        params.append('file_url', mediaUrl);
+    } else { // IMAGE
+        postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
+        params.append('url', mediaUrl);
+        // Facebook uses 'caption' for photos, but we'll stick to 'description' and let it adapt if needed.
+        // If caption was set, it's already in params as 'description'. Let's rename for photos.
+        if (params.has('description')) {
+            params.set('caption', params.get('description')!);
+            params.delete('description');
+        }
     }
     
     const response = await fetch(postUrl, {

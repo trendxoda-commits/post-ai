@@ -32,8 +32,8 @@ export type ScheduledPost = {
   id: string;
   userId: string;
   content: string;
-  mediaUrl?: string;
-  mediaType?: 'IMAGE' | 'VIDEO';
+  mediaUrl: string;
+  mediaType: 'IMAGE' | 'VIDEO';
   scheduledTime: string;
   socialAccountIds: string[];
   createdAt: string;

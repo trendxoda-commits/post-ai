@@ -14,7 +14,7 @@ import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
-import type { SocialAccount, ApiCredential } from '@/lib/types';
+import type { SocialAccount, ApiCredential, ScheduledPost } from '@/lib/types';
 
 
 const ExecuteScheduledPostsInputSchema = z.object({
@@ -72,7 +72,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
     // 3. Iterate over due posts and publish them
     for (const postDoc of querySnapshot.docs) {
-      const post = postDoc.data();
+      const post = postDoc.data() as ScheduledPost;
       const postId = postDoc.id;
 
       let allSucceeded = true;
@@ -87,6 +87,10 @@ const executeScheduledPostsFlow = ai.defineFlow(
             }
             
             const socialAccount = accountDoc.data() as SocialAccount;
+
+            if (!post.mediaUrl || !post.mediaType) {
+                throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
+            }
 
             if (socialAccount.platform === 'Facebook') {
                 await postToFacebook({

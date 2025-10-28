@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { useAdminAuth } from './layout';
+import { useAdminAuth } from '../layout';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 

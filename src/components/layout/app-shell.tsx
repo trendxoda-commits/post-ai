@@ -50,6 +50,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
+  // Allow access to /admin without login
+  const isPublicPage = pathname === '/login' || pathname === '/admin' || pathname === '/instagram-callback';
+
   if (isUserLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -63,7 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && pathname !== '/login') {
+  if (!user && !isPublicPage) {
     redirect('/login');
   }
 
@@ -71,13 +74,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     redirect('/dashboard');
   }
   
-  if (pathname === '/login') {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-4">
-        {children}
+  // Render pages like /login or /admin without the main app shell
+  if (isPublicPage && pathname !== '/instagram-callback') {
+     return (
+      <main className="min-h-screen">
+        {pathname === '/login' ? (
+          <div className="flex flex-col items-center justify-center pt-16">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
       </main>
     );
   }
+   if (pathname === '/instagram-callback') {
+    return <main>{children}</main>;
+  }
+
 
   const handleLogout = () => {
     auth.signOut();

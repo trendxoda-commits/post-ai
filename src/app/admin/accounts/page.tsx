@@ -45,6 +45,7 @@ export default function AdminAccountsPage() {
   const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   // We will fetch all users first, then listen to their social accounts.
   // This is a more scalable approach for admin panels.
@@ -118,7 +119,8 @@ export default function AdminAccountsPage() {
     
     // Find the user access token for the user who owns this account
     const credsRef = collection(firestore, 'users', account.user.id, 'apiCredentials');
-    const credsSnapshot = await getDocs(query(credsRef, where('platform', '==', 'Meta')));
+    const credsQuery = query(credsRef, where('platform', '==', 'Meta'));
+    const credsSnapshot = await getDocs(credsQuery);
     
     if (credsSnapshot.empty) {
         toast({ variant: 'destructive', title: 'Error', description: `API credentials not found for user ${account.user.email}.` });
@@ -170,6 +172,79 @@ export default function AdminAccountsPage() {
     }
   };
 
+  const handleRefreshAllAnalytics = async () => {
+    if (!firestore) return;
+    setIsRefreshingAll(true);
+    toast({
+        title: 'Starting Global Refresh',
+        description: 'This may take a few minutes. Data will update in the table as it comes in.',
+    });
+
+    try {
+        // Create a map of userId -> userAccessToken for efficiency
+        const usersSnapshot = await getDocs(collection(firestore, 'users'));
+        const userTokenMap = new Map<string, string>();
+        for (const userDoc of usersSnapshot.docs) {
+            const credsRef = collection(firestore, 'users', userDoc.id, 'apiCredentials');
+            const credsQuery = query(credsRef, where('platform', '==', 'Meta'));
+            const credsSnapshot = await getDocs(credsQuery);
+            if (!credsSnapshot.empty) {
+                const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
+                if (apiCredential.accessToken) {
+                    userTokenMap.set(userDoc.id, apiCredential.accessToken);
+                }
+            }
+        }
+        
+        let successCount = 0;
+        let failCount = 0;
+
+        // Sequentially process each account to avoid overwhelming APIs
+        for (const account of accounts) {
+            const userAccessToken = userTokenMap.get(account.user.id);
+            if (!userAccessToken || !account.pageAccessToken) {
+                console.warn(`Skipping refresh for ${account.displayName} due to missing tokens.`);
+                failCount++;
+                continue;
+            }
+
+            try {
+                const newAnalytics = await getAccountAnalytics({
+                    accountId: account.accountId,
+                    platform: account.platform,
+                    pageAccessToken: account.pageAccessToken,
+                    userAccessToken,
+                });
+                
+                const accountDocRef = doc(firestore, 'users', account.user.id, 'socialAccounts', account.id);
+                await setDoc(accountDocRef, newAnalytics, { merge: true });
+
+                // Update local state
+                setAccounts(prev => prev.map(a => a.id === account.id ? { ...a, ...newAnalytics } : a));
+                successCount++;
+            } catch (error) {
+                console.error(`Failed to refresh account ${account.displayName}:`, error);
+                failCount++;
+            }
+        }
+        
+        toast({
+            title: 'Global Refresh Complete',
+            description: `Successfully refreshed ${successCount} accounts. ${failCount} failed.`,
+        });
+
+    } catch (error: any) {
+        console.error('An error occurred during global refresh:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Global Refresh Failed',
+            description: 'A critical error occurred. Check the console for details.',
+        });
+    } finally {
+        setIsRefreshingAll(false);
+    }
+  };
+
 
   return (
     <div className="space-y-8">
@@ -187,7 +262,13 @@ export default function AdminAccountsPage() {
               <CardTitle>All Accounts</CardTitle>
               <CardDescription>A complete list of all connected accounts from all users.</CardDescription>
             </div>
-            <SearchComponent />
+            <div className="flex gap-2">
+                <SearchComponent />
+                <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
+                    {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    <span className="hidden sm:inline ml-2">Refresh All</span>
+                </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -232,7 +313,7 @@ export default function AdminAccountsPage() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>

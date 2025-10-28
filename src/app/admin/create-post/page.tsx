@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,13 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,18 +20,21 @@ import { mockUsers } from '../dashboard/page';
 import { Separator } from '@/components/ui/separator';
 
 export default function AdminCreatePostPage() {
-  const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
 
-  const selectedUser = mockUsers.find((user) => user.id === selectedUserId);
-
-  const handleUserChange = (userId: string) => {
-    setSelectedUserId(userId);
-    setSelectedAccountIds([]); // Reset selected accounts when user changes
-  };
+  // Create a flat list of all accounts from all users, with user info attached
+  const allAccounts = useMemo(() => {
+    return mockUsers.flatMap(user => 
+      user.accounts.map(account => ({
+        ...account,
+        userId: user.id,
+        userName: user.name,
+      }))
+    );
+  }, []);
 
   const handleAccountToggle = (accountId: string) => {
     setSelectedAccountIds((prev) =>
@@ -50,7 +46,7 @@ export default function AdminCreatePostPage() {
   
   const handleSelectAllAccounts = (isChecked: boolean) => {
     if (isChecked) {
-      setSelectedAccountIds(selectedUser?.accounts.map(acc => acc.id) || []);
+      setSelectedAccountIds(allAccounts.map(acc => acc.id));
     } else {
       setSelectedAccountIds([]);
     }
@@ -60,7 +56,6 @@ export default function AdminCreatePostPage() {
   const handlePublish = () => {
       setIsPublishing(true);
       console.log({
-          userId: selectedUserId,
           accountIds: selectedAccountIds,
           content,
           mediaUrl
@@ -72,49 +67,25 @@ export default function AdminCreatePostPage() {
       }, 1500);
   }
   
-  const areAllAccountsSelected = selectedUser ? selectedAccountIds.length === selectedUser.accounts.length && selectedUser.accounts.length > 0 : false;
+  const areAllAccountsSelected = allAccounts.length > 0 && selectedAccountIds.length === allAccounts.length;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Create Post for User</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Create Post for Users</h2>
       </div>
 
-      <div className="grid gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>1. Select User</CardTitle>
-            <CardDescription>
-              Choose the user you want to create a post for.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Select onValueChange={handleUserChange} value={selectedUserId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a user" />
-              </SelectTrigger>
-              <SelectContent>
-                {mockUsers.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        {selectedUser && (
-          <>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>2. Select Accounts</CardTitle>
+                <CardTitle>1. Select Accounts</CardTitle>
                 <CardDescription>
-                  Choose which of {selectedUser.name}'s accounts to post to.
+                  Choose which accounts to post to across all users.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {selectedUser.accounts.length > 0 ? (
+                {allAccounts.length > 0 ? (
                     <>
                     <div className="flex items-center space-x-3 rounded-md border p-4 bg-muted/50">
                        <Checkbox
@@ -130,39 +101,43 @@ export default function AdminCreatePostPage() {
                       </Label>
                     </div>
                     <Separator />
-                    {selectedUser.accounts.map((account) => (
-                        <div
-                        key={account.id}
-                        className="flex items-center space-x-3 rounded-md border p-4"
-                        >
-                        <Checkbox
-                            id={account.id}
-                            checked={selectedAccountIds.includes(account.id)}
-                            onCheckedChange={() => handleAccountToggle(account.id)}
-                        />
-                        <Label
-                            htmlFor={account.id}
-                            className="flex flex-col gap-0.5"
-                        >
-                            <span className="font-semibold">{account.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                            {account.platform}
-                            </span>
-                        </Label>
-                        </div>
-                    ))}
+                    <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+                        {allAccounts.map((account) => (
+                            <div
+                            key={account.id}
+                            className="flex items-center space-x-3 rounded-md border p-4"
+                            >
+                            <Checkbox
+                                id={account.id}
+                                checked={selectedAccountIds.includes(account.id)}
+                                onCheckedChange={() => handleAccountToggle(account.id)}
+                            />
+                            <Label
+                                htmlFor={account.id}
+                                className="flex flex-col gap-0.5"
+                            >
+                                <span className="font-semibold">{account.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                {account.platform} &bull; {account.userName}
+                                </span>
+                            </Label>
+                            </div>
+                        ))}
+                    </div>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    This user has no social accounts connected.
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    There are no social accounts connected to any user.
                   </p>
                 )}
               </CardContent>
             </Card>
-            
+        </div>
+        
+        <div className="lg:col-span-1">
             <Card>
                 <CardHeader>
-                    <CardTitle>3. Craft Post</CardTitle>
+                    <CardTitle>2. Craft Post</CardTitle>
                     <CardDescription>Write the content and add the media for the post.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -187,16 +162,15 @@ export default function AdminCreatePostPage() {
                     </div>
                 </CardContent>
                 <CardFooter>
-                    <Button onClick={handlePublish} disabled={isPublishing || selectedAccountIds.length === 0 || !content || !mediaUrl}>
+                    <Button onClick={handlePublish} disabled={isPublishing || selectedAccountIds.length === 0 || !content || !mediaUrl} className="w-full">
                         {isPublishing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Publish Post
+                        Publish to {selectedAccountIds.length} Account(s)
                     </Button>
                 </CardFooter>
             </Card>
-
-          </>
-        )}
+        </div>
       </div>
     </div>
   );
 }
+

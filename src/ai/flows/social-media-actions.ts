@@ -6,6 +6,8 @@
  * - getInstagramMedia - Fetches recent media from an Instagram account.
  * - getFacebookPosts - Fetches recent posts from a Facebook Page.
  * - getAccountAnalytics - Fetches comprehensive analytics for a single social media account.
+ * - getFacebookPostComments - Fetches comments for a specific Facebook post.
+ * - getInstagramMediaComments - Fetches comments for a specific Instagram media item.
  */
 
 import { ai } from '@/ai/genkit';
@@ -253,4 +255,93 @@ const getFacebookPostsFlow = ai.defineFlow(
 
 export async function getFacebookPosts(input: z.infer<typeof GetFacebookPostsInputSchema>): Promise<GetFacebookPostsOutput> {
     return getFacebookPostsFlow(input);
+}
+
+
+// #################### Get Facebook Post Comments Flow ####################
+const GetFacebookPostCommentsInputSchema = z.object({
+  postId: z.string().describe('The ID of the Facebook post.'),
+  accessToken: z.string().describe('The Page Access Token.'),
+});
+
+const FacebookCommentSchema = z.object({
+  id: z.string(),
+  from: z.object({ id: z.string(), name: z.string() }),
+  message: z.string(),
+  created_time: z.string(),
+});
+
+const GetFacebookPostCommentsOutputSchema = z.object({
+  comments: z.array(FacebookCommentSchema),
+});
+export type GetFacebookPostCommentsOutput = z.infer<typeof GetFacebookPostCommentsOutputSchema>;
+
+const getFacebookPostCommentsFlow = ai.defineFlow(
+  {
+    name: 'getFacebookPostCommentsFlow',
+    inputSchema: GetFacebookPostCommentsInputSchema,
+    outputSchema: GetFacebookPostCommentsOutputSchema,
+  },
+  async ({ postId, accessToken }) => {
+    const url = `${INSTAGRAM_GRAPH_API_URL}/${postId}/comments?fields=id,from,message,created_time&access_token=${accessToken}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const errorData: any = await response.json();
+      console.error('Failed to get Facebook comments:', errorData);
+      throw new Error(`Failed to get Facebook comments: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data: any = await response.json();
+    return { comments: data.data || [] };
+  }
+);
+
+export async function getFacebookPostComments(input: z.infer<typeof GetFacebookPostCommentsInputSchema>): Promise<GetFacebookPostCommentsOutput> {
+    return getFacebookPostCommentsFlow(input);
+}
+
+
+// #################### Get Instagram Media Comments Flow ####################
+const GetInstagramMediaCommentsInputSchema = z.object({
+  mediaId: z.string().describe('The ID of the Instagram media object.'),
+  accessToken: z.string().describe('The User or Page Access Token.'),
+});
+
+const InstagramCommentSchema = z.object({
+  id: z.string(),
+  from: z.object({ id: z.string(), username: z.string() }),
+  text: z.string(),
+  timestamp: z.string(),
+});
+
+const GetInstagramMediaCommentsOutputSchema = z.object({
+  comments: z.array(InstagramCommentSchema),
+});
+export type GetInstagramMediaCommentsOutput = z.infer<typeof GetInstagramMediaCommentsOutputSchema>;
+
+const getInstagramMediaCommentsFlow = ai.defineFlow(
+  {
+    name: 'getInstagramMediaCommentsFlow',
+    inputSchema: GetInstagramMediaCommentsInputSchema,
+    outputSchema: GetInstagramMediaCommentsOutputSchema,
+  },
+  async ({ mediaId, accessToken }) => {
+    const url = `${INSTAGRAM_GRAPH_API_URL}/${mediaId}/comments?fields=id,from,text,timestamp&access_token=${accessToken}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      const errorData: any = await response.json();
+      console.error('Failed to get Instagram comments:', errorData);
+      throw new Error(`Failed to get Instagram comments: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data: any = await response.json();
+    // The schema for IG comment 'from' is slightly different from FB, so we map 'username' to 'name' for consistency if needed.
+    return { comments: (data.data || []).map((c: any) => ({ ...c, from: { id: c.from.id, username: c.from.username } })) };
+  }
+);
+
+export async function getInstagramMediaComments(input: z.infer<typeof GetInstagramMediaCommentsInputSchema>): Promise<GetInstagramMediaCommentsOutput> {
+    return getInstagramMediaCommentsFlow(input);
 }

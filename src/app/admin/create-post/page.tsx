@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { mockUsers } from '../dashboard/page';
+import { Separator } from '@/components/ui/separator';
 
 export default function AdminCreatePostPage() {
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -47,6 +48,15 @@ export default function AdminCreatePostPage() {
     );
   };
   
+  const handleSelectAllAccounts = (isChecked: boolean) => {
+    if (isChecked) {
+      setSelectedAccountIds(selectedUser?.accounts.map(acc => acc.id) || []);
+    } else {
+      setSelectedAccountIds([]);
+    }
+  };
+
+
   const handlePublish = () => {
       setIsPublishing(true);
       console.log({
@@ -61,6 +71,8 @@ export default function AdminCreatePostPage() {
           alert('Post published! (Check console for data)');
       }, 1500);
   }
+  
+  const areAllAccountsSelected = selectedUser ? selectedAccountIds.length === selectedUser.accounts.length && selectedUser.accounts.length > 0 : false;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -103,27 +115,43 @@ export default function AdminCreatePostPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedUser.accounts.length > 0 ? (
-                  selectedUser.accounts.map((account) => (
-                    <div
-                      key={account.id}
-                      className="flex items-center space-x-3 rounded-md border p-4"
-                    >
-                      <Checkbox
-                        id={account.id}
-                        checked={selectedAccountIds.includes(account.id)}
-                        onCheckedChange={() => handleAccountToggle(account.id)}
+                    <>
+                    <div className="flex items-center space-x-3 rounded-md border p-4 bg-muted/50">
+                       <Checkbox
+                        id="select-all"
+                        checked={areAllAccountsSelected}
+                        onCheckedChange={handleSelectAllAccounts}
                       />
-                      <Label
-                        htmlFor={account.id}
-                        className="flex flex-col gap-0.5"
+                       <Label
+                        htmlFor="select-all"
+                        className="font-semibold"
                       >
-                        <span className="font-semibold">{account.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {account.platform}
-                        </span>
+                        Select All Accounts
                       </Label>
                     </div>
-                  ))
+                    <Separator />
+                    {selectedUser.accounts.map((account) => (
+                        <div
+                        key={account.id}
+                        className="flex items-center space-x-3 rounded-md border p-4"
+                        >
+                        <Checkbox
+                            id={account.id}
+                            checked={selectedAccountIds.includes(account.id)}
+                            onCheckedChange={() => handleAccountToggle(account.id)}
+                        />
+                        <Label
+                            htmlFor={account.id}
+                            className="flex flex-col gap-0.5"
+                        >
+                            <span className="font-semibold">{account.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                            {account.platform}
+                            </span>
+                        </Label>
+                        </div>
+                    ))}
+                  </>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     This user has no social accounts connected.

@@ -68,7 +68,7 @@ export function Feed() {
           } catch (e: any) {
              console.error(`Failed to fetch posts for Instagram account ${account.displayName}:`, e);
              if (e.message && (e.message.includes('permission') || e.message.includes('access token'))) {
-                throw new Error("A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
+                throw new Error("A permission is missing for Instagram. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
              }
           }
         } else if (account.platform === 'Facebook') {
@@ -116,7 +116,7 @@ export function Feed() {
            } catch (e: any) {
              console.error(`Failed to fetch posts for Facebook account ${account.displayName}:`, e);
              if (e.message && (e.message.includes('permission') || e.message.includes('page public content access'))) {
-                throw new Error("A permission is missing. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
+                throw new Error("A permission is missing for Facebook. Please go to Settings, disconnect all your accounts, and reconnect them to grant the required permissions.");
              }
           }
         }

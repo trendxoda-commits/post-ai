@@ -48,7 +48,6 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let postCount = 0;
 
         // Step 1: Get followers count
-        // For both FB and IG, `followers_count` can be fetched with the account ID and a valid token (page or user respectively)
         const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${accessToken}`;
         try {
             const followersResponse = await fetch(followersUrl);

@@ -17,13 +17,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
 import { useFirebase, useCollection } from '@/firebase';
-import { collectionGroup, query, getDocs, doc, getDoc, collection } from 'firebase/firestore';
-import type { SocialAccount, User } from '@/lib/types';
+import { collectionGroup, query, getDocs, doc, getDoc, collection, setDoc, where } from 'firebase/firestore';
+import type { SocialAccount, User, ApiCredential } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import { getAccountAnalytics } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -38,8 +41,10 @@ interface FullAccountDetails extends SocialAccount {
 export default function AdminAccountsPage() {
   const { firestore } = useFirebase();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   // We will fetch all users first, then listen to their social accounts.
   // This is a more scalable approach for admin panels.
@@ -107,6 +112,65 @@ export default function AdminAccountsPage() {
     );
   }, [accounts, query]);
 
+
+   const handleRefreshAnalytics = async (account: FullAccountDetails) => {
+    if (!firestore) return;
+    
+    // Find the user access token for the user who owns this account
+    const credsRef = collection(firestore, 'users', account.user.id, 'apiCredentials');
+    const credsSnapshot = await getDocs(query(credsRef, where('platform', '==', 'Meta')));
+    
+    if (credsSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Error', description: `API credentials not found for user ${account.user.email}.` });
+        return;
+    }
+    
+    const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
+    const userAccessToken = apiCredential.accessToken;
+
+    if (!userAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `User access token not found for user ${account.user.email}. They may need to reconnect.` });
+        return;
+    }
+
+    setRefreshingId(account.id);
+    try {
+        const newAnalytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            pageAccessToken: account.pageAccessToken!,
+            userAccessToken: userAccessToken,
+        });
+
+        const accountDocRef = doc(firestore, 'users', account.user.id, 'socialAccounts', account.id);
+        
+        await setDoc(accountDocRef, newAnalytics, { merge: true });
+
+        // Update local state to reflect the change immediately
+        setAccounts(prevAccounts => 
+            prevAccounts.map(acc => 
+                acc.id === account.id ? { ...acc, ...newAnalytics } : acc
+            )
+        );
+
+        toast({
+            title: 'Refresh Successful',
+            description: `Analytics for ${account.displayName} have been updated.`,
+        });
+
+    } catch (error: any) {
+        console.error('Failed to refresh analytics from admin:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Refresh Failed',
+            description: error.message || 'Could not update account analytics.',
+        });
+    } finally {
+        setRefreshingId(null);
+    }
+  };
+
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -144,6 +208,7 @@ export default function AdminAccountsPage() {
                     <TableHead className="text-right">Comments</TableHead>
                     <TableHead className="text-right">Views</TableHead>
                     <TableHead className="text-right">Posts</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -166,11 +231,17 @@ export default function AdminAccountsPage() {
                         <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-center">
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id}>
+                                {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                <span className="hidden sm:inline ml-2">Refresh</span>
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={8} className="h-24 text-center">
+                      <TableCell colSpan={9} className="h-24 text-center">
                         {query ? `No accounts found for "${query}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>

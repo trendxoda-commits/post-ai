@@ -5,8 +5,8 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useFirebase, useUser } from '@/firebase';
 import {
   getAccessToken,
-  getLongLivedToken,
-  getIgUserDetails,
+  exchangeForLongLivedToken,
+  getInstagramUserDetails,
 } from '@/app/actions';
 import { doc, collection, setDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -75,12 +75,19 @@ export default function InstagramCallbackPage() {
         }
         const apiCredential = credsSnapshot.docs[0].data();
         const apiCredentialId = credsSnapshot.docs[0].id;
+        
+        // Construct the redirect URI - MUST match the one used in the initial auth request
+        if (!process.env.NEXT_PUBLIC_URL || !process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI) {
+            throw new Error('Application redirect URI is not configured.');
+        }
+        const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
 
         // 2. Exchange code for a short-lived access token
         const { accessToken: shortLivedToken } = await getAccessToken({
           code,
           clientId: apiCredential.appId,
           clientSecret: apiCredential.appSecret,
+          redirectUri: redirectUri,
         });
 
         // 3. Exchange short-lived token for a long-lived one
@@ -116,7 +123,7 @@ export default function InstagramCallbackPage() {
         
         for (const account of accounts) {
             // Use instagramId for IG, facebookPageId for FB
-            const platformSpecificId = account.platform === 'Instagram' ? account.instagramId : account.facebookPageId;
+            const platformSpecificId = account.platform === 'Instagram' ? account.accountId : account.accountId;
             if (!platformSpecificId) continue;
             
             const q = query(socialAccountsRef, where('accountId', '==', platformSpecificId), where('platform', '==', account.platform));
@@ -128,7 +135,7 @@ export default function InstagramCallbackPage() {
                     id: newAccountDocRef.id,
                     userId: user.uid,
                     platform: account.platform,
-                    displayName: account.username,
+                    displayName: account.displayName,
                     accountId: platformSpecificId,
                     pageAccessToken: account.pageAccessToken,
                     avatar: account.avatar || `https://picsum.photos/seed/${platformSpecificId}/40/40`,
@@ -139,7 +146,7 @@ export default function InstagramCallbackPage() {
                 const existingDoc = existingAccountSnapshot.docs[0];
                 await setDoc(existingDoc.ref, { 
                     pageAccessToken: account.pageAccessToken, 
-                    displayName: account.username,
+                    displayName: account.displayName,
                     avatar: account.avatar || existingDoc.data().avatar,
                 }, { merge: true });
             }

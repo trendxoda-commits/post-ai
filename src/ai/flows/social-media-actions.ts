@@ -54,7 +54,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         let totalViews = 0;
         let postCount = 0;
 
-        // Step 1: Get followers count
+        // Step 1: Get followers count (always uses Page Access Token for both)
         const followersUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}?fields=followers_count&access_token=${pageAccessToken}`;
         try {
             const followersResponse = await fetch(followersUrl);
@@ -72,14 +72,17 @@ const getAccountAnalyticsFlow = ai.defineFlow(
         if (platform === 'Instagram') {
             try {
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
-                // Pass the correct userAccessToken to get media and its insights (plays)
+                
+                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (plays)
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
+                
                 postCount = media.length;
                 media.forEach(post => {
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
+                    // Correctly aggregate plays for videos
                     if (post.media_type === 'VIDEO') {
-                        totalViews += post.plays || 0; // Correctly aggregate plays for videos
+                        totalViews += post.plays || 0;
                     }
                 });
             } catch (e) {
@@ -92,22 +95,13 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                 // Get total likes and comments from posts
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
                 postCount = posts.length;
-                 posts.forEach(post => {
+                posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;
                     totalComments += post.comments?.summary.total_count || 0;
+                    // Correctly aggregate video views fetched from the individual post insights
+                    totalViews += post.insights?.post_video_views || 0;
                 });
                 
-                // Get total video views directly from page insights - THE CORRECT WAY
-                const pageInsightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${accountId}/insights?metric=page_video_views&period=month&access_token=${pageAccessToken}`;
-                const insightsResponse = await fetch(pageInsightsUrl);
-                 if (insightsResponse.ok) {
-                    const insightsData: any = await insightsResponse.json();
-                    // The value is usually the latest one in the values array for the given period
-                    totalViews = insightsData.data?.[0]?.values?.slice(-1)[0]?.value || 0;
-                } else {
-                    console.error(`Failed to fetch page video views for ${accountId}:`, await insightsResponse.text());
-                }
-
             } catch (e) {
                 console.error(`Error fetching Facebook posts for analytics for ${accountId}:`, e);
             }

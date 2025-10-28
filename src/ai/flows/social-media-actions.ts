@@ -174,12 +174,15 @@ const getInstagramMediaFlow = ai.defineFlow(
         if (item.media_type === 'VIDEO') {
             try {
                 // The insights call must also use the USER access token.
-                // CRITICAL FIX: The parameter name is 'access_token', not 'accessToken'.
-                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=plays&access_token=${accessToken}`;
+                // CRITICAL FIX: The API call structure was incorrect. We need to query the media item itself
+                // with the `insights` field and the `plays` metric.
+                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}?fields=insights.metric(plays)&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);
+                
                 if (insightsResponse.ok) {
                     const insightsData: any = await insightsResponse.json();
-                    plays = insightsData.data?.find((insight: any) => insight.name === 'plays')?.values[0]?.value || 0;
+                    // The data structure is nested: insights -> data -> values
+                    plays = insightsData.insights?.data?.find((insight: any) => insight.name === 'plays')?.values[0]?.value || 0;
                 } else {
                     console.warn(`Could not fetch plays for media ${item.id}:`, await insightsResponse.text());
                 }

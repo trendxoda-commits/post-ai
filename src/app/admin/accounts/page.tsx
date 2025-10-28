@@ -140,7 +140,7 @@ export default function AdminAccountsPage() {
         const newAnalytics = await getAccountAnalytics({
             accountId: account.accountId,
             platform: account.platform,
-            pageAccessToken: account.pageAccessToken,
+            pageAccessToken: account.pageAccessToken, // CRITICAL FIX: Pass the correct pageAccessToken
             userAccessToken: userAccessToken,
         });
 
@@ -212,7 +212,7 @@ export default function AdminAccountsPage() {
                 const newAnalytics = await getAccountAnalytics({
                     accountId: account.accountId,
                     platform: account.platform,
-                    pageAccessToken: account.pageAccessToken,
+                    pageAccessToken: account.pageAccessToken, // CRITICAL FIX: Pass the correct pageAccessToken
                     userAccessToken,
                 });
                 

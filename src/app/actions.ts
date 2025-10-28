@@ -9,7 +9,7 @@ import {
   getInstagramAuthUrl,
   getAccessToken as getAccessTokenFlow,
   exchangeForLongLivedToken,
-  getIgUserDetails,
+  getIgUserDetails as getIgUserDetailsFlow,
   type GetInstagramAuthUrlInput,
   type GetInstagramAccessTokenInput,
   type ExchangeForLongLivedTokenInput,
@@ -63,8 +63,9 @@ export async function getLongLivedToken(input: ExchangeForLongLivedTokenInput) {
 export async function getIgUserDetails(
   input: GetInstagramUserDetailsInput
 ): Promise<GetInstagramUserDetailsOutput> {
-  return getIgUserDetails(input);
+  return getIgUserDetailsFlow(input);
 }
+
 
 // --- Social Media Posting ---
 

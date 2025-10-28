@@ -49,11 +49,12 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     
     const scopes = [
         'pages_show_list',
-        // 'pages_read_engagement',
-        // 'pages_manage_posts',
-        // 'instagram_content_publish',
-        // 'instagram_manage_insights',
-        // 'business_management'
+        'instagram_content_publish',
+        'pages_manage_posts',
+        'instagram_manage_comments',
+        'pages_read_engagement',
+        'instagram_manage_insights',
+        'business_management'
     ];
 
     const params = new URLSearchParams({

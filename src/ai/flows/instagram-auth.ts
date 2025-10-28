@@ -49,11 +49,11 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     
     const scopes = [
         'pages_show_list',
-        'pages_read_engagement',
-        'pages_manage_posts',
-        'instagram_content_publish',
-        'instagram_manage_insights',
-        'business_management'
+        // 'pages_read_engagement',
+        // 'pages_manage_posts',
+        // 'instagram_content_publish',
+        // 'instagram_manage_insights',
+        // 'business_management'
     ];
 
     const params = new URLSearchParams({
@@ -213,7 +213,7 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const pagesData: any = await pagesResponse.json();
     
     if (!pagesData.data || pagesData.data.length === 0) {
-        throw new Error('No Facebook Page linked to this account. Please go to Facebook Business settings and link a Page with an Instagram Business account.');
+        return { accounts: [] };
     }
     
     const allFoundAccounts: z.infer<typeof PageDetailsSchema>[] = [];

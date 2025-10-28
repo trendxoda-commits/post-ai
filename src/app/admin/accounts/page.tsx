@@ -17,79 +17,119 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { SocialAccount } from '@/lib/types';
-import { useEffect, useState } from 'react';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useEffect, useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
+import { getAdminAllAccounts } from '@/app/actions';
+import { SearchComponent } from './search-component';
+import { useSearchParams } from 'next/navigation';
 
+// This matches the output from our new admin action
+interface FullAccountDetails {
+  id: string;
+  displayName: string;
+  platform: 'Instagram' | 'Facebook';
+  user: {
+    id: string;
+    email: string;
+  };
+}
 
 export default function AdminAccountsPage() {
-  const { firestore } = useFirebase();
-  const { user } = useUser();
+  const searchParams = useSearchParams();
+  const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const socialAccountsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
-    [firestore, user]
-  );
-  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
-    
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const { accounts: fetchedAccounts } = await getAdminAllAccounts();
+        setAccounts(fetchedAccounts);
+      } catch (error) {
+        console.error("Failed to fetch admin accounts:", error);
+        setAccounts([]); // Set to empty array on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const query = searchParams.get('query')?.toLowerCase() || '';
+
+  const filteredAccounts = useMemo(() => {
+    if (!query) {
+      return accounts;
+    }
+    return accounts.filter(
+      (account) =>
+        account.displayName.toLowerCase().includes(query) ||
+        account.user.email.toLowerCase().includes(query)
+    );
+  }, [accounts, query]);
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline">My Connected Accounts</h1>
+        <h1 className="text-3xl font-bold font-headline">All Connected Accounts</h1>
         <p className="text-muted-foreground">
-          A list of your social media accounts connected to the application.
+          A list of all social media accounts connected by users across the application.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Your Accounts</CardTitle>
-                    <CardDescription>Accounts you have connected from the settings page.</CardDescription>
-                </div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <CardTitle>All Accounts</CardTitle>
+              <CardDescription>A complete list of all connected accounts from all users.</CardDescription>
             </div>
+            <SearchComponent />
+          </div>
         </CardHeader>
         <CardContent>
-            {isLoading ? (
-                 <div className="flex justify-center items-center h-48">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-            ) : (
-                <div className="rounded-lg border">
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Account</TableHead>
-                        <TableHead>Platform</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {accounts && accounts.length > 0 ? (
-                            accounts.map((account) => (
-                                <TableRow key={account.id}>
-                                <TableCell>
-                                    <div className="font-medium">{account.displayName}</div>
-                                    <div className="text-xs text-muted-foreground">{account.accountId}</div>
-                                </TableCell>
-                                <TableCell>
-                                    <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">{account.platform}</Badge>
-                                </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={2} className="h-24 text-center">
-                                You have not connected any accounts yet.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                    </Table>
-                </div>
-            )}
+          {isLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Platform</TableHead>
+                    <TableHead>User</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAccounts && filteredAccounts.length > 0 ? (
+                    filteredAccounts.map((account) => (
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <div className="font-medium">{account.displayName}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">
+                            {account.platform}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-muted-foreground">{account.user.email}</div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="h-24 text-center">
+                        {query ? `No accounts found for "${query}".` : "No accounts have been connected yet."}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

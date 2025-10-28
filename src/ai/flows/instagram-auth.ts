@@ -50,7 +50,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: 'pages_show_list',
+        scope: 'pages_show_list,instagram_basic',
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
     });
@@ -198,15 +198,19 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
     const pagesResponse = await fetch(pagesUrl);
     if (!pagesResponse.ok) {
         const errorData : any = await pagesResponse.json();
-        throw new Error(`Failed to fetch Facebook pages: ${errorData.error?.message || 'An active access token must be used.'}`);
+        throw new Error(`Failed to fetch Facebook pages: ${errorData.error?.message || 'An active access token must be used to query information about the current user.'}`);
     }
     const pagesData: any = await pagesResponse.json();
     
+    // If no pages are found, don't crash. Just return an empty list.
     if (!pagesData.data || pagesData.data.length === 0) {
-        throw new Error('No Facebook Page linked to this account. Please go to Facebook Business settings and link a Page with an Instagram Business account.');
+        console.log('No Facebook Pages found for this user, or permissions not granted.');
+        return { accounts: [] };
     }
     
-    const accounts = await Promise.all(pagesData.data.map(async (page: any) => {
+    const accountPromises = pagesData.data.map(async (page: any) => {
+      const results: z.infer<typeof PageDetailsSchema>[] = [];
+      
       // Each page is a potential Facebook account
       const fbAccount = {
           username: page.name,
@@ -215,28 +219,37 @@ const getInstagramUserDetailsFlow = ai.defineFlow({
           pageAccessToken: page.access_token,
           platform: 'Facebook' as const,
       };
+      results.push(fbAccount);
 
       // If a page has a linked IG account, create a separate record for it
       if (page.instagram_business_account) {
         const instagramBusinessAccountId = page.instagram_business_account.id;
-        const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${accessToken}`;
-        const igResponse = await fetch(igUrl);
-        if (igResponse.ok) {
-          const igData: any = await igResponse.json();
-          const igAccount = {
-            username: igData.username,
-            instagramId: instagramBusinessAccountId,
-            facebookPageId: page.id, // Keep track of the parent page
-            pageAccessToken: page.access_token,
-            platform: 'Instagram' as const,
-          };
-          return [fbAccount, igAccount];
+        // Use the PAGE access token for IG queries, as it's often more reliable
+        const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username&access_token=${page.access_token}`;
+        try {
+            const igResponse = await fetch(igUrl);
+            if (igResponse.ok) {
+              const igData: any = await igResponse.json();
+              const igAccount = {
+                username: igData.username,
+                instagramId: instagramBusinessAccountId,
+                facebookPageId: page.id, // Keep track of the parent page
+                pageAccessToken: page.access_token,
+                platform: 'Instagram' as const,
+              };
+              results.push(igAccount);
+            } else {
+                console.warn(`Could not fetch username for IG account ${instagramBusinessAccountId}. It might be a permission issue.`);
+            }
+        } catch (e) {
+            console.error(`Error fetching IG account details for ${instagramBusinessAccountId}:`, e);
         }
       }
-      return [fbAccount];
-    }));
+      return results;
+    });
     
-    const flattenedAccounts = accounts.flat().filter(acc => acc.platform === 'Instagram');
+    const nestedAccounts = await Promise.all(accountPromises);
+    const flattenedAccounts = nestedAccounts.flat();
 
     return { accounts: flattenedAccounts };
 });

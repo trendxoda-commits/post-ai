@@ -99,15 +99,24 @@ export default function InstagramCallbackPage() {
           accessToken: longLivedToken,
         });
 
-        // **MODIFICATION**: Filter to only include Instagram accounts
-        const instagramAccounts = accounts.filter(acc => acc.platform === 'Instagram');
+        // If no accounts were found, inform the user and stop.
+        if (accounts.length === 0) {
+            toast({
+                title: 'No Accounts Found',
+                description: 'We could not find any Facebook Pages or Instagram Business accounts. Please ensure you have granted permissions.',
+            });
+            setStatus(Status.SUCCESS); // Technically not an error, just nothing to add.
+            router.push('/settings');
+            return;
+        }
 
         // 6. Save the new accounts to Firestore, checking for duplicates.
         const socialAccountsRef = collection(firestore, 'users', user.uid, 'socialAccounts');
         let newAccountsCount = 0;
         
-        for (const account of instagramAccounts) { // Use the filtered list
-            const accountId = account.instagramId || account.facebookPageId;
+        for (const account of accounts) {
+            // Use instagramId for IG, facebookPageId for FB
+            const accountId = account.platform === 'Instagram' ? account.instagramId : account.facebookPageId;
             if (!accountId) continue;
             
             const q = query(socialAccountsRef, where('accountId', '==', accountId));
@@ -128,15 +137,23 @@ export default function InstagramCallbackPage() {
             } else {
                 // Optionally, update the existing account's pageAccessToken if it has changed
                 const existingDoc = existingAccountSnapshot.docs[0];
-                await setDoc(existingDoc.ref, { pageAccessToken: account.pageAccessToken }, { merge: true });
+                await setDoc(existingDoc.ref, { pageAccessToken: account.pageAccessToken, displayName: account.username }, { merge: true });
             }
         }
 
         setStatus(Status.SUCCESS);
-        toast({
-          title: 'Connection Successful!',
-          description: `${newAccountsCount} new Instagram account(s) have been connected.`,
-        });
+        
+        if (newAccountsCount > 0) {
+            toast({
+              title: 'Connection Successful!',
+              description: `${newAccountsCount} new account(s) have been connected.`,
+            });
+        } else {
+            toast({
+              title: 'Accounts Updated',
+              description: 'Your existing accounts have been refreshed.',
+            });
+        }
         
         // Redirect back to settings page
         router.push('/settings');

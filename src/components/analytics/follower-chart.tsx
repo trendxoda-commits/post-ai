@@ -23,11 +23,10 @@ import {
 } from '@/components/ui/chart';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
-import type { SocialAccount, ApiCredential, AnalyticsData } from '@/lib/types';
+import { useEffect, useState, useMemo } from 'react';
+import type { SocialAccount, AnalyticsData } from '@/lib/types';
 import { subMonths, format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { getAccountAnalytics } from '@/app/actions';
 
 const chartConfig = {
   followers: {
@@ -38,7 +37,6 @@ const chartConfig = {
 
 export function FollowerChart() {
   const [chartData, setChartData] = useState<AnalyticsData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { firestore } = useFirebase();
   const { user } = useUser();
 
@@ -46,52 +44,23 @@ export function FollowerChart() {
     () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
     [firestore, user]
   );
-  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
-  
-  const apiCredentialsQuery = useMemoFirebase(() =>
-    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
-  , [firestore, user]);
-  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
-  const userAccessToken = apiCredentials?.[0]?.accessToken;
+  // Use real-time listener for accounts
+  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
 
   useEffect(() => {
-    const generateChartData = async () => {
-      if (!accounts || !userAccessToken) {
-        setIsLoading(false);
-        setChartData([]);
+    const generateChartData = () => {
+      if (!accounts) {
+        if (!isLoading) setChartData([]); // Clear data if loading is finished and there are no accounts
         return;
       }
       
-      setIsLoading(true);
-      
       let totalFollowers = 0;
-      const analyticsPromises = accounts.map(account => {
-        const pageAccessToken = account.pageAccessToken!;
-
-        if (!pageAccessToken) {
-            console.warn(`No access token available for ${account.displayName}. Skipping follower count.`);
-            return Promise.resolve(null);
-        }
-
-        return getAccountAnalytics({
-            accountId: account.accountId,
-            platform: account.platform,
-            pageAccessToken: pageAccessToken,
-            userAccessToken: userAccessToken,
-        }).catch(e => {
-            console.error(`Failed to get followers for ${account.displayName}`, e);
-            return null;
-        })
-      });
-      
-      const results = await Promise.all(analyticsPromises);
-      results.forEach(result => {
-        if(result) totalFollowers += result.followers;
+      accounts.forEach(account => {
+        totalFollowers += account.followers || 0;
       });
 
-
-      // Simulate historical data based on current followers
+      // Simulate historical data based on current followers from real-time data
       const data: AnalyticsData[] = [];
       const today = new Date();
       for (let i = 6; i >= 0; i--) {
@@ -108,19 +77,11 @@ export function FollowerChart() {
       }
 
       setChartData(data);
-      setIsLoading(false);
     };
 
-    if (accounts && userAccessToken) {
-        generateChartData();
-    } else if (accounts === null && user) {
-        // Still loading accounts
-    }
-    else {
-        setIsLoading(false);
-        setChartData([]);
-    }
-  }, [accounts, userAccessToken, user]);
+    generateChartData();
+
+  }, [accounts, isLoading]);
 
 
   return (

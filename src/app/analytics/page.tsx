@@ -7,11 +7,10 @@ import { EngagementChart } from '@/components/analytics/engagement-chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { getAccountAnalytics } from '@/app/actions';
+import { useState, useEffect, useMemo } from 'react';
 import { PostPerformance } from '@/components/analytics/post-performance';
 
 // Interface for aggregated stats per account
@@ -29,104 +28,31 @@ export interface AccountStats {
 function AccountPerformance() {
   const { firestore } = useFirebase();
   const { user } = useUser();
-  const [stats, setStats] = useState<AccountStats[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const socialAccountsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
+    () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
     [firestore, user]
   );
-  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+  // Use the real-time hook
+  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
-  const apiCredentialsQuery = useMemoFirebase(() =>
-    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
-  , [firestore, user]);
-  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
-  const userAccessToken = apiCredentials?.[0]?.accessToken;
-
-
-  useEffect(() => {
-    const fetchAccountStats = async () => {
-      if (!accounts || !userAccessToken) {
-        if (accounts && accounts.length === 0) {
-            setStats([]); // Explicitly set to empty array if no accounts
-        }
-        setIsLoading(false);
-        return;
-      };
-
-      setIsLoading(true);
-      
-      const statsPromises = accounts.map(async (account) => {
-        try {
-          const pageAccessToken = account.pageAccessToken!;
-          
-          if (!pageAccessToken) {
-            console.warn(`No page access token available for ${account.displayName}. Skipping stats fetch.`);
-            return {
-                id: account.id,
-                displayName: account.displayName,
-                avatar: account.avatar,
-                platform: account.platform,
-                followers: 0,
-                avgLikes: 0,
-                avgComments: 0,
-                avgViews: 0,
-            };
-          }
-
-          const analytics = await getAccountAnalytics({
-            accountId: account.accountId,
-            platform: account.platform,
-            pageAccessToken: pageAccessToken,
-            userAccessToken: userAccessToken, // Pass main user token, it's needed for IG media fetching
-          });
-
-          const postCount = analytics.postCount > 0 ? analytics.postCount : 1; // Avoid division by zero
-          return {
+  const accountStats = useMemo(() => {
+    if (!accounts) return [];
+    
+    return accounts.map(account => {
+        const postCount = (account.postCount || 0) > 0 ? account.postCount! : 1;
+        return {
             id: account.id,
             displayName: account.displayName,
             avatar: account.avatar,
             platform: account.platform,
-            followers: analytics.followers,
-            avgLikes: Math.round(analytics.totalLikes / postCount),
-            avgComments: Math.round(analytics.totalComments / postCount),
-            avgViews: Math.round(analytics.totalViews / postCount),
-          };
-        } catch (error) {
-          console.error(`Failed to fetch stats for ${account.displayName}`, error);
-          // Return a default object on error so UI can still render the account
-          return {
-            id: account.id,
-            displayName: account.displayName,
-            avatar: account.avatar,
-            platform: account.platform,
-            followers: 0,
-            avgLikes: 0,
-            avgComments: 0,
-            avgViews: 0,
+            followers: account.followers || 0,
+            avgLikes: Math.round((account.totalLikes || 0) / postCount),
+            avgComments: Math.round((account.totalComments || 0) / postCount),
+            avgViews: Math.round((account.totalViews || 0) / postCount),
         };
-        }
-      });
-      
-      const allStats = (await Promise.all(statsPromises))
-        .filter((stat): stat is AccountStats => stat !== null) // Filter out nulls
-        .sort((a, b) => b.followers - a.followers);
-
-      setStats(allStats);
-      setIsLoading(false);
-    };
-
-    if (accounts && userAccessToken) {
-      fetchAccountStats();
-    } else if (accounts === null && user) {
-      // Still loading accounts, do nothing
-    } else {
-      // No accounts or no token
-      setIsLoading(false);
-      setStats([]);
-    }
-  }, [accounts, userAccessToken, user]);
+    });
+  }, [accounts]);
 
 
   return (
@@ -139,8 +65,8 @@ function AccountPerformance() {
             <div className="flex justify-center items-center h-24">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-        ) : stats.length > 0 ? (
-          stats.map((account) => (
+        ) : accountStats.length > 0 ? (
+          accountStats.map((account) => (
             <div key={account.id} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">

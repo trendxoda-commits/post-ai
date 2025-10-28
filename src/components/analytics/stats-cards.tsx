@@ -6,8 +6,7 @@ import { Users, BarChart, TrendingUp, Loader2 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
-import { useEffect, useState } from 'react';
-import { getAccountAnalytics } from '@/app/actions';
+import { useEffect, useState, useMemo } from 'react';
 
 
 interface OverallStats {
@@ -20,98 +19,56 @@ export function StatsCards() {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const [stats, setStats] = useState<OverallStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   const socialAccountsQuery = useMemoFirebase(
     () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
     [firestore, user]
   );
-  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
-
-  const apiCredentialsQuery = useMemoFirebase(() =>
-    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
-  , [firestore, user]);
-  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
-  const userAccessToken = apiCredentials?.[0]?.accessToken;
+  // Use the real-time hook
+  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
 
   useEffect(() => {
-    const fetchOverallStats = async () => {
-       if (!accounts || !userAccessToken) {
-        if (accounts && accounts.length === 0) {
-            setStats({ totalFollowers: 0, engagementRate: 0, topAccount: null });
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      let totalFollowers = 0;
-      let totalLikes = 0;
-      let totalComments = 0;
-      let totalPosts = 0;
-      let topAccount: { name: string, followers: number } | null = null;
-      
-      const analyticsPromises = accounts.map(account => {
-        const pageAccessToken = account.pageAccessToken!;
-        
-        if (!pageAccessToken) {
-            console.warn(`No page access token available for ${account.displayName}. Skipping stats fetch.`);
-            return Promise.resolve(null);
-        }
-        
-        return getAccountAnalytics({
-            accountId: account.accountId,
-            platform: account.platform,
-            pageAccessToken: pageAccessToken,
-            userAccessToken: userAccessToken, 
-        }).then(analytics => ({
-            ...analytics,
-            displayName: account.displayName
-        })).catch(error => {
-            console.error(`Failed to fetch analytics for ${account.displayName}`, error);
-            return null;
-        })
-      });
-      
-      const results = await Promise.all(analyticsPromises);
-
-      for (const result of results) {
-          if (!result) continue;
-
-          totalFollowers += result.followers;
-          totalLikes += result.totalLikes;
-          totalComments += result.totalComments;
-          totalPosts += result.postCount;
-
-          if (!topAccount || result.followers > topAccount.followers) {
-            topAccount = { name: result.displayName, followers: result.followers };
-          }
-      }
-
-      // ((Total Likes + Total Comments) / Total Posts) / Total Followers * 100
-      const totalInteractions = totalLikes + totalComments;
-      const engagementRate = totalPosts > 0 && totalFollowers > 0
-        ? (totalInteractions / totalPosts / totalFollowers) * 100
-        : 0;
-
-      setStats({
-        totalFollowers,
-        engagementRate,
-        topAccount: topAccount?.name || null,
-      });
-      setIsLoading(false);
-    };
-
-    if (accounts && userAccessToken) {
-      fetchOverallStats();
-    } else if (accounts === null && user) {
-        // Still loading accounts
-    } else {
-      setIsLoading(false);
-       setStats({ totalFollowers: 0, engagementRate: 0, topAccount: null });
+    if (isLoading) {
+      setStats(null); // Clear stats while loading
+      return;
     }
-  }, [accounts, userAccessToken, user]);
+
+    if (!accounts || accounts.length === 0) {
+      setStats({ totalFollowers: 0, engagementRate: 0, topAccount: null });
+      return;
+    }
+
+    let totalFollowers = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalPosts = 0;
+    let topAccount: { name: string, followers: number } | null = null;
+    
+    for (const account of accounts) {
+        totalFollowers += account.followers || 0;
+        totalLikes += account.totalLikes || 0;
+        totalComments += account.totalComments || 0;
+        totalPosts += account.postCount || 0;
+
+        if (!topAccount || (account.followers || 0) > topAccount.followers) {
+          topAccount = { name: account.displayName, followers: account.followers || 0 };
+        }
+    }
+
+    // ((Total Likes + Total Comments) / Total Posts) / Total Followers * 100
+    const totalInteractions = totalLikes + totalComments;
+    const engagementRate = totalPosts > 0 && totalFollowers > 0
+      ? (totalInteractions / totalPosts / totalFollowers) * 100
+      : 0;
+
+    setStats({
+      totalFollowers,
+      engagementRate,
+      topAccount: topAccount?.name || null,
+    });
+
+  }, [accounts, isLoading]);
 
   if (isLoading) {
     return (

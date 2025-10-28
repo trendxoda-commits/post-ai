@@ -21,8 +21,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
-import { useFirebase } from '@/firebase';
-import { collectionGroup, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useFirebase, useCollection } from '@/firebase';
+import { collectionGroup, query, getDocs, doc, getDoc, collection } from 'firebase/firestore';
 import type { SocialAccount, User } from '@/lib/types';
 
 
@@ -41,38 +41,39 @@ export default function AdminAccountsPage() {
   const [accounts, setAccounts] = useState<FullAccountDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // We will fetch all users first, then listen to their social accounts.
+  // This is a more scalable approach for admin panels.
   useEffect(() => {
     if (!firestore) return;
 
-    const fetchData = async () => {
+    const fetchAllAccounts = async () => {
       setIsLoading(true);
       try {
-        // 1. Use a collectionGroup query to get all 'socialAccounts' across all users
+        // 1. Fetch all users to create a map of userId -> email
+        const usersSnapshot = await getDocs(collection(firestore, 'users'));
+        const userMap = new Map<string, string | undefined>();
+        usersSnapshot.forEach(doc => {
+            const userData = doc.data() as User;
+            userMap.set(doc.id, userData.email);
+        });
+
+        // 2. Use a collectionGroup query to get all 'socialAccounts' across all users
         const accountsQuery = collectionGroup(firestore, 'socialAccounts');
         const accountsSnapshot = await getDocs(accountsQuery);
         
-        const fetchedAccounts: FullAccountDetails[] = [];
-
-        // 2. For each account, fetch its parent user document to get the email
-        for (const accountDoc of accountsSnapshot.docs) {
+        const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
           const accountData = accountDoc.data() as SocialAccount;
-          const userRef = accountDoc.ref.parent.parent; // This gets the user document reference
+          const userId = accountDoc.ref.parent.parent!.id; // Get parent user ID
 
-          if (userRef) {
-            const userDoc = await getDoc(userRef);
-            if (userDoc.exists()) {
-              const userData = userDoc.data() as User;
-              fetchedAccounts.push({
-                ...accountData,
-                id: accountDoc.id, // Ensure the account's own ID is used
-                user: {
-                  id: userDoc.id,
-                  email: userData.email,
-                },
-              });
-            }
-          }
-        }
+          return {
+            ...accountData,
+            id: accountDoc.id, // The document ID of the socialAccount
+            user: {
+              id: userId,
+              email: userMap.get(userId),
+            },
+          };
+        });
         
         setAccounts(fetchedAccounts);
 
@@ -83,7 +84,13 @@ export default function AdminAccountsPage() {
         setIsLoading(false);
       }
     };
-    fetchData();
+    
+    fetchAllAccounts();
+
+    // Note: A real-time listener for a collectionGroup can be expensive on reads.
+    // For an admin panel, fetching once on load or periodically is often a better pattern.
+    // If real-time is a strict requirement, onSnapshot can be used here, but be mindful of the cost.
+
   }, [firestore]);
 
 

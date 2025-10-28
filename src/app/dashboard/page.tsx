@@ -6,98 +6,29 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
-import type { SocialAccount, ApiCredential } from '@/lib/types';
-import { useState, useEffect } from 'react';
-import { getAccountAnalytics } from '@/app/actions';
+import { collection, query, orderBy } from 'firebase/firestore';
+import type { SocialAccount } from '@/lib/types';
 import { StatsCards } from '@/components/analytics/stats-cards';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useMemo } from 'react';
 
 
 function AccountFollowers() {
   const { firestore } = useFirebase();
   const { user } = useUser();
-  const [accountsData, setAccountsData] = useState<{name: string, followers: number, avatar?: string}[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const socialAccountsQuery = useMemoFirebase(
-    () => (user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null),
+    () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
     [firestore, user]
   );
-  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+  // Use the real-time hook
+  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
-  const apiCredentialsQuery = useMemoFirebase(() =>
-    user ? collection(firestore, 'users', user.uid, 'apiCredentials') : null
-  , [firestore, user]);
-  const { data: apiCredentials } = useCollection<ApiCredential>(apiCredentialsQuery);
-  const userAccessToken = apiCredentials?.[0]?.accessToken;
-
-
-  useEffect(() => {
-    const fetchAccountFollowers = async () => {
-      if (!accounts || !userAccessToken) {
-        if (accounts && accounts.length === 0) {
-            setAccountsData([]);
-        }
-        setIsLoading(false);
-        return;
-      };
-
-      setIsLoading(true);
-      
-      const followersPromises = accounts.map(async (account) => {
-        try {
-          const pageAccessToken = account.pageAccessToken!;
-          
-          if (!pageAccessToken) {
-            console.warn(`No access token available for ${account.displayName}. Skipping.`);
-            return {
-                name: account.displayName,
-                followers: 0,
-                avatar: account.avatar,
-            };
-          }
-
-          const analytics = await getAccountAnalytics({
-            accountId: account.accountId,
-            platform: account.platform,
-            pageAccessToken: pageAccessToken,
-            userAccessToken: userAccessToken,
-          });
-
-          return {
-            name: account.displayName,
-            followers: analytics.followers,
-            avatar: account.avatar,
-          };
-        } catch (error) {
-          console.error(`Failed to fetch followers for ${account.displayName}`, error);
-          return {
-            name: account.displayName,
-            followers: 0,
-            avatar: account.avatar,
-          };
-        }
-      });
-      
-      const allFollowers = (await Promise.all(followersPromises))
-        .filter((stat): stat is {name: string, followers: number, avatar?: string} => stat !== null)
-        .sort((a, b) => b.followers - a.followers);
-
-      setAccountsData(allFollowers);
-      setIsLoading(false);
-    };
-
-    if (accounts && userAccessToken) {
-      fetchAccountFollowers();
-    } else if (accounts === null && user) {
-      // Still loading accounts, do nothing
-    } else {
-      // No accounts or no token
-      setIsLoading(false);
-      setAccountsData([]);
-    }
-  }, [accounts, userAccessToken, user]);
+  const sortedAccounts = useMemo(() => {
+    // The data from useCollection is already an array, just ensure it's sorted if needed.
+    // The query now handles sorting by followers descending.
+    return accounts;
+  }, [accounts]);
 
 
   return (
@@ -111,17 +42,17 @@ function AccountFollowers() {
             <div className="flex justify-center items-center h-24">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-        ) : accountsData.length > 0 ? (
-          accountsData.map((account) => (
-            <div key={account.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
+        ) : sortedAccounts && sortedAccounts.length > 0 ? (
+          sortedAccounts.map((account) => (
+            <div key={account.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50">
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={account.avatar} alt={account.name} />
+                  <AvatarImage src={account.avatar} alt={account.displayName} />
                   <AvatarFallback>
-                    {account.name.charAt(0).toUpperCase()}
+                    {account.displayName.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <p className="font-semibold">{account.name}</p>
+                <p className="font-semibold">{account.displayName}</p>
               </div>
               <div className="text-right">
                 <p className="text-lg font-bold">

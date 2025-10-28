@@ -104,7 +104,7 @@ const getInstagramAccessTokenFlow = ai.defineFlow({
     return { accessToken: data.access_token };
 });
 
-export async function getInstagramAccessToken(input: GetInstagramAccessTokenInput): Promise<GetInstagramAccessTokenOutput> {
+export async function getAccessToken(input: GetInstagramAccessTokenInput): Promise<GetInstagramAccessTokenOutput> {
     return getInstagramAccessTokenFlow(input);
 }
 

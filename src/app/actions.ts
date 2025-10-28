@@ -7,9 +7,9 @@ import {
 } from '@/ai/flows/trending-hashtag-suggestions';
 import {
   getInstagramAuthUrl,
-  getInstagramAccessToken,
+  getAccessToken as getAccessTokenFlow,
   exchangeForLongLivedToken,
-  getIgUserDetails as getIgUserDetailsFlow,
+  getIgUserDetails,
   type GetInstagramAuthUrlInput,
   type GetInstagramAccessTokenInput,
   type ExchangeForLongLivedTokenInput,
@@ -53,7 +53,7 @@ export async function getAuthUrl(input: GetInstagramAuthUrlInput) {
 }
 
 export async function getAccessToken(input: GetInstagramAccessTokenInput) {
-  return getInstagramAccessToken(input);
+  return getAccessTokenFlow(input);
 }
 
 export async function getLongLivedToken(input: ExchangeForLongLivedTokenInput) {
@@ -63,7 +63,7 @@ export async function getLongLivedToken(input: ExchangeForLongLivedTokenInput) {
 export async function getIgUserDetails(
   input: GetInstagramUserDetailsInput
 ): Promise<GetInstagramUserDetailsOutput> {
-  return getIgUserDetailsFlow(input);
+  return getIgUserDetails(input);
 }
 
 // --- Social Media Posting ---

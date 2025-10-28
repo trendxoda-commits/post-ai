@@ -216,8 +216,8 @@ const getIgUserDetailsFlow = ai.defineFlow({
         if (page.instagram_business_account) {
             const instagramBusinessAccountId = page.instagram_business_account.id;
             try {
-                // Fetch IG account details (like username and profile pic)
-                const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${accessToken}`;
+                // Fetch IG account details (like username and profile pic) using the PAGE access token
+                const igUrl = `https://graph.facebook.com/v20.0/${instagramBusinessAccountId}?fields=username,name,profile_picture_url&access_token=${page.access_token}`;
                 const igResponse = await fetch(igUrl);
                 if (igResponse.ok) {
                     const igData: any = await igResponse.json();

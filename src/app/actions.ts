@@ -92,12 +92,6 @@ export async function fetchFacebookPosts(
   return getFacebookPostsFlow(input);
 }
 
-export async function fetchFacebookComments(
-    input: any
-): Promise<GetFacebookPostCommentsOutput> {
-    return getFacebookPostCommentsFlow(input);
-}
-
 export async function fetchInstagramComments(
     input: any
 ): Promise<GetInstagramMediaCommentsOutput> {
@@ -109,5 +103,3 @@ export async function getAccountAnalytics(
 ): Promise<AnalyticsOutput> {
     return getAccountAnalyticsFlow(input);
 }
-
-    

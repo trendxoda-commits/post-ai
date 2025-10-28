@@ -16,9 +16,7 @@ import { collection } from 'firebase/firestore';
 import { Loader2, MessageSquare, CornerDownRight } from 'lucide-react';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import {
-  fetchFacebookPosts,
   fetchInstagramMedia,
-  fetchFacebookComments,
   fetchInstagramComments,
 } from '@/app/actions';
 import { formatDistanceToNow } from 'date-fns';
@@ -31,7 +29,7 @@ type UnifiedPost = {
   accountId: string;
   accountDisplayName: string;
   accountAvatar?: string;
-  platform: 'Facebook' | 'Instagram';
+  platform: 'Instagram';
   content?: string | null;
   mediaUrl?: string;
   mediaType?: string;
@@ -81,9 +79,10 @@ export default function InboxPage() {
       setIsLoadingPosts(true);
       let allPosts: UnifiedPost[] = [];
 
-      for (const account of accounts) {
+      const instagramAccounts = accounts.filter(acc => acc.platform === 'Instagram');
+
+      for (const account of instagramAccounts) {
         try {
-          if (account.platform === 'Instagram') {
             const { media } = await fetchInstagramMedia({
               instagramUserId: account.accountId,
               accessToken: userAccessToken,
@@ -103,7 +102,6 @@ export default function InboxPage() {
                 accessToken: account.pageAccessToken!, // IG comments need page token
               }))
             );
-          }
         } catch (error: any) {
           console.error(`Failed to fetch posts for ${account.displayName}:`, error);
           toast({
@@ -145,18 +143,17 @@ export default function InboxPage() {
 
       try {
         let fetchedComments: UnifiedComment[] = [];
-        if (post.platform === 'Instagram') { // Only fetch for Instagram
-          const { comments: igComments } = await fetchInstagramComments({
-            mediaId: post.id,
-            accessToken: post.accessToken,
-          });
-          fetchedComments = igComments.map((c: any) => ({
-            id: c.id,
-            author: c.from.username,
-            text: c.text,
-            timestamp: c.timestamp,
-          }));
-        }
+        const { comments: igComments } = await fetchInstagramComments({
+          mediaId: post.id,
+          accessToken: post.accessToken,
+        });
+        fetchedComments = igComments.map((c: any) => ({
+          id: c.id,
+          author: c.from.username,
+          text: c.text,
+          timestamp: c.timestamp,
+        }));
+
         setComments((prev) => ({ ...prev, [postId]: fetchedComments }));
       } catch (error: any) {
         console.error(`Failed to fetch comments for post ${postId}:`, error);
@@ -174,7 +171,7 @@ export default function InboxPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline">Inbox</h1>
+        <h1 className="text-3xl font-bold font-headline">Instagram Inbox</h1>
         <p className="text-muted-foreground max-w-2xl">
           View and reply to comments from your connected Instagram accounts. Click on a post to see its comments.
         </p>
@@ -182,9 +179,9 @@ export default function InboxPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Recent Instagram Posts & Comments</CardTitle>
+          <CardTitle>Instagram Comments</CardTitle>
           <CardDescription>
-            A unified feed of your most recent posts across all Instagram accounts.
+            A feed of your recent Instagram posts. Click on any post to load and view its comments.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -221,7 +218,6 @@ export default function InboxPage() {
                             <AvatarFallback>{post.accountDisplayName.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <p className="font-semibold text-sm">{post.accountDisplayName}</p>
-                          <p className="text-xs text-muted-foreground">({post.platform})</p>
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {post.content || 'No caption'}
@@ -267,9 +263,9 @@ export default function InboxPage() {
           ) : (
             <div className="text-center py-20">
               <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No Posts Found</h3>
+              <h3 className="mt-4 text-lg font-semibold">No Instagram Posts Found</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                We couldn't find any recent posts. Connect an account or create a new post to get started.
+                We couldn't find any recent posts on your connected Instagram accounts.
               </p>
             </div>
           )}

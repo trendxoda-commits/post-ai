@@ -43,6 +43,7 @@ export type ScheduledPost = {
   scheduledTime: string;
   socialAccountIds: string[];
   createdAt: string;
+  status: 'scheduled' | 'published' | 'failed'; // Added status field
 }
 
 export type AnalyticsData = {

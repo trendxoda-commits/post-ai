@@ -50,7 +50,7 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
     // 1. Fetch all pending scheduled posts for the user
     const now = new Date().toISOString();
-    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('scheduledTime', '<=', now);
+    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('status', '==', 'scheduled').where('scheduledTime', '<=', now);
 
     const querySnapshot = await postsQuery.get();
     if (querySnapshot.empty) {
@@ -63,7 +63,10 @@ const executeScheduledPostsFlow = ai.defineFlow(
     if (credsSnapshot.empty) {
         console.error(`No API credentials found for user ${userId}. Cannot process posts.`);
         // Mark all as failed since we can't do anything
-        querySnapshot.docs.forEach(d => failedPosts.push(d.id));
+        for (const postDoc of querySnapshot.docs) {
+          failedPosts.push(postDoc.id);
+          await postDoc.ref.update({ status: 'failed' });
+        }
         return { publishedPosts, failedPosts };
     }
     const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
@@ -115,11 +118,12 @@ const executeScheduledPostsFlow = ai.defineFlow(
         }
       }
       
-      // 4. If all publications for a post were successful, delete it from the schedule
+      // 4. Update the post status instead of deleting
       if (allSucceeded) {
-        await firestore.doc(`users/${userId}/scheduledPosts/${postId}`).delete();
+        await postDoc.ref.update({ status: 'published' });
         publishedPosts.push(postId);
       } else {
+        await postDoc.ref.update({ status: 'failed' });
         failedPosts.push(postId);
       }
     }

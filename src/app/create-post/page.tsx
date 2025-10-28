@@ -170,6 +170,7 @@ export default function CreatePostPage() {
         scheduledTime: scheduledDateTime.toISOString(),
         socialAccountIds: selectedAccountIds,
         createdAt: new Date().toISOString(),
+        status: 'scheduled', // Set initial status
       });
       
       // Fire-and-forget call to the scheduler agent

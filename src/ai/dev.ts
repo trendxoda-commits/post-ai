@@ -3,6 +3,7 @@
 import { config } from 'dotenv';
 config();
 
+import '@/ai/genkit';
 import '@/ai/flows/trending-hashtag-suggestions.ts';
 import '@/ai/flows/instagram-auth.ts';
 import '@/ai/flows/post-to-facebook.ts';

@@ -11,7 +11,6 @@ import { useState, useEffect } from 'react';
 import { getAccountAnalytics } from '@/app/actions';
 import { StatsCards } from '@/components/analytics/stats-cards';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PostPerformance } from '@/components/analytics/post-performance';
 
 
 function AccountFollowers() {
@@ -146,7 +145,6 @@ export default function DashboardPage() {
         </div>
         <StatsCards />
         <AccountFollowers />
-        <PostPerformance />
     </div>
   );
 }

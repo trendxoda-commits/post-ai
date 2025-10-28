@@ -1,65 +1,75 @@
 
-'use client';
+import Link from 'next/link';
+import {
+  Bell,
+  Home,
+  LineChart,
+  Package2,
+  Settings,
+  Users,
+} from 'lucide-react';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { FirebaseClientProvider, useFirebase } from '@/firebase';
-import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
-type AdminAuthContextType = {
-  isAdmin: boolean;
-  login: () => void;
-  logout: () => void;
-};
-
-const AdminAuthContext = createContext<AdminAuthContextType | null>(null);
-
-export const useAdminAuth = () => {
-  const context = useContext(AdminAuthContext);
-  if (!context) {
-    throw new Error('useAdminAuth must be used within an AdminAuthProvider');
-  }
-  return context;
-};
-
-function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Auto-login the admin
-  useEffect(() => {
-    login();
-  }, []);
-
-  const login = () => {
-    sessionStorage.setItem('isAdmin', 'true');
-    setIsAdmin(true);
-  };
-
-  const logout = () => {
-    sessionStorage.removeItem('isAdmin');
-    setIsAdmin(false);
-  };
-  
-  // Render children immediately if isAdmin is true, otherwise show a loader.
-  // This prevents brief flashes of content before the auto-login takes effect.
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <AdminAuthContext.Provider value={{ isAdmin, login, logout }}>
-      {isAdmin ? children : (
-         <div className="flex h-screen w-full items-center justify-center bg-muted">
-            <Loader2 className="h-8 w-8 animate-spin" />
+    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
+      <div className="hidden border-r bg-muted/40 md:block">
+        <div className="flex h-full max-h-screen flex-col gap-2">
+          <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <Link href="/" className="flex items-center gap-2 font-semibold">
+              <Package2 className="h-6 w-6" />
+              <span className="">Social Streamliner</span>
+            </Link>
+            <Button variant="outline" size="icon" className="ml-auto h-8 w-8">
+              <Bell className="h-4 w-4" />
+              <span className="sr-only">Toggle notifications</span>
+            </Button>
+          </div>
+          <div className="flex-1">
+            <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+              <Link
+                href="/admin/dashboard"
+                className="flex items-center gap-3 rounded-lg bg-muted px-3 py-2 text-primary transition-all hover:text-primary"
+              >
+                <Home className="h-4 w-4" />
+                Dashboard
+              </Link>
+              <Link
+                href="#"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Users className="h-4 w-4" />
+                Users
+              </Link>
+              <Link
+                href="#"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <LineChart className="h-4 w-4" />
+                Analytics
+              </Link>
+                <Link
+                href="#"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
+              </Link>
+            </nav>
+          </div>
         </div>
-      )}
-    </AdminAuthContext.Provider>
-  );
-}
-
-
-export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-     <FirebaseClientProvider>
-        <AdminAuthProvider>
-            {children}
-        </AdminAuthProvider>
-    </FirebaseClientProvider>
+      </div>
+      <div className="flex flex-col">
+        <main className="flex flex-1 flex-col gap-4 bg-muted/40">
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

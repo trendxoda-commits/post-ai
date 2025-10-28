@@ -18,10 +18,6 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
-const adminNavItems = [
-    { href: '/admin/dashboard', label: 'Admin', icon: Shield },
-];
-
 export function SidebarNav() {
   const pathname = usePathname();
 
@@ -42,22 +38,6 @@ export function SidebarNav() {
           </SidebarMenuButton>
         </SidebarMenuItem>
       ))}
-       <SidebarSeparator />
-        {adminNavItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton
-                asChild
-                isActive={pathname.startsWith('/admin')}
-                tooltip={item.label}
-                className="justify-start"
-            >
-                <Link href={item.href}>
-                <item.icon className="h-4 w-4" />
-                <span>{item.label}</span>
-                </Link>
-            </SidebarMenuButton>
-            </SidebarMenuItem>
-        ))}
     </SidebarMenu>
   );
 }

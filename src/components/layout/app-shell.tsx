@@ -16,7 +16,6 @@ import { useFirebase, useUser } from '@/firebase';
 import { Button } from '../ui/button';
 import { LogOut } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
-import { FirebaseClientProvider } from '@/firebase';
 
 const AppLogo = () => (
   <svg

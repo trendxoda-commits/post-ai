@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -90,6 +91,12 @@ export async function fetchFacebookPosts(
   input: any
 ): Promise<GetFacebookPostsOutput> {
   return getFacebookPostsFlow(input);
+}
+
+export async function getFacebookPostComments(
+    input: any
+): Promise<GetFacebookPostCommentsOutput> {
+    return getFacebookPostCommentsFlow(input);
 }
 
 export async function fetchInstagramComments(

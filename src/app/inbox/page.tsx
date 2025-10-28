@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -18,6 +19,8 @@ import type { SocialAccount, ApiCredential } from '@/lib/types';
 import {
   fetchInstagramMedia,
   fetchInstagramComments,
+  fetchFacebookPosts,
+  getFacebookPostComments,
 } from '@/app/actions';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +32,7 @@ type UnifiedPost = {
   accountId: string;
   accountDisplayName: string;
   accountAvatar?: string;
-  platform: 'Instagram';
+  platform: 'Instagram' | 'Facebook';
   content?: string | null;
   mediaUrl?: string;
   mediaType?: string;
@@ -79,29 +82,48 @@ export default function InboxPage() {
       setIsLoadingPosts(true);
       let allPosts: UnifiedPost[] = [];
 
-      const instagramAccounts = accounts.filter(acc => acc.platform === 'Instagram');
-
-      for (const account of instagramAccounts) {
+      for (const account of accounts) {
         try {
-            const { media } = await fetchInstagramMedia({
-              instagramUserId: account.accountId,
-              accessToken: userAccessToken,
-            });
-            allPosts.push(
-              ...media.map((post) => ({
-                id: post.id,
-                accountId: account.id,
-                accountDisplayName: account.displayName,
-                accountAvatar: account.avatar,
-                platform: 'Instagram',
-                content: post.caption,
-                mediaUrl: post.media_url,
-                mediaType: post.media_type,
-                timestamp: post.timestamp,
-                permalink: post.permalink,
-                accessToken: account.pageAccessToken!, // IG comments need page token
-              }))
-            );
+          if (account.platform === 'Instagram') {
+              const { media } = await fetchInstagramMedia({
+                instagramUserId: account.accountId,
+                accessToken: userAccessToken,
+              });
+              allPosts.push(
+                ...media.map((post) => ({
+                  id: post.id,
+                  accountId: account.id,
+                  accountDisplayName: account.displayName,
+                  accountAvatar: account.avatar,
+                  platform: 'Instagram',
+                  content: post.caption,
+                  mediaUrl: post.media_url,
+                  mediaType: post.media_type,
+                  timestamp: post.timestamp,
+                  permalink: post.permalink,
+                  accessToken: account.pageAccessToken!,
+                }))
+              );
+          } else if (account.platform === 'Facebook') {
+              const { posts: fbPosts } = await fetchFacebookPosts({
+                facebookPageId: account.accountId,
+                pageAccessToken: account.pageAccessToken!,
+              });
+              allPosts.push(
+                ...fbPosts.map((post) => ({
+                  id: post.id,
+                  accountId: account.id,
+                  accountDisplayName: account.displayName,
+                  accountAvatar: account.avatar,
+                  platform: 'Facebook',
+                  content: post.message,
+                  mediaUrl: post.attachments?.data[0]?.media?.image?.src || post.attachments?.data[0]?.url,
+                  timestamp: post.created_time,
+                  permalink: post.permalink_url,
+                  accessToken: account.pageAccessToken!,
+                }))
+              );
+          }
         } catch (error: any) {
           console.error(`Failed to fetch posts for ${account.displayName}:`, error);
           toast({
@@ -143,16 +165,29 @@ export default function InboxPage() {
 
       try {
         let fetchedComments: UnifiedComment[] = [];
-        const { comments: igComments } = await fetchInstagramComments({
-          mediaId: post.id,
-          accessToken: post.accessToken,
-        });
-        fetchedComments = igComments.map((c: any) => ({
-          id: c.id,
-          author: c.from.username,
-          text: c.text,
-          timestamp: c.timestamp,
-        }));
+        if (post.platform === 'Instagram') {
+          const { comments: igComments } = await fetchInstagramComments({
+            mediaId: post.id,
+            accessToken: post.accessToken,
+          });
+          fetchedComments = igComments.map((c: any) => ({
+            id: c.id,
+            author: c.from.username,
+            text: c.text,
+            timestamp: c.timestamp,
+          }));
+        } else if (post.platform === 'Facebook') {
+          const { comments: fbComments } = await getFacebookPostComments({
+             postId: post.id,
+             accessToken: post.accessToken,
+          });
+           fetchedComments = fbComments.map((c: any) => ({
+            id: c.id,
+            author: c.from.name,
+            text: c.message,
+            timestamp: c.created_time,
+          }));
+        }
 
         setComments((prev) => ({ ...prev, [postId]: fetchedComments }));
       } catch (error: any) {
@@ -171,17 +206,17 @@ export default function InboxPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline">Instagram Inbox</h1>
+        <h1 className="text-3xl font-bold font-headline">Inbox</h1>
         <p className="text-muted-foreground max-w-2xl">
-          View and reply to comments from your connected Instagram accounts. Click on a post to see its comments.
+          View and reply to comments from your connected social accounts. Click on a post to see its comments.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Instagram Comments</CardTitle>
+          <CardTitle>Recent Posts & Comments</CardTitle>
           <CardDescription>
-            A feed of your recent Instagram posts. Click on any post to load and view its comments.
+            A feed of your recent posts. Click on any post to load and view its comments.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -193,7 +228,7 @@ export default function InboxPage() {
             <Accordion
               type="single"
               collapsible
-              value={openPostId}
+              value={openPostId || ''}
               onValueChange={handlePostToggle}
             >
               {posts.map((post) => (
@@ -263,9 +298,9 @@ export default function InboxPage() {
           ) : (
             <div className="text-center py-20">
               <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No Instagram Posts Found</h3>
+              <h3 className="mt-4 text-lg font-semibold">No Posts Found</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                We couldn't find any recent posts on your connected Instagram accounts.
+                We couldn't find any recent posts on your connected accounts.
               </p>
             </div>
           )}

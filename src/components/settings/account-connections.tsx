@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -25,7 +26,14 @@ import { getAuthUrl } from '@/app/actions';
 import { useState } from 'react';
 
 const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
-  const Icon = (
+  if (platform === 'Facebook') {
+     return (
+        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/>
+        </svg>
+     )
+  }
+  return (
     <svg
       className="h-5 w-5"
       viewBox="0 0 24 24"
@@ -40,7 +48,6 @@ const PlatformIcon = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => {
       <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
     </svg>
   );
-  return Icon;
 };
 
 function AddAccountButton() {
@@ -176,7 +183,7 @@ export function AccountConnections() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4">
                     <div className="text-muted-foreground">
                         <PlatformIcon platform={account.platform} />
                     </div>

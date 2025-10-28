@@ -27,7 +27,7 @@ export function UserProfile() {
       <CardHeader>
         <CardTitle>Your Profile</CardTitle>
         <CardDescription>
-          This is your user profile information.
+          This is your user profile information. You can log out from here.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -49,4 +49,3 @@ export function UserProfile() {
     </Card>
   );
 }
-

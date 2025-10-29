@@ -19,7 +19,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Loader2, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
@@ -307,7 +307,8 @@ export default function AdminAccountsPage() {
                     <TableHead>Account</TableHead>
                     <TableHead>Platform</TableHead>
                     <TableHead>User</TableHead>
-                    <TableHead>Connection Status</TableHead>
+                    <TableHead>User Connection</TableHead>
+                    <TableHead>Page Token</TableHead>
                     <TableHead className="text-right">Followers</TableHead>
                     <TableHead className="text-right">Likes</TableHead>
                     <TableHead className="text-right">Comments</TableHead>
@@ -333,11 +334,18 @@ export default function AdminAccountsPage() {
                         </TableCell>
                          <TableCell>
                            {userTokenStatus.get(account.user.id) === null ? (
-                                <Badge variant="secondary"><Loader2 className="h-3 w-3 animate-spin mr-1" />Checking</Badge>
+                                <Badge variant="secondary"><Loader2 className="h-3 w-3 animate-spin mr-1" />...</Badge>
                            ) : userTokenStatus.get(account.user.id) ? (
                                 <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Healthy</Badge>
                            ) : (
                                 <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Expired</Badge>
+                           )}
+                        </TableCell>
+                         <TableCell>
+                           {account.pageAccessToken ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />OK</Badge>
+                           ) : (
+                                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Missing</Badge>
                            )}
                         </TableCell>
                         <TableCell className="text-right font-semibold">{(account.followers || 0).toLocaleString()}</TableCell>
@@ -355,7 +363,7 @@ export default function AdminAccountsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={10} className="h-24 text-center">
+                      <TableCell colSpan={11} className="h-24 text-center">
                         {searchQuery ? `No accounts found for "${searchQuery}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>

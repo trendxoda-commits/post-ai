@@ -171,10 +171,10 @@ const getInstagramMediaFlow = ai.defineFlow(
         let comments = 0;
         
         try {
-            // DECISIVE FIX: Request a comprehensive set of standard engagement metrics.
-            const insightMetrics = 'reach,impressions,likes,comments,saved,shares';
+            // DECISIVE FIX: Use the exact metrics and period provided by the user.
+            const insightMetrics = 'reach,likes,comments,saved,shares';
             // CRITICAL FIX: Always use the USER 'accessToken' for insights.
-            const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&access_token=${accessToken}`;
+            const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&period=lifetime&access_token=${accessToken}`;
             const insightsResponse = await fetch(insightsUrl);
             
             if (insightsResponse.ok) {
@@ -188,14 +188,7 @@ const getInstagramMediaFlow = ai.defineFlow(
 
             } else {
                 console.warn(`Could not fetch insights for media ${item.id}:`, await insightsResponse.text());
-                // Fallback to basic counts if insights fail
-                const basicCountsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}?fields=like_count,comments_count&access_token=${accessToken}`;
-                const basicResponse = await fetch(basicCountsUrl);
-                if (basicResponse.ok) {
-                    const basicData: any = await basicResponse.json();
-                    likes = basicData.like_count || 0;
-                    comments = basicData.comments_count || 0;
-                }
+                // No more fallback to basic counts. Insights are the source of truth.
             }
         } catch (e) {
              console.warn(`Error fetching insights for media ${item.id}:`, e);

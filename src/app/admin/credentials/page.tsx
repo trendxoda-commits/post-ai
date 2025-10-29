@@ -1,256 +1,217 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname, redirect } from 'next/navigation';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Loader2, KeyRound, Edit, PlusCircle, Check, X } from 'lucide-react';
-import { useFirebase } from '@/firebase';
-import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
-import type { User, ApiCredential } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import {
+    LayoutDashboard,
+    PlusSquare,
+    Users,
+    BarChart2,
+    Settings,
+    PanelLeft,
+    Home,
+    KeyRound,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
+import { useUser } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
-interface UserWithCredential extends User {
-  credential?: ApiCredential;
-}
+const AppLogo = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5 text-primary-foreground"
+    >
+      <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+    </svg>
+  );
 
-function CredentialDialog({ user, onSave }: { user: UserWithCredential, onSave: () => void }) {
-    const [open, setOpen] = useState(false);
-    const [appId, setAppId] = useState(user.credential?.appId || '');
-    const [appSecret, setAppSecret] = useState(''); // Always start empty for security
-    const [isLoading, setIsLoading] = useState(false);
-    const { firestore } = useFirebase();
-    const { toast } = useToast();
+const navItems = [
+    { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/accounts', label: 'Accounts', icon: Users },
+    { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
+    { href: '/admin/create-post', label: 'Create Post', icon: PlusSquare },
+  ];
 
-    const handleSave = async () => {
-        if (!user || !appId || !appSecret) {
-            toast({
-                variant: "destructive",
-                title: "Missing Information",
-                description: "Please fill out both App ID and App Secret.",
-            });
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const docRef = user.credential?.id
-                ? doc(firestore, 'users', user.id, 'apiCredentials', user.credential.id)
-                : doc(collection(firestore, 'users', user.id, 'apiCredentials'));
-
-            await setDoc(docRef, {
-                userId: user.id,
-                platform: 'Meta',
-                appId,
-                appSecret,
-            }, { merge: true });
-
-            toast({
-                title: "Credentials Saved",
-                description: `API keys for ${user.email} have been updated.`
-            });
-            onSave(); // Trigger a refresh of the user list
-            setOpen(false);
-
-        } catch (error: any) {
-            console.error("Error saving credentials:", error);
-            toast({
-                variant: "destructive",
-                title: "Save Failed",
-                description: "Could not save the credentials. Please try again."
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+    const pathname = usePathname();
+    const isActive = pathname === href;
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                   {user.credential ? <><Edit className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Edit Keys</span></> : <><PlusCircle className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Add Keys</span></>}
-                </Button>
-            </DialogTrigger>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Manage API Keys for {user.email}</DialogTitle>
-                    <DialogDescription>
-                        {user.credential ? 'Update the credentials for this user. The App Secret is required for any update.' : 'Add new credentials for this user.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="appId">App ID</Label>
-                        <Input
-                            id="appId"
-                            value={appId}
-                            onChange={(e) => setAppId(e.target.value)}
-                            placeholder="Paste App ID"
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="appSecret">App Secret</Label>
-                        <Input
-                            id="appSecret"
-                            type="password"
-                            value={appSecret}
-                            onChange={(e) => setAppSecret(e.target.value)}
-                            placeholder="Paste new App Secret"
-                        />
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isLoading}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                        Save
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <Link href={href} passHref>
+            <Button
+                variant={isActive ? "secondary" : "ghost"}
+                className="w-full justify-start"
+            >
+                {children}
+            </Button>
+        </Link>
     );
 }
 
-export default function AdminCredentialsPage() {
-  const { firestore } = useFirebase();
-  const [users, setUsers] = useState<UserWithCredential[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchAllUsersAndCredentials = async () => {
-    if (!firestore) return;
-    setIsLoading(true);
-    try {
-      const usersSnapshot = await getDocs(collection(firestore, 'users'));
-      const userList: User[] = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-      
-      const enrichedUsers: UserWithCredential[] = [];
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const { user, isUserLoading } = useUser();
+  const adminEmail = "mohitmleena4@gmail.com";
 
-      for (const user of userList) {
-        const credsSnapshot = await getDocs(collection(firestore, 'users', user.id, 'apiCredentials'));
-        let userWithCred: UserWithCredential = { ...user };
-        if (!credsSnapshot.empty) {
-          const credData = credsSnapshot.docs[0].data() as ApiCredential;
-          userWithCred.credential = { ...credData, id: credsSnapshot.docs[0].id };
-        }
-        enrichedUsers.push(userWithCred);
-      }
+  // Security Check
+  if (isUserLoading) {
+      return (
+          <div className="flex h-screen w-screen items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <h2 className='text-xl font-bold'>Verifying Admin Access...</h2>
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                  </div>
+              </div>
+          </div>
+      )
+  }
 
-      setUsers(enrichedUsers);
-    } catch (error) {
-      console.error("Failed to fetch user credentials:", error);
-      setUsers([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  useEffect(() => {
-    fetchAllUsersAndCredentials();
-  }, [firestore]);
+  if (!user || user.email !== adminEmail) {
+      redirect('/dashboard');
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline">API Credentials</h1>
-        <p className="text-muted-foreground">
-          View and manage Meta App credentials for all users.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>All User Credentials</CardTitle>
-          <CardDescription>Each user can have one set of Meta API keys and one long-lived access token.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-48">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
+        <div className="hidden border-r bg-muted/40 lg:block">
+            <div className="flex h-full max-h-screen flex-col gap-2">
+                <div className="flex h-14 items-center border-b px-6">
+                    <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                            <AppLogo />
+                        </div>
+                        <span className="">Social Streamliner</span>
+                    </Link>
+                </div>
+                <div className="flex-1 overflow-auto py-2">
+                    <nav className="grid items-start px-4 text-sm font-medium">
+                        {navItems.map(item => (
+                             <Link
+                                key={item.label}
+                                href={item.href}
+                                className={cn(
+                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                                    pathname === item.href && "bg-muted text-primary"
+                                )}
+                            >
+                                <item.icon className="h-4 w-4" />
+                                {item.label}
+                            </Link>
+                        ))}
+                    </nav>
+                </div>
+                 <div className="mt-auto p-4 border-t">
+                    <Button size="sm" variant="ghost" className="w-full justify-start" asChild>
+                        <Link href="/dashboard">
+                           <Home className="mr-2 h-4 w-4" />
+                           Back to App
+                        </Link>
+                    </Button>
+                </div>
             </div>
-          ) : (
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User Email</TableHead>
-                    <TableHead>Keys Status</TableHead>
-                    <TableHead>App ID</TableHead>
-                    <TableHead>Access Token</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.length > 0 ? (
-                    users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="font-medium">{user.email || 'N/A'}</div>
-                        </TableCell>
-                        <TableCell>
-                          {user.credential?.appId ? (
-                            <Badge variant="secondary" className="bg-green-100 text-green-800">
-                              <KeyRound className="h-3 w-3 mr-1.5" />
-                              Configured
-                            </Badge>
-                          ) : (
-                            <Badge variant="destructive">Not Configured</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                            {user.credential?.appId ? (
-                                <span className="font-mono text-sm">...{user.credential.appId.slice(-6)}</span>
-                            ) : (
-                                <span className="text-muted-foreground">---</span>
-                            )}
-                        </TableCell>
-                        <TableCell>
-                            {user.credential?.accessToken ? (
-                                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                  <Check className="h-3 w-3 mr-1.5" />
-                                  Exists
-                                </Badge>
-                            ) : (
-                                <Badge variant="outline">
-                                   <X className="h-3 w-3 mr-1.5" />
-                                   Missing
-                                </Badge>
-                            )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <CredentialDialog user={user} onSave={fetchAllUsersAndCredentials} />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center">
-                        No users found in the system.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex flex-col">
+            <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-6 lg:h-[60px] lg:px-6">
+                 <Sheet>
+                    <SheetTrigger asChild>
+                        <Button
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0 lg:hidden"
+                        >
+                        <PanelLeft className="h-5 w-5" />
+                        <span className="sr-only">Toggle navigation menu</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="flex flex-col">
+                         <nav className="grid gap-2 text-lg font-medium">
+                            <Link
+                                href="/dashboard"
+                                className="flex items-center gap-2 text-lg font-semibold mb-4"
+                            >
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                                    <AppLogo />
+                                </div>
+                                <span className="text-base">Social Streamliner</span>
+                            </Link>
+                             {navItems.map(item => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                                        pathname === item.href && "bg-muted text-primary"
+                                    )}
+                                >
+                                    <item.icon className="h-4 w-4" />
+                                    {item.label}
+                                </Link>
+                            ))}
+                         </nav>
+                          <div className="mt-auto border-t pt-4">
+                            <Button size="sm" variant="ghost" className="w-full justify-start" asChild>
+                                <Link href="/dashboard">
+                                <Home className="mr-2 h-4 w-4" />
+                                Back to App
+                                </Link>
+                            </Button>
+                        </div>
+                    </SheetContent>
+                </Sheet>
+                <div className="flex-1" />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="icon" className="rounded-full">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={user?.photoURL || undefined} />
+                                <AvatarFallback>{user?.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <span className="sr-only">Toggle user menu</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>Logout</DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </header>
+            <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">
+                 {children}
+            </main>
+        </div>
     </div>
   );
 }

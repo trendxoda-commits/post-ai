@@ -219,13 +219,13 @@ export default function AdminCreatePostPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        {/* Left Column: Account Selection */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Step 1: Select Accounts */}
           <Card>
             <CardHeader>
-              <CardTitle>1. Select Accounts Manually</CardTitle>
-              <CardDescription>Choose which social media accounts you want to post to from all users.</CardDescription>
+              <CardTitle>1. Select Accounts</CardTitle>
+              <CardDescription>Choose accounts manually or by follower count.</CardDescription>
             </CardHeader>
             <CardContent>
                 <DropdownMenu>
@@ -291,70 +291,62 @@ export default function AdminCreatePostPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </CardContent>
-          </Card>
-
-           {/* Step 1.5: Select by Followers */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Or, Select by Follower Count</CardTitle>
-                    <CardDescription>Automatically select accounts based on their number of followers.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="min-followers">Min Followers</Label>
-                            <Input id="min-followers" type="number" placeholder="e.g., 1000" value={minFollowers} onChange={(e) => setMinFollowers(e.target.value)} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="max-followers">Max Followers</Label>
-                            <Input id="max-followers" type="number" placeholder="e.g., 50000" value={maxFollowers} onChange={(e) => setMaxFollowers(e.target.value)} />
-                        </div>
-                    </div>
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={() => setSelectedAccountIds([])}>Clear Selection</Button>
-                    <Button onClick={handleSelectByFollowers} disabled={isLoadingAccounts}>
-                        <Users className="mr-2 h-4 w-4" />
-                        Select Accounts
-                    </Button>
-                </CardFooter>
-            </Card>
-
-
-          {/* Step 2: Craft Post */}
-          <Card>
-            <CardHeader>
-              <CardTitle>2. Craft Your Post</CardTitle>
-              <CardDescription>Write your content and add a link to your media.</CardDescription>
+            <CardHeader className='pt-0'>
+                <CardTitle className='text-lg'>Or, Select by Follower Count</CardTitle>
             </CardHeader>
-            <CardContent className='space-y-4'>
-              <Textarea
-                id="content"
-                placeholder="What's on your mind?"
-                className="min-h-[150px]"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-              <div className="relative">
-                <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input id="media-url" placeholder="Add a public media URL (e.g., .../image.jpg or .../video.mp4)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10" />
-              </div>
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="min-followers">Min Followers</Label>
+                        <Input id="min-followers" type="number" placeholder="e.g., 1000" value={minFollowers} onChange={(e) => setMinFollowers(e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="max-followers">Max Followers</Label>
+                        <Input id="max-followers" type="number" placeholder="e.g., 50000" value={maxFollowers} onChange={(e) => setMaxFollowers(e.target.value)} />
+                    </div>
+                </div>
             </CardContent>
+            <CardFooter className="flex justify-between sm:justify-end gap-2">
+                <Button variant="ghost" onClick={() => setSelectedAccountIds([])}>Clear</Button>
+                <Button onClick={handleSelectByFollowers} disabled={isLoadingAccounts}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Select
+                </Button>
+            </CardFooter>
           </Card>
         </div>
 
-        <div className="lg:col-span-1 space-y-6">
-          {/* Step 3: Publish */}
+        {/* Right Column: Post Composer */}
+        <div className="lg:col-span-3">
           <Card>
             <CardHeader>
-              <CardTitle>3. Publish</CardTitle>
-              <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
+              <CardTitle>2. Craft & Publish</CardTitle>
+              <CardDescription>Write your content, add media, and post to the selected accounts.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
-              </Button>
+            <CardContent className='space-y-4'>
+              <div className='space-y-2'>
+                <Label htmlFor="content">Caption</Label>
+                <Textarea
+                    id="content"
+                    placeholder="What's on your mind?"
+                    className="min-h-[150px]"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="media-url">Media URL</Label>
+                <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="media-url" placeholder="Add a public media URL (e.g., .../image.jpg or .../video.mp4)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10" />
+                </div>
+              </div>
             </CardContent>
+            <CardFooter>
+              <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </div>

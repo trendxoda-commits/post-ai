@@ -170,8 +170,8 @@ const getInstagramMediaFlow = ai.defineFlow(
         // CRITICAL FIX: Fetch insights for both VIDEO and REELS.
         if (item.media_type === 'VIDEO' || item.media_type === 'REELS') {
             try {
-                // CORRECTED API CALL: Request all relevant metrics for video/reels.
-                const insightMetrics = 'video_views,plays,reach,impressions,total_interactions';
+                // DECISIVE FIX: Request only the essential metrics as guided by the user to avoid conflicts.
+                const insightMetrics = 'video_views,plays';
                 // CRITICAL FIX: Always use the USER 'accessToken' for insights, not the page token.
                 const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&access_token=${accessToken}`;
                 const insightsResponse = await fetch(insightsUrl);

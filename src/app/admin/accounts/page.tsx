@@ -308,7 +308,6 @@ export default function AdminAccountsPage() {
                     <TableHead>Platform</TableHead>
                     <TableHead>User</TableHead>
                     <TableHead>User Connection</TableHead>
-                    <TableHead>Page Token</TableHead>
                     <TableHead className="text-right">Followers</TableHead>
                     <TableHead className="text-right">Likes</TableHead>
                     <TableHead className="text-right">Comments</TableHead>
@@ -341,13 +340,6 @@ export default function AdminAccountsPage() {
                                 <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Expired</Badge>
                            )}
                         </TableCell>
-                         <TableCell>
-                           {account.pageAccessToken ? (
-                                <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />OK</Badge>
-                           ) : (
-                                <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Missing</Badge>
-                           )}
-                        </TableCell>
                         <TableCell className="text-right font-semibold">{(account.followers || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalLikes || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
@@ -363,7 +355,7 @@ export default function AdminAccountsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={11} className="h-24 text-center">
+                      <TableCell colSpan={10} className="h-24 text-center">
                         {searchQuery ? `No accounts found for "${searchQuery}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>

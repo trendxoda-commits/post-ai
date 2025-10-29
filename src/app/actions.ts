@@ -26,14 +26,10 @@ import {
   getInstagramMedia as getInstagramMediaFlow,
   getFacebookPosts as getFacebookPostsFlow,
   getAccountAnalytics as getAccountAnalyticsFlow,
-  getFacebookPostComments as getFacebookPostCommentsFlow,
-  getInstagramMediaComments as getInstagramMediaCommentsFlow,
   type GetInstagramMediaOutput,
   type GetFacebookPostsOutput,
   type GetAccountAnalyticsInput,
   type AnalyticsOutput,
-  type GetFacebookPostCommentsOutput,
-  type GetInstagramMediaCommentsOutput,
 } from '@/ai/flows/social-media-actions';
 import {
   executeScheduledPosts as executeScheduledPostsFlow,
@@ -102,18 +98,6 @@ export async function fetchFacebookPosts(
   input: any
 ): Promise<GetFacebookPostsOutput> {
   return getFacebookPostsFlow(input);
-}
-
-export async function getFacebookPostComments(
-    input: any
-): Promise<GetFacebookPostCommentsOutput> {
-    return getFacebookPostCommentsFlow(input);
-}
-
-export async function fetchInstagramComments(
-    input: any
-): Promise<GetInstagramMediaCommentsOutput> {
-    return getInstagramMediaCommentsFlow(input);
 }
 
 export async function getAccountAnalytics(

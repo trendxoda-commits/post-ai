@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -9,6 +8,8 @@ import {
   Link as LinkIcon,
   ChevronDown,
   Users,
+  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -17,9 +18,11 @@ import { Input } from '@/components/ui/input';
 import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 
 // This interface will hold the merged account and user data
@@ -41,6 +44,8 @@ export default function AdminCreatePostPage() {
 
   const [minFollowers, setMinFollowers] = useState('');
   const [maxFollowers, setMaxFollowers] = useState('');
+
+  const [openCombobox, setOpenCombobox] = useState(false);
 
 
   const { toast } = useToast();
@@ -214,64 +219,82 @@ export default function AdminCreatePostPage() {
               <CardDescription>Choose which social media accounts you want to post to from all users.</CardDescription>
             </CardHeader>
             <CardContent>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between" disabled={isLoadingAccounts}>
-                    <span>
-                      {isLoadingAccounts ? 'Loading accounts...' :
-                       selectedAccountIds.length > 0
+               <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openCombobox}
+                    className="w-full justify-between"
+                    disabled={isLoadingAccounts}
+                  >
+                    <span className="truncate">
+                      {isLoadingAccounts
+                        ? 'Loading accounts...'
+                        : selectedAccountIds.length > 0
                         ? `${selectedAccountIds.length} account(s) selected`
                         : 'Select accounts to post to'}
                     </span>
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                  <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                   {allAccounts.length > 0 ? (
-                    <>
-                    <DropdownMenuCheckboxItem
-                        checked={selectedAccountIds.length === allAccounts.length}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={(checked) => {
-                            setSelectedAccountIds(checked ? allAccounts.map(a => a.id) : []);
-                        }}
-                    >
-                        Select All
-                    </DropdownMenuCheckboxItem>
-                    <DropdownMenuSeparator />
-                    {allAccounts.map(account => (
-                        <DropdownMenuCheckboxItem
-                        key={account.id}
-                        checked={selectedAccountIds.includes(account.id)}
-                        onSelect={(e) => e.preventDefault()}
-                        onCheckedChange={(checked) => {
-                            setSelectedAccountIds(prev =>
-                            checked
-                                ? [...prev, account.id]
-                                : prev.filter(id => id !== account.id)
-                            );
-                        }}
-                        >
-                        <Avatar className="h-6 w-6 mr-2">
-                            <AvatarImage src={account.avatar} alt={account.displayName} />
-                            <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                            <span className="font-semibold">{account.displayName}</span>
-                            <span className="text-xs text-muted-foreground">{account.user.email}</span>
-                        </div>
-                        </DropdownMenuCheckboxItem>
-                    ))}
-                    </>
-                  ) : (
-                    <div className="p-2 text-sm text-center text-muted-foreground">
-                      No accounts connected by any user.
-                    </div>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search by account or email..." />
+                    <CommandList>
+                      <CommandEmpty>No accounts found.</CommandEmpty>
+                      <CommandGroup>
+                        {allAccounts.map(account => (
+                          <CommandItem
+                            key={account.id}
+                            value={`${account.displayName} ${account.user.email}`}
+                            onSelect={() => {
+                              setSelectedAccountIds(prev =>
+                                prev.includes(account.id)
+                                  ? prev.filter(id => id !== account.id)
+                                  : [...prev, account.id]
+                              );
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                'mr-2 h-4 w-4',
+                                selectedAccountIds.includes(account.id)
+                                  ? 'opacity-100'
+                                  : 'opacity-0'
+                              )}
+                            />
+                             <Avatar className="h-6 w-6 mr-2">
+                                <AvatarImage src={account.avatar} alt={account.displayName} />
+                                <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                                <span className="font-semibold">{account.displayName}</span>
+                                <span className="text-xs text-muted-foreground">{account.user.email}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                     {allAccounts.length > 0 && (
+                        <CommandGroup className='border-t pt-1 mt-1'>
+                             <CommandItem
+                                onSelect={() => {
+                                    if (selectedAccountIds.length === allAccounts.length) {
+                                        setSelectedAccountIds([]);
+                                    } else {
+                                        setSelectedAccountIds(allAccounts.map(a => a.id));
+                                    }
+                                }}
+                                className='justify-center text-center'
+                            >
+                                {selectedAccountIds.length === allAccounts.length ? 'Deselect All' : 'Select All'}
+                            </CommandItem>
+                        </CommandGroup>
+                    )}
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </CardContent>
           </Card>
 
@@ -343,4 +366,3 @@ export default function AdminCreatePostPage() {
     </div>
   );
 }
-

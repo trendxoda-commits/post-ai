@@ -26,13 +26,13 @@ function getAdminApp(): App {
 }
 const firestore = getFirestore(getAdminApp());
 
-export const ProcessPostJobInputSchema = z.object({
+const ProcessPostJobInputSchema = z.object({
   jobId: z.string().describe("The ID of the postJob document to process."),
   jobCreatorId: z.string().describe("The UID of the user who created the job."),
 });
 export type ProcessPostJobInput = z.infer<typeof ProcessPostJobInputSchema>;
 
-export const ProcessPostJobOutputSchema = z.object({
+const ProcessPostJobOutputSchema = z.object({
   status: z.string(),
 });
 export type ProcessPostJobOutput = z.infer<typeof ProcessPostJobOutputSchema>;

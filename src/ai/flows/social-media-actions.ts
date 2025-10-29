@@ -167,33 +167,29 @@ const getInstagramMediaFlow = ai.defineFlow(
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
         
-        // CRITICAL FIX: Fetch insights for both VIDEO and REELS.
-        if (item.media_type === 'VIDEO' || item.media_type === 'REELS') {
-            try {
-                // DECISIVE FIX: Request only the essential metrics as guided by the user to avoid conflicts.
-                const insightMetrics = 'video_views,plays';
-                // CRITICAL FIX: Always use the USER 'accessToken' for insights, not the page token.
-                const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&access_token=${accessToken}`;
-                const insightsResponse = await fetch(insightsUrl);
+        // For any media type, try to fetch insights. Video and Reels will have reach/impressions.
+        try {
+            // DECISIVE FIX: Request standard engagement metrics as suggested by user. Use reach as the view count.
+            const insightMetrics = 'reach,impressions';
+            // CRITICAL FIX: Always use the USER 'accessToken' for insights, not the page token.
+            const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&access_token=${accessToken}`;
+            const insightsResponse = await fetch(insightsUrl);
+            
+            if (insightsResponse.ok) {
+                const insightsData: any = await insightsResponse.json();
                 
-                if (insightsResponse.ok) {
-                    const insightsData: any = await insightsResponse.json();
-                    
-                    // Find video_views first (for regular videos)
-                    const videoViewsMetric = insightsData.data?.find((insight: any) => insight.name === 'video_views');
-                    // Find plays as a fallback (for Reels)
-                    const playsMetric = insightsData.data?.find((insight: any) => insight.name === 'plays');
+                // Find the 'reach' metric to use as the definitive view count.
+                const reachMetric = insightsData.data?.find((insight: any) => insight.name === 'reach');
 
-                    // Gracefully handle missing metrics and ensure a number is returned.
-                    views = Number(videoViewsMetric?.values?.[0]?.value || playsMetric?.values?.[0]?.value || 0);
+                // Gracefully handle missing metrics and ensure a number is returned.
+                views = Number(reachMetric?.values?.[0]?.value || 0);
 
-                } else {
-                    // Log a warning instead of throwing an error if a single insight call fails
-                    console.warn(`Could not fetch views/plays for media ${item.id}:`, await insightsResponse.text());
-                }
-            } catch (e) {
-                 console.warn(`Error fetching insights for media ${item.id}:`, e);
+            } else {
+                // Log a warning instead of throwing an error if a single insight call fails
+                console.warn(`Could not fetch insights for media ${item.id}:`, await insightsResponse.text());
             }
+        } catch (e) {
+             console.warn(`Error fetching insights for media ${item.id}:`, e);
         }
 
         return {

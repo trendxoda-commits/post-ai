@@ -35,7 +35,7 @@ interface FullAccountDetails extends SocialAccount {
     id: string;
     email?: string;
   };
-  connectionValid: boolean | null; // null: loading, true: valid, false: invalid
+  connectionValid: boolean | null;
 }
 
 
@@ -48,8 +48,6 @@ export default function AdminAccountsPage() {
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
-  // This is the definitive fix for the data loading issue.
-  // It fetches all data sources and merges them into a single state update.
   const fetchAllData = useCallback(async () => {
     if (!firestore) return;
 
@@ -63,18 +61,18 @@ export default function AdminAccountsPage() {
           userMap.set(doc.id, userData.email);
       });
 
-      // 2. Fetch all credentials to build token validity map
+      // 2. Fetch all credentials to build token validity map for each user
       const credentialsSnapshot = await getDocs(collectionGroup(firestore, 'apiCredentials'));
       const tokenStatusMap = new Map<string, boolean | null>();
       const userAccessTokens = new Map<string, string>();
-      
+
       const validationPromises = credentialsSnapshot.docs.map(async (credDoc) => {
         const credential = credDoc.data() as ApiCredential;
         const userId = credDoc.ref.parent.parent!.id;
         if (credential.accessToken) {
           userAccessTokens.set(userId, credential.accessToken);
           try {
-            const { isValid } = await validateToken({ accessToken: credential.accessToken! });
+            const { isValid } = await validateToken({ accessToken: credential.accessToken });
             tokenStatusMap.set(userId, isValid);
           } catch(e) {
             console.error(`Token validation failed for user ${userId}`, e);
@@ -89,6 +87,7 @@ export default function AdminAccountsPage() {
       // 3. Fetch all social accounts using a collectionGroup query
       const accountsSnapshot = await getDocs(collectionGroup(firestore, 'socialAccounts'));
       
+      // 4. Map and merge all data in a single pass
       const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
         const accountData = accountDoc.data() as SocialAccount;
         const userId = accountDoc.ref.parent.parent!.id; // Get parent user ID
@@ -101,7 +100,7 @@ export default function AdminAccountsPage() {
             email: userMap.get(userId),
           },
           // Get the validated status, default to true if no token was ever present
-          connectionValid: tokenStatusMap.has(userId) ? tokenStatusMap.get(userId)! : true,
+          connectionValid: tokenStatusMap.get(userId) ?? true,
         };
       });
       
@@ -372,6 +371,5 @@ export default function AdminAccountsPage() {
       </Card>
     </div>
   );
-}
 
     

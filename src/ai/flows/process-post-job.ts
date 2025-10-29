@@ -55,13 +55,13 @@ const processPostJobFlow = ai.defineFlow(
         }
         const job = jobDoc.data() as PostJob;
 
-        const postPromises = job.targets.map(async (target) => {
+        // CRITICAL FIX: The Promise.all must wrap the entire mapping operation.
+        const results = await Promise.allSettled(job.targets.map(async (target) => {
             const { userId, socialAccountId } = target;
 
             const accountDoc = await firestore.doc(`users/${userId}/socialAccounts/${socialAccountId}`).get();
-            const credentialDoc = (await firestore.collection(`users/${userId}/apiCredentials`).limit(1).get()).docs[0];
-
-            if (!accountDoc.exists || !credentialDoc.exists) {
+            
+            if (!accountDoc.exists) {
                 throw new Error(`Account or credentials not found for target ${socialAccountId}.`);
             }
             
@@ -71,19 +71,19 @@ const processPostJobFlow = ai.defineFlow(
             }
 
             const postAction = socialAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
+            
             const input = {
                 facebookPageId: socialAccount.accountId, // for FB
                 instagramUserId: socialAccount.accountId, // for IG
                 mediaUrl: job.mediaUrl,
                 caption: job.content,
                 pageAccessToken: socialAccount.pageAccessToken,
-                mediaType: job.mediaType, // CRITICAL FIX: Pass the mediaType
+                mediaType: job.mediaType,
             };
             
+            // This is the promise that Promise.allSettled will wait for.
             return postAction(input);
-        });
-
-        const results = await Promise.allSettled(postPromises);
+        }));
 
         const finalResults = results.map((result, index) => ({
             socialAccountId: job.targets[index].socialAccountId,

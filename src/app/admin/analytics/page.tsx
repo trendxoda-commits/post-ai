@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BarChart, Users, ThumbsUp, MessageCircle, Eye } from 'lucide-react';
+import { BarChart, Users, ThumbsUp, MessageCircle, Eye, FileText } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collectionGroup, getDocs } from 'firebase/firestore';
 import type { SocialAccount } from '@/lib/types';
@@ -28,6 +28,7 @@ interface PlatformStats {
   likes: number;
   comments: number;
   views: number;
+  posts: number;
 }
 
 interface GrowthData {
@@ -52,7 +53,7 @@ export default function AdminAnalyticsPage() {
     const { firestore } = useFirebase();
     const [platformData, setPlatformData] = useState<PlatformStats[]>([]);
     const [growthData, setGrowthData] = useState<GrowthData[]>([]);
-    const [totals, setTotals] = useState({ followers: 0, likes: 0, comments: 0, views: 0 });
+    const [totals, setTotals] = useState({ followers: 0, likes: 0, comments: 0, views: 0, posts: 0 });
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -66,14 +67,15 @@ export default function AdminAnalyticsPage() {
                 const allAccounts = accountsSnapshot.docs.map(doc => doc.data() as SocialAccount);
 
                 const stats: Record<string, PlatformStats> = {
-                    'Instagram': { name: 'Instagram', followers: 0, likes: 0, comments: 0, views: 0 },
-                    'Facebook': { name: 'Facebook', followers: 0, likes: 0, comments: 0, views: 0 },
+                    'Instagram': { name: 'Instagram', followers: 0, likes: 0, comments: 0, views: 0, posts: 0 },
+                    'Facebook': { name: 'Facebook', followers: 0, likes: 0, comments: 0, views: 0, posts: 0 },
                 };
                 
                 let totalFollowers = 0;
                 let totalLikes = 0;
                 let totalComments = 0;
                 let totalViews = 0;
+                let totalPosts = 0;
 
                 allAccounts.forEach(account => {
                     if (stats[account.platform]) {
@@ -81,16 +83,18 @@ export default function AdminAnalyticsPage() {
                         stats[account.platform].likes += account.totalLikes || 0;
                         stats[account.platform].comments += account.totalComments || 0;
                         stats[account.platform].views += account.totalViews || 0;
+                        stats[account.platform].posts += account.postCount || 0;
                         
                         totalFollowers += account.followers || 0;
                         totalLikes += account.totalLikes || 0;
                         totalComments += account.totalComments || 0;
                         totalViews += account.totalViews || 0;
+                        totalPosts += account.postCount || 0;
                     }
                 });
 
                 setPlatformData(Object.values(stats));
-                setTotals({ followers: totalFollowers, likes: totalLikes, comments: totalComments, views: totalViews });
+                setTotals({ followers: totalFollowers, likes: totalLikes, comments: totalComments, views: totalViews, posts: totalPosts });
 
                 // Simulate historical growth data
                 const growth: GrowthData[] = [];
@@ -129,11 +133,12 @@ export default function AdminAnalyticsPage() {
         <div className="space-y-8">
             <h1 className="text-3xl font-bold font-headline">Platform Analytics</h1>
             
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <AdminStatsCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <AdminStatsCard title="Total Users" value={totals.followers.toLocaleString()} icon={Users} />
                 <AdminStatsCard title="Total Likes" value={totals.likes.toLocaleString()} icon={ThumbsUp} />
                 <AdminStatsCard title="Total Comments" value={totals.comments.toLocaleString()} icon={MessageCircle} />
                 <AdminStatsCard title="Total Views" value={totals.views.toLocaleString()} icon={Eye} />
+                <AdminStatsCard title="Total Posts" value={totals.posts.toLocaleString()} icon={FileText} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -158,6 +163,7 @@ export default function AdminAnalyticsPage() {
                                 <Bar dataKey="followers" fill="hsl(var(--chart-1))" name="Followers" />
                                 <Bar dataKey="likes" fill="hsl(var(--chart-2))" name="Likes" />
                                 <Bar dataKey="comments" fill="hsl(var(--chart-3))" name="Comments" />
+                                <Bar dataKey="posts" fill="hsl(var(--chart-4))" name="Posts" />
                             </RechartsBarChart>
                         </ResponsiveContainer>
                     </CardContent>

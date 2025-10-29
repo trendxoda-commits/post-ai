@@ -8,16 +8,18 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { postToFacebook, postToInstagram } from '@/app/actions';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
+import { Label } from '@/components/ui/label';
 
 
 // This interface will hold the merged account and user data
@@ -36,6 +38,10 @@ export default function AdminCreatePostPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
+
+  const [minFollowers, setMinFollowers] = useState('');
+  const [maxFollowers, setMaxFollowers] = useState('');
+
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -102,6 +108,28 @@ export default function AdminCreatePostPage() {
     setMediaUrl('');
     setMediaType('IMAGE');
     setSelectedAccountIds([]);
+  };
+
+  const handleSelectByFollowers = () => {
+    const min = minFollowers ? parseInt(minFollowers, 10) : 0;
+    const max = maxFollowers ? parseInt(maxFollowers, 10) : Infinity;
+
+    if (isNaN(min) || isNaN(max)) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please enter valid numbers for follower counts.' });
+      return;
+    }
+    
+    const matchingAccounts = allAccounts.filter(account => {
+        const followers = account.followers || 0;
+        return followers >= min && followers <= max;
+    });
+
+    setSelectedAccountIds(matchingAccounts.map(a => a.id));
+
+    toast({
+        title: 'Accounts Selected',
+        description: `${matchingAccounts.length} accounts matching your criteria have been selected.`
+    })
   };
 
   const handlePostNow = async () => {
@@ -182,7 +210,7 @@ export default function AdminCreatePostPage() {
           {/* Step 1: Select Accounts */}
           <Card>
             <CardHeader>
-              <CardTitle>1. Select Accounts</CardTitle>
+              <CardTitle>1. Select Accounts Manually</CardTitle>
               <CardDescription>Choose which social media accounts you want to post to from all users.</CardDescription>
             </CardHeader>
             <CardContent>
@@ -247,6 +275,34 @@ export default function AdminCreatePostPage() {
             </CardContent>
           </Card>
 
+           {/* Step 1.5: Select by Followers */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Or, Select by Follower Count</CardTitle>
+                    <CardDescription>Automatically select accounts based on their number of followers.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="min-followers">Min Followers</Label>
+                            <Input id="min-followers" type="number" placeholder="e.g., 1000" value={minFollowers} onChange={(e) => setMinFollowers(e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="max-followers">Max Followers</Label>
+                            <Input id="max-followers" type="number" placeholder="e.g., 50000" value={maxFollowers} onChange={(e) => setMaxFollowers(e.target.value)} />
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setSelectedAccountIds([])}>Clear Selection</Button>
+                    <Button onClick={handleSelectByFollowers} disabled={isLoadingAccounts}>
+                        <Users className="mr-2 h-4 w-4" />
+                        Select Accounts
+                    </Button>
+                </CardFooter>
+            </Card>
+
+
           {/* Step 2: Craft Post */}
           <Card>
             <CardHeader>
@@ -288,3 +344,4 @@ export default function AdminCreatePostPage() {
   );
 }
 
+    

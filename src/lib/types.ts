@@ -61,28 +61,11 @@ export type ScheduledPost = {
   createdAt: string;
 }
 
-export type PostJob = {
-  id: string;
-  status: 'pending' | 'completed' | 'failed';
-  createdAt: string;
-  content: string;
-  mediaUrl: string;
-  mediaType: 'IMAGE' | 'VIDEO';
-  targets: { userId: string; socialAccountId: string }[];
-  results: { socialAccountId: string; status: 'fulfilled' | 'rejected'; reason?: string }[];
-  totalTargets: number;
-  successCount: number;
-  failureCount: number;
-  // For UI joins
-  user?: {
-    email?: string;
-  }
-}
-
 export type AnalyticsData = {
   date: string;
   followers: number;
   engagement: number;
 };
 
+    
     

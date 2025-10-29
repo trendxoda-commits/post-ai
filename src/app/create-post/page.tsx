@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -17,7 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { processPostJob, executeScheduledPosts } from '@/app/actions';
+import { executeScheduledPosts, postToFacebook, postToInstagram } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -89,47 +90,51 @@ export default function CreatePostPage() {
     if (!user) return;
 
     setIsPosting(true);
+    
+    const postPromises = selectedAccountIds.map(accountId => {
+        const account = accounts?.find(a => a.id === accountId);
+        if (!account || !account.pageAccessToken) {
+            return Promise.reject(new Error(`Account details or token missing for ${account?.displayName || accountId}`));
+        }
 
-    try {
-        const jobDetails = selectedAccountIds.map(accountId => ({
-            userId: user.uid, // All targets belong to the current user
-            socialAccountId: accountId,
-        }));
-
-        const jobsRef = collection(firestore, `users/${user.uid}/postJobs`);
-        const newJobRef = await addDoc(jobsRef, {
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-            content,
-            mediaUrl,
-            mediaType,
-            targets: jobDetails,
-            results: [],
-            totalTargets: jobDetails.length,
-            successCount: 0,
-            failureCount: 0,
-        });
-
-        // Fire-and-forget the background processing
-        processPostJob({ jobId: newJobRef.id, jobCreatorId: user.uid });
+        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
         
+        const input = {
+            facebookPageId: account.accountId,
+            instagramUserId: account.accountId,
+            mediaUrl: mediaUrl,
+            mediaType: mediaType,
+            caption: content,
+            pageAccessToken: account.pageAccessToken,
+        };
+        
+        return postAction(input);
+    });
+
+    const results = await Promise.allSettled(postPromises);
+
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
+
+    if (failureCount > 0) {
         toast({
-            title: 'Bulk Post Started',
-            description: `Your post to ${selectedAccountIds.length} accounts is being processed.`,
-        });
-
-        resetForm();
-
-    } catch (error: any) {
-         console.error('Failed to create post job:', error);
-         toast({
             variant: 'destructive',
-            title: 'Failed to Start Post Job',
-            description: error.message || 'Could not start the bulk posting process.',
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to ${successCount} accounts. ${failureCount} posts failed. Check server logs for details.`,
         });
-    } finally {
-        setIsPosting(false);
+    } else {
+        toast({
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to all ${successCount} accounts.`,
+        });
     }
+
+    if (successCount > 0) {
+        resetForm();
+    }
+
+
+    setIsPosting(false);
   };
   
     const handleSchedulePost = async () => {
@@ -293,7 +298,7 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardContent>
               <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isScheduling}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
               </Button>
             </CardContent>
           </Card>
@@ -351,3 +356,5 @@ export default function CreatePostPage() {
     </div>
   );
 }
+
+    

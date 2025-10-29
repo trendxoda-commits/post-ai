@@ -8,13 +8,12 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
-  Users,
 } from 'lucide-react';
 import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { addDoc, collection, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -303,3 +302,5 @@ export default function AdminCreatePostPage() {
     </div>
   );
 }
+
+    

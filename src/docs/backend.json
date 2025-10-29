@@ -1,0 +1,355 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Social Streamliner application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user.",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "createdAt"
+      ]
+    },
+    "ApiCredential": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ApiCredential",
+      "type": "object",
+      "description": "Stores the API credentials for a specific platform for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the credential set."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns these credentials."
+        },
+        "platform": {
+          "type": "string",
+          "description": "The social media platform (e.g., 'Meta')."
+        },
+        "appId": {
+          "type": "string",
+          "description": "The App ID for the social media application."
+        },
+        "appSecret": {
+          "type": "string",
+          "description": "The App Secret for the social media application."
+        },
+        "accessToken": {
+          "type": "string",
+          "description": "The long-lived user access token, encrypted."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "platform",
+        "appId",
+        "appSecret"
+      ]
+    },
+    "SocialAccount": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SocialAccount",
+      "type": "object",
+      "description": "Represents a social media account (e.g., Facebook, Instagram) connected by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the social media account.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this social media account. (Relationship: User 1:N SocialAccount)"
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "Instagram",
+            "Facebook"
+          ],
+          "description": "The social media platform (e.g., 'Facebook', 'Instagram')."
+        },
+        "accountId": {
+          "type": "string",
+          "description": "The unique identifier for the account on the social media platform."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name or username of the account."
+        },
+        "pageAccessToken": {
+          "type": "string",
+          "description": "The Page Access Token for API calls, encrypted."
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the account's profile picture."
+        },
+        "followers": {
+          "type": "number",
+          "description": "The number of followers the account has."
+        },
+        "totalLikes": {
+          "type": "number",
+          "description": "Aggregated number of likes on recent posts."
+        },
+        "totalComments": {
+          "type": "number",
+          "description": "Aggregated number of comments on recent posts."
+        },
+        "totalViews": {
+          "type": "number",
+          "description": "Aggregated number of views on recent video posts."
+        },
+        "postCount": {
+          "type": "number",
+          "description": "The number of recent posts analyzed."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "platform",
+        "accountId",
+        "displayName",
+        "pageAccessToken"
+      ]
+    },
+    "SocialPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SocialPost",
+      "type": "object",
+      "description": "Represents a single post fetched from a social media platform, with its analytics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique Firestore document ID."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns the account this post belongs to."
+        },
+        "socialAccountId": {
+          "type": "string",
+          "description": "Reference to the SocialAccount this post belongs to."
+        },
+        "platform": {
+          "type": "string",
+          "enum": ["Instagram", "Facebook"],
+          "description": "The social media platform."
+        },
+        "postId": {
+          "type": "string",
+          "description": "The original post ID from the social media platform."
+        },
+        "content": {
+          "type": "string",
+          "description": "The caption or text content of the post."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the post's primary image or video."
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "The type of media (e.g., 'IMAGE', 'VIDEO')."
+        },
+        "permalink": {
+          "type": "string",
+          "format": "uri",
+          "description": "A direct link to view the post on its platform."
+        },
+        "likes": {
+          "type": "number",
+          "description": "The number of likes on the post."
+        },
+        "comments": {
+          "type": "number",
+          "description": "The number of comments on the post."
+        },
+        "views": {
+          "type": "number",
+          "description": "The number of views for a video post."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The original creation time of the post."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "socialAccountId",
+        "platform",
+        "postId",
+        "timestamp"
+      ]
+    },
+    "ScheduledPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ScheduledPost",
+      "type": "object",
+      "description": "Represents a post scheduled to be published on one or more social media accounts.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the scheduled post.",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created this scheduled post. (Relationship: User 1:N ScheduledPost)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the post."
+        },
+        "scheduledTime": {
+          "type": "string",
+          "description": "The date and time when the post is scheduled to be published.",
+          "format": "date-time"
+        },
+        "socialAccountIds": {
+          "type": "array",
+          "description": "References to SocialAccounts where this post will be published. (Relationship: SocialAccount N:N ScheduledPost)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "content",
+        "scheduledTime",
+        "socialAccountIds"
+      ]
+    },
+    "TrendingHashtag": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TrendingHashtag",
+      "type": "object",
+      "description": "Represents trending hashtags for content aggregation.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the trending hashtag.",
+          "format": "uuid"
+        },
+        "hashtag": {
+          "type": "string",
+          "description": "The trending hashtag text."
+        },
+        "volume": {
+          "type": "number",
+          "description": "The search volume or usage frequency of the hashtag."
+        },
+        "dateObserved": {
+          "type": "string",
+          "description": "The date when the hashtag was observed as trending.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "hashtag",
+        "volume",
+        "dateObserved"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Path-based ownership ensures only the user can access their data."
+        }
+      },
+      {
+        "path": "/users/{userId}/apiCredentials/{credentialId}",
+        "definition": {
+          "entityName": "ApiCredential",
+          "schema": {
+            "$ref": "#/backend/entities/ApiCredential"
+          },
+          "description": "Stores a user's API credentials for a specific platform. Path-based ownership ensures credentials are secure. Only one document should exist in this subcollection."
+        }
+      },
+      {
+        "path": "/users/{userId}/socialAccounts/{socialAccountId}",
+        "definition": {
+          "entityName": "SocialAccount",
+          "schema": {
+            "$ref": "#/backend/entities/SocialAccount"
+          },
+          "description": "Stores social media account information for a user. Path-based ownership ensures accounts are private."
+        }
+      },
+      {
+        "path": "/users/{userId}/socialPosts/{socialPostId}",
+        "definition": {
+          "entityName": "SocialPost",
+          "schema": {
+            "$ref": "#/backend/entities/SocialPost"
+          },
+          "description": "Stores fetched posts from a user's social accounts, including their analytics. Path-based ownership."
+        }
+      },
+      {
+        "path": "/users/{userId}/scheduledPosts/{scheduledPostId}",
+        "definition": {
+          "entityName": "ScheduledPost",
+          "schema": {
+            "$ref": "#/backend/entities/ScheduledPost"
+          },
+          "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
+        }
+      },
+      {
+        "path": "/trendingHashtags/{trendingHashtagId}",
+        "definition": {
+          "entityName": "TrendingHashtag",
+          "schema": {
+            "$ref": "#/backend/entities/TrendingHashtag"
+          },
+          "description": "Stores trending hashtags for content aggregation. Globally readable."
+        }
+      }
+    ]
+  }
+}

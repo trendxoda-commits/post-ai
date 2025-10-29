@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { processPostJob } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -132,56 +132,55 @@ export default function AdminCreatePostPage() {
       });
       return;
     }
-     if (!user) return;
-
+    if (!user) return;
 
     setIsPosting(true);
 
-    try {
-        const jobDetails = selectedAccountIds.map(accountId => {
-            const account = allAccounts.find(a => a.id === accountId);
-            if (!account) return null;
-            return {
-                userId: account.user.id,
-                socialAccountId: account.id,
-            };
-        }).filter(Boolean);
+    const postPromises = selectedAccountIds.map(accountId => {
+        const account = allAccounts.find(a => a.id === accountId);
+        if (!account || !account.pageAccessToken) {
+            return Promise.reject(new Error(`Account details or token missing for ${account?.displayName || accountId}`));
+        }
 
-        const jobsRef = collection(firestore, `users/${user.uid}/postJobs`);
-        const newJobRef = await addDoc(jobsRef, {
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-            content,
-            mediaUrl,
-            mediaType,
-            targets: jobDetails,
-            results: [],
-            totalTargets: jobDetails.length,
-            successCount: 0,
-            failureCount: 0,
-        });
-
-        // Fire-and-forget the background processing
-        processPostJob({ jobId: newJobRef.id, jobCreatorId: user.uid });
+        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
         
+        const input = {
+            facebookPageId: account.accountId,
+            instagramUserId: account.accountId,
+            mediaUrl: mediaUrl,
+            mediaType: mediaType,
+            caption: content,
+            pageAccessToken: account.pageAccessToken,
+        };
+        
+        return postAction(input);
+    });
+
+    const results = await Promise.allSettled(postPromises);
+
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failureCount = results.length - successCount;
+
+    if (failureCount > 0) {
         toast({
-            title: 'Bulk Post Started',
-            description: `Your post to ${selectedAccountIds.length} accounts is being processed in the background. See the 'Jobs' page for status.`,
-        });
-
-        resetForm();
-
-    } catch (error: any) {
-         console.error('Failed to create post job:', error);
-         toast({
             variant: 'destructive',
-            title: 'Failed to Start Post Job',
-            description: error.message || 'Could not start the bulk posting process.',
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to ${successCount} accounts. ${failureCount} posts failed. Check server logs for details.`,
         });
-    } finally {
-        setIsPosting(false);
+    } else {
+        toast({
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to all ${successCount} accounts.`,
+        });
     }
+
+    if (successCount > 0) {
+        resetForm();
+    }
+
+    setIsPosting(false);
   };
+
 
 
   return (
@@ -194,7 +193,6 @@ export default function AdminCreatePostPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-        {/* Left Column: Account Selection */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader>
@@ -296,7 +294,7 @@ export default function AdminCreatePostPage() {
             </CardContent>
             <CardFooter>
               <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
               </Button>
             </CardFooter>
           </Card>

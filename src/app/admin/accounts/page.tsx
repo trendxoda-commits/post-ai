@@ -73,8 +73,15 @@ export default function AdminAccountsPage() {
         const userId = credDoc.ref.parent.parent!.id;
         if (credential.accessToken) {
           userAccessTokens.set(userId, credential.accessToken);
-          const { isValid } = await validateToken({ accessToken: credential.accessToken! });
-          tokenStatusMap.set(userId, isValid);
+          try {
+            const { isValid } = await validateToken({ accessToken: credential.accessToken! });
+            tokenStatusMap.set(userId, isValid);
+          } catch(e) {
+            console.error(`Token validation failed for user ${userId}`, e);
+            tokenStatusMap.set(userId, false); // Assume invalid on error
+          }
+        } else {
+            tokenStatusMap.set(userId, false); // No token means invalid connection
         }
       });
       await Promise.all(validationPromises);
@@ -366,3 +373,5 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
+
+    

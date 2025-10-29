@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, KeyRound, Edit, PlusCircle } from 'lucide-react';
+import { Loader2, KeyRound, Edit, PlusCircle, Check, X } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
 import type { User, ApiCredential } from '@/lib/types';
@@ -177,7 +177,7 @@ export default function AdminCredentialsPage() {
       <Card>
         <CardHeader>
           <CardTitle>All User Credentials</CardTitle>
-          <CardDescription>Each user can have one set of Meta API keys.</CardDescription>
+          <CardDescription>Each user can have one set of Meta API keys and one long-lived access token.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -190,8 +190,9 @@ export default function AdminCredentialsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>User Email</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Keys Status</TableHead>
                     <TableHead>App ID</TableHead>
+                    <TableHead>Access Token</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -203,7 +204,7 @@ export default function AdminCredentialsPage() {
                           <div className="font-medium">{user.email || 'N/A'}</div>
                         </TableCell>
                         <TableCell>
-                          {user.credential ? (
+                          {user.credential?.appId ? (
                             <Badge variant="secondary" className="bg-green-100 text-green-800">
                               <KeyRound className="h-3 w-3 mr-1.5" />
                               Configured
@@ -213,10 +214,23 @@ export default function AdminCredentialsPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                            {user.credential ? (
+                            {user.credential?.appId ? (
                                 <span className="font-mono text-sm">...{user.credential.appId.slice(-6)}</span>
                             ) : (
                                 <span className="text-muted-foreground">---</span>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                            {user.credential?.accessToken ? (
+                                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                  <Check className="h-3 w-3 mr-1.5" />
+                                  Exists
+                                </Badge>
+                            ) : (
+                                <Badge variant="outline">
+                                   <X className="h-3 w-3 mr-1.5" />
+                                   Missing
+                                </Badge>
                             )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -226,7 +240,7 @@ export default function AdminCredentialsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="h-24 text-center">
+                      <TableCell colSpan={5} className="h-24 text-center">
                         No users found in the system.
                       </TableCell>
                     </TableRow>

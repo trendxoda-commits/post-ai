@@ -77,7 +77,7 @@ export default function CreatePostPage() {
     setScheduleTime('10:00');
   };
 
-  const handlePostNow = async () => {
+  const handlePostNow = () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: "destructive",
@@ -89,13 +89,13 @@ export default function CreatePostPage() {
     if (!user) return;
 
 
-    setIsPosting(true);
-    
-    const postPromises = selectedAccountIds.map(accountId => {
+    // Fire-and-forget: Start posting but don't wait for completion.
+    // The client UI will be free immediately.
+    selectedAccountIds.forEach(accountId => {
         const selectedAccount = accounts?.find(acc => acc.id === accountId);
         if (!selectedAccount || !selectedAccount.pageAccessToken) {
-            toast({ variant: "destructive", title: `Error with ${selectedAccount?.displayName}`, description: "Account is invalid or missing permissions." });
-            return Promise.reject(new Error(`Invalid account: ${selectedAccount?.displayName}`));
+            console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
+            return; // Skip this iteration
         }
 
         const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
@@ -108,41 +108,20 @@ export default function CreatePostPage() {
             mediaType,
         };
 
-        return postAction(input).catch(error => {
-            console.error(`Error posting to ${selectedAccount.displayName}:`, error);
-            // Throw a new error with more context to be caught by Promise.allSettled
-            throw new Error(`Failed to post to ${selectedAccount.displayName}: ${error.message}`);
+        // Call the server action but DO NOT await it.
+        postAction(input).catch(error => {
+            // Log errors that happen during the server action call itself,
+            // but the actual post execution errors will be on the server logs.
+            console.error(`Error initiating post for ${selectedAccount.displayName}:`, error);
         });
     });
 
-    const results = await Promise.allSettled(postPromises);
-
-    let successfulPostsCount = 0;
-    results.forEach((result, index) => {
-        if (result.status === 'fulfilled') {
-            successfulPostsCount++;
-        } else {
-            const accountName = accounts?.find(acc => acc.id === selectedAccountIds[index])?.displayName || 'an account';
-            toast({
-                variant: "destructive",
-                title: `Error Posting to ${accountName}`,
-                description: result.reason.message || 'There was an issue posting your content. Please try again.',
-            });
-        }
+    toast({
+        title: 'Posting Started',
+        description: `Your content is being published to ${selectedAccountIds.length} account(s) in the background.`,
     });
-
-    setIsPosting(false);
-
-    if (successfulPostsCount > 0) {
-        toast({
-            title: 'Post Summary',
-            description: `${successfulPostsCount} out of ${selectedAccountIds.length} post(s) were published successfully.`,
-        });
-    }
-
-    if (successfulPostsCount === selectedAccountIds.length) { // Only reset if all were successful
-      resetForm();
-    }
+    
+    resetForm();
   };
   
     const handleSchedulePost = async () => {

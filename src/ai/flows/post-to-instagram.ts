@@ -46,7 +46,7 @@ const postToInstagramFlow = ai.defineFlow(
     });
 
     if (mediaType === 'VIDEO') {
-        containerParams.append('media_type', 'REELS'); // Instagram now requires REELS for videos
+        containerParams.append('media_type', 'REELS'); // Instagram now requires REELS for most videos
         containerParams.append('video_url', mediaUrl);
     } else { // IMAGE
         containerParams.append('image_url', mediaUrl);

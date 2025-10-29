@@ -37,21 +37,18 @@ const postToFacebookFlow = ai.defineFlow(
     const params = new URLSearchParams({
         access_token: pageAccessToken,
     });
-     if (caption) {
-        params.append('description', caption); // 'description' for videos, 'caption' for photos
-    }
 
     if (mediaType === 'VIDEO') {
         postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/videos`;
         params.append('file_url', mediaUrl);
+        if (caption) {
+            params.append('description', caption);
+        }
     } else { // IMAGE
         postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
         params.append('url', mediaUrl);
-        // Facebook uses 'caption' for photos, but we'll stick to 'description' and let it adapt if needed.
-        // If caption was set, it's already in params as 'description'. Let's rename for photos.
-        if (params.has('description')) {
-            params.set('caption', params.get('description')!);
-            params.delete('description');
+        if (caption) {
+            params.append('caption', caption);
         }
     }
     
@@ -70,6 +67,7 @@ const postToFacebookFlow = ai.defineFlow(
 
     const responseData: any = await response.json();
     
+    // The post ID can be in `post_id` for videos or `id` for photos.
     const postId = responseData.post_id || responseData.id;
     if (!postId) {
         throw new Error('Failed to get post ID from Facebook after publishing.');

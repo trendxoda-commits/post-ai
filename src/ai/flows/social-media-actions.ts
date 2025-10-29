@@ -171,7 +171,6 @@ const getInstagramMediaFlow = ai.defineFlow(
         let comments = 0;
         
         try {
-            // DECISIVE FIX: Use the exact metrics and period provided by the user.
             const insightMetrics = 'reach,likes,comments,saved,shares';
             // CRITICAL FIX: Always use the USER 'accessToken' for insights.
             const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&period=lifetime&access_token=${accessToken}`;
@@ -188,7 +187,6 @@ const getInstagramMediaFlow = ai.defineFlow(
 
             } else {
                 console.warn(`Could not fetch insights for media ${item.id}:`, await insightsResponse.text());
-                // No more fallback to basic counts. Insights are the source of truth.
             }
         } catch (e) {
              console.warn(`Error fetching insights for media ${item.id}:`, e);
@@ -280,7 +278,8 @@ const getFacebookPostsFlow = ai.defineFlow(
                 if (insightsResponse.ok) {
                     const insightsData: any = await insightsResponse.json();
                     const views = insightsData.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
-                    return { ...post, insights: { ...post.insights, post_video_views: views } };
+                    // DECISIVE FIX: Do not spread the whole post object again, only add the insights.
+                    return { ...post, insights: { post_video_views: views } };
                 }
             } catch (e) {
                 console.warn(`Could not fetch views for FB post ${post.id}`, e);

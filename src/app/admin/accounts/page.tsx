@@ -47,10 +47,9 @@ export default function AdminAccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
-  const [userTokenStatus, setUserTokenStatus] = useState<Map<string, boolean | null>>(new Map());
 
-  // We will fetch all users first, then listen to their social accounts.
-  // This is a more scalable approach for admin panels.
+  // This is the definitive fix for the data loading issue.
+  // It fetches all data sources and merges them into a single state update.
   const fetchAllData = useCallback(async () => {
     if (!firestore) return;
 
@@ -64,32 +63,23 @@ export default function AdminAccountsPage() {
           userMap.set(doc.id, userData.email);
       });
 
-      // 2. Fetch all user API credentials to check token validity
+      // 2. Fetch all credentials to build token validity map
       const credentialsSnapshot = await getDocs(collectionGroup(firestore, 'apiCredentials'));
       const tokenStatusMap = new Map<string, boolean | null>();
-      const tokenValidationPromises: Promise<void>[] = [];
       const userAccessTokens = new Map<string, string>();
-
-      credentialsSnapshot.forEach(credDoc => {
-          const credential = credDoc.data() as ApiCredential;
-          const userId = credDoc.ref.parent.parent!.id;
-          if (credential.accessToken) {
-              userAccessTokens.set(userId, credential.accessToken);
-              tokenStatusMap.set(userId, null); // Set as loading
-              tokenValidationPromises.push(
-                  (async () => {
-                      const { isValid } = await validateToken({ accessToken: credential.accessToken! });
-                      tokenStatusMap.set(userId, isValid);
-                  })()
-              );
-          }
+      
+      const validationPromises = credentialsSnapshot.docs.map(async (credDoc) => {
+        const credential = credDoc.data() as ApiCredential;
+        const userId = credDoc.ref.parent.parent!.id;
+        if (credential.accessToken) {
+          userAccessTokens.set(userId, credential.accessToken);
+          const { isValid } = await validateToken({ accessToken: credential.accessToken! });
+          tokenStatusMap.set(userId, isValid);
+        }
       });
+      await Promise.all(validationPromises);
       
-      setUserTokenStatus(new Map(tokenStatusMap)); // Initial state with loading
-      await Promise.all(tokenValidationPromises);
-      setUserTokenStatus(new Map(tokenStatusMap)); // Final state with results
-      
-      // 3. Use a collectionGroup query to get all 'socialAccounts' across all users
+      // 3. Fetch all social accounts using a collectionGroup query
       const accountsSnapshot = await getDocs(collectionGroup(firestore, 'socialAccounts'));
       
       const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
@@ -103,19 +93,26 @@ export default function AdminAccountsPage() {
             id: userId,
             email: userMap.get(userId),
           },
-          connectionValid: tokenStatusMap.get(userId) ?? true, // Default to true if no token
+          // Get the validated status, default to true if no token was ever present
+          connectionValid: tokenStatusMap.has(userId) ? tokenStatusMap.get(userId)! : true,
         };
       });
       
+      // Single state update with all merged data
       setAccounts(fetchedAccounts);
 
     } catch (error) {
       console.error("Failed to fetch admin accounts:", error);
       setAccounts([]); // Set to empty array on error
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load account data. Please check the console.',
+      })
     } finally {
       setIsLoading(false);
     }
-  }, [firestore]);
+  }, [firestore, toast]);
   
   useEffect(() => {
     fetchAllData();
@@ -332,9 +329,9 @@ export default function AdminAccountsPage() {
                           <div className="text-sm text-muted-foreground">{account.user.email || 'N/A'}</div>
                         </TableCell>
                          <TableCell>
-                           {userTokenStatus.get(account.user.id) === null ? (
+                           {account.connectionValid === null ? (
                                 <Badge variant="secondary"><Loader2 className="h-3 w-3 animate-spin mr-1" />...</Badge>
-                           ) : userTokenStatus.get(account.user.id) ? (
+                           ) : account.connectionValid ? (
                                 <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Healthy</Badge>
                            ) : (
                                 <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Expired</Badge>
@@ -346,7 +343,7 @@ export default function AdminAccountsPage() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !userTokenStatus.get(account.user.id) || !account.pageAccessToken}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !account.connectionValid || !account.pageAccessToken}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>
@@ -369,5 +366,3 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
-
-    

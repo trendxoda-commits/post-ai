@@ -137,13 +137,13 @@ export default function InstagramCallbackPage() {
         
         for (const account of accounts) {
             const platformSpecificId = account.accountId;
-            if (!platformSpecificId) continue;
+            if (!platformSpecificId || !account.pageAccessToken) continue;
             
             // Fetch initial analytics for the account
             const analytics = await getAccountAnalytics({
                 accountId: account.accountId,
                 platform: account.platform,
-                pageAccessToken: account.pageAccessToken!,
+                pageAccessToken: account.pageAccessToken,
                 userAccessToken: longLivedToken,
             });
 
@@ -237,5 +237,3 @@ export default function InstagramCallbackPage() {
     </div>
   );
 }
-
-    

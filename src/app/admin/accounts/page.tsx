@@ -354,7 +354,7 @@ export default function AdminAccountsPage() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !userTokenStatus.get(account.user.id)}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !userTokenStatus.get(account.user.id) || !account.pageAccessToken}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>
@@ -377,5 +377,3 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
-
-    

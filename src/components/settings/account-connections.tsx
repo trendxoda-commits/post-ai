@@ -239,7 +239,7 @@ export function AccountConnections() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || !isTokenValid}>
+                    <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || !isTokenValid || !account.pageAccessToken}>
                         {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                         <span className="hidden sm:inline ml-2">Refresh</span>
                     </Button>
@@ -264,5 +264,3 @@ export function AccountConnections() {
     </Card>
   );
 }
-
-    

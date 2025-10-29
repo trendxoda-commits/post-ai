@@ -16,6 +16,7 @@ import { useFirebase, useUser } from '@/firebase';
 import { Button } from '../ui/button';
 import { LogOut } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
+import { PublicLayout } from './public-layout';
 
 const AppLogo = () => (
   <svg
@@ -51,58 +52,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
 
+  const publicPages = ['/', '/login', '/instagram-callback'];
+  const isPublicPage = publicPages.includes(pathname);
+
+
   // If we are on an admin page, let the admin layout handle everything.
   if (pathname.startsWith('/admin')) {
     return <>{children}</>;
   }
 
-  // Allow access to public pages without login
-  if (pathname === '/login') {
-      if (isUserLoading) {
-        return (
-            <div className="flex h-screen w-screen items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
-                    <AppLogo />
-                </div>
-                <p className="text-muted-foreground">Loading...</p>
-                </div>
-            </div>
-        );
-      }
-      if (user) {
-        redirect('/dashboard');
-      }
-      return (
-      <main className="min-h-screen">
-          <div className="flex flex-col items-center justify-center pt-16">
-            {children}
-          </div>
-      </main>
-    );
-  }
-  if (pathname === '/instagram-callback') {
-    return <main>{children}</main>;
-  }
-
-
-  if (isUserLoading) {
+  // Handle loading state
+   if (isUserLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary">
             <AppLogo />
           </div>
-           <p className="text-muted-foreground">Loading Social Streamliner...</p>
+          <p className="text-muted-foreground">Loading Social Streamliner...</p>
         </div>
       </div>
     );
   }
-  
-  if (!user) {
+
+  // Handle routing logic
+  if (user && isPublicPage && pathname !== '/instagram-callback') {
+    redirect('/dashboard');
+  }
+
+  if (!user && !isPublicPage) {
     redirect('/login');
   }
-  
+
+  // Render public layout for public pages
+  if (isPublicPage) {
+    if (pathname === '/login') {
+        return (
+            <PublicLayout>
+                <div className="flex flex-col items-center justify-center pt-16">
+                    {children}
+                </div>
+            </PublicLayout>
+        )
+    }
+    // Landing page and callback page are handled by their own layout components
+    return <>{children}</>;
+  }
+
+  // Render authenticated app shell
   const handleLogout = () => {
     auth.signOut();
   };

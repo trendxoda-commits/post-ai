@@ -280,6 +280,79 @@
         "volume",
         "dateObserved"
       ]
+    },
+    "PostJob": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PostJob",
+      "type": "object",
+      "description": "Represents a job to post content to multiple social media accounts.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the post job."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed", "failed"],
+          "description": "The current status of the job."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp indicating when the job was created."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the post."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the media to be posted."
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["IMAGE", "VIDEO"],
+          "description": "The type of media."
+        },
+        "targets": {
+          "type": "array",
+          "description": "An array of target accounts for the post.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "socialAccountId": { "type": "string" }
+            },
+            "required": ["userId", "socialAccountId"]
+          }
+        },
+        "results": {
+          "type": "array",
+          "description": "An array of results for each target.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "socialAccountId": { "type": "string" },
+              "status": { "type": "string", "enum": ["fulfilled", "rejected"] },
+              "reason": { "type": "string" }
+            },
+             "required": ["socialAccountId", "status"]
+          }
+        },
+        "totalTargets": { "type": "number" },
+        "successCount": { "type": "number" },
+        "failureCount": { "type": "number" }
+      },
+      "required": [
+        "id",
+        "status",
+        "createdAt",
+        "content",
+        "mediaUrl",
+        "mediaType",
+        "targets"
+      ]
     }
   },
   "auth": {
@@ -340,6 +413,16 @@
           "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
         }
       },
+       {
+        "path": "/users/{userId}/postJobs/{jobId}",
+        "definition": {
+          "entityName": "PostJob",
+          "schema": {
+            "$ref": "#/backend/entities/PostJob"
+          },
+          "description": "Stores information about a bulk posting job initiated by a user."
+        }
+      },
       {
         "path": "/trendingHashtags/{trendingHashtagId}",
         "definition": {
@@ -353,5 +436,3 @@
     ]
   }
 }
-
-    

@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram, executeScheduledPosts } from '@/app/actions';
+import { processPostJob, executeScheduledPosts } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -90,52 +90,46 @@ export default function CreatePostPage() {
 
     setIsPosting(true);
 
-    const postPromises = selectedAccountIds.map(accountId => {
-        const selectedAccount = accounts?.find(acc => acc.id === accountId);
-        if (!selectedAccount || !selectedAccount.pageAccessToken) {
-            console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
-            return Promise.reject(new Error(`Invalid account or permissions for ${selectedAccount?.displayName}`));
-        }
+    try {
+        const jobDetails = selectedAccountIds.map(accountId => ({
+            userId: user.uid, // All targets belong to the current user
+            socialAccountId: accountId,
+        }));
 
-        const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
-        const input = {
-            facebookPageId: selectedAccount.accountId, // for FB
-            instagramUserId: selectedAccount.accountId, // for IG
+        const jobsRef = collection(firestore, `users/${user.uid}/postJobs`);
+        const newJobRef = await addDoc(jobsRef, {
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            content,
             mediaUrl,
-            caption: content,
-            pageAccessToken: selectedAccount.pageAccessToken,
             mediaType,
-        };
+            targets: jobDetails,
+            results: [],
+            totalTargets: jobDetails.length,
+            successCount: 0,
+            failureCount: 0,
+        });
 
-        return postAction(input);
-    });
-    
-    const results = await Promise.allSettled(postPromises);
+        // Fire-and-forget the background processing
+        processPostJob({ jobId: newJobRef.id, jobCreatorId: user.uid });
+        
+        toast({
+            title: 'Bulk Post Started',
+            description: `Your post to ${selectedAccountIds.length} accounts is being processed.`,
+        });
 
-    const successfulPosts = results.filter(result => result.status === 'fulfilled').length;
-    const failedPosts = results.length - successfulPosts;
+        resetForm();
 
-    if (failedPosts === 0) {
-      toast({
-        title: 'Bulk Post Complete',
-        description: `Successfully posted to all ${successfulPosts} accounts.`,
-      });
-    } else if (successfulPosts > 0) {
-       toast({
-        variant: 'default',
-        title: 'Bulk Post Partially Complete',
-        description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check server logs for details.`,
-      });
-    } else {
-       toast({
-        variant: 'destructive',
-        title: 'Bulk Post Failed',
-        description: 'All posts failed to publish. Check server logs for details.',
-      });
+    } catch (error: any) {
+         console.error('Failed to create post job:', error);
+         toast({
+            variant: 'destructive',
+            title: 'Failed to Start Post Job',
+            description: error.message || 'Could not start the bulk posting process.',
+        });
+    } finally {
+        setIsPosting(false);
     }
-    
-    setIsPosting(false);
-    resetForm();
   };
   
     const handleSchedulePost = async () => {
@@ -299,7 +293,7 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardContent>
               <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isScheduling}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
               </Button>
             </CardContent>
           </Card>

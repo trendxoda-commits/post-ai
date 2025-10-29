@@ -40,6 +40,11 @@ import {
     type ValidateTokenInput,
     type ValidateTokenOutput,
 } from '@/ai/flows/validate-token';
+import {
+    processPostJob as processPostJobFlow,
+    type ProcessPostJobInput,
+    type ProcessPostJobOutput,
+} from '@/ai/flows/process-post-job';
 
 
 // --- Instagram Auth ---
@@ -104,4 +109,11 @@ export async function getAccountAnalytics(
     input: GetAccountAnalyticsInput
 ): Promise<AnalyticsOutput> {
     return getAccountAnalyticsFlow(input);
+}
+
+// --- Job Processing ---
+export async function processPostJob(input: ProcessPostJobInput): Promise<ProcessPostJobOutput> {
+    // This is a fire-and-forget call from the client
+    processPostJobFlow(input);
+    return { status: 'Job processing started in the background.' };
 }

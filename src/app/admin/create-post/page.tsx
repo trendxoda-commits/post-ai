@@ -9,17 +9,17 @@ import {
   ChevronDown,
   Users,
 } from 'lucide-react';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { addDoc, collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { processPostJob } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -57,7 +57,7 @@ export default function AdminCreatePostPage() {
   const [maxFollowers, setMaxFollowers] = useState('');
 
   const { toast } = useToast();
-  const { firestore } = useFirebase();
+  const { firestore, user } = useFirebase();
 
   useEffect(() => {
     if (!firestore) return;
@@ -156,55 +156,55 @@ export default function AdminCreatePostPage() {
       });
       return;
     }
+     if (!user) return;
+
 
     setIsPosting(true);
-    
-    const postPromises = selectedAccountIds.map(accountId => {
-      const selectedAccount = allAccounts.find(acc => acc.id === accountId);
-      if (!selectedAccount || !selectedAccount.pageAccessToken) {
-        console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
-        return Promise.reject(new Error(`Invalid account or permissions for ${selectedAccount?.displayName}`));
-      }
 
-      const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
-      const input = {
-        facebookPageId: selectedAccount.accountId, // for FB
-        instagramUserId: selectedAccount.accountId, // for IG
-        mediaUrl,
-        caption: content,
-        pageAccessToken: selectedAccount.pageAccessToken,
-        mediaType,
-      };
+    try {
+        const jobDetails = selectedAccountIds.map(accountId => {
+            const account = allAccounts.find(a => a.id === accountId);
+            if (!account) return null;
+            return {
+                userId: account.user.id,
+                socialAccountId: account.id,
+            };
+        }).filter(Boolean);
 
-      return postAction(input);
-    });
-    
-    const results = await Promise.allSettled(postPromises);
+        const jobsRef = collection(firestore, `users/${user.uid}/postJobs`);
+        const newJobRef = await addDoc(jobsRef, {
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            content,
+            mediaUrl,
+            mediaType,
+            targets: jobDetails,
+            results: [],
+            totalTargets: jobDetails.length,
+            successCount: 0,
+            failureCount: 0,
+        });
 
-    const successfulPosts = results.filter(result => result.status === 'fulfilled').length;
-    const failedPosts = results.length - successfulPosts;
+        // Fire-and-forget the background processing
+        processPostJob({ jobId: newJobRef.id, jobCreatorId: user.uid });
+        
+        toast({
+            title: 'Bulk Post Started',
+            description: `Your post to ${selectedAccountIds.length} accounts is being processed in the background. See the 'Jobs' page for status.`,
+        });
 
-    if (failedPosts === 0) {
-      toast({
-        title: 'Bulk Post Complete',
-        description: `Successfully posted to all ${successfulPosts} accounts.`,
-      });
-    } else if (successfulPosts > 0) {
-       toast({
-        variant: 'default', // Use default for partial success
-        title: 'Bulk Post Partially Complete',
-        description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check server logs for details.`,
-      });
-    } else {
-       toast({
-        variant: 'destructive',
-        title: 'Bulk Post Failed',
-        description: 'All posts failed to publish. Check server logs for details.',
-      });
+        resetForm();
+
+    } catch (error: any) {
+         console.error('Failed to create post job:', error);
+         toast({
+            variant: 'destructive',
+            title: 'Failed to Start Post Job',
+            description: error.message || 'Could not start the bulk posting process.',
+        });
+    } finally {
+        setIsPosting(false);
     }
-    
-    setIsPosting(false);
-    resetForm();
   };
 
 
@@ -342,7 +342,7 @@ export default function AdminCreatePostPage() {
             </CardContent>
             <CardFooter>
               <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
               </Button>
             </CardFooter>
           </Card>

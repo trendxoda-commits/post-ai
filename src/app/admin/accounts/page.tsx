@@ -332,9 +332,9 @@ export default function AdminAccountsPage() {
                           <div className="text-sm text-muted-foreground">{account.user.email || 'N/A'}</div>
                         </TableCell>
                          <TableCell>
-                           {account.connectionValid === null ? (
+                           {userTokenStatus.get(account.user.id) === null ? (
                                 <Badge variant="secondary"><Loader2 className="h-3 w-3 animate-spin mr-1" />Checking</Badge>
-                           ) : account.connectionValid ? (
+                           ) : userTokenStatus.get(account.user.id) ? (
                                 <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Healthy</Badge>
                            ) : (
                                 <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Expired</Badge>
@@ -346,7 +346,7 @@ export default function AdminAccountsPage() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !account.connectionValid}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !userTokenStatus.get(account.user.id)}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>
@@ -369,5 +369,3 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
-
-    

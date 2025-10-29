@@ -17,6 +17,7 @@ import {
     Settings,
     PanelLeft,
     Home,
+    KeyRound,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -53,6 +54,7 @@ const navItems = [
     { href: '/admin/accounts', label: 'Accounts', icon: Users },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart2 },
     { href: '/admin/create-post', label: 'Create Post', icon: PlusSquare },
+    { href: '/admin/credentials', label: 'API Credentials', icon: KeyRound },
   ];
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {

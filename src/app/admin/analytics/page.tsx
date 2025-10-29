@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { BarChart, Users, ThumbsUp, MessageCircle, Eye, FileText } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import type { SocialAccount } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import {

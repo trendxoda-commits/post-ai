@@ -158,50 +158,52 @@ export default function AdminCreatePostPage() {
     }
 
     setIsPosting(true);
-    let successfulPostsCount = 0;
-
-    for (const accountId of selectedAccountIds) {
-      const selectedAccount = allAccounts.find(acc => acc.id === accountId);
-      if (!selectedAccount || !selectedAccount.pageAccessToken) {
-        toast({ variant: "destructive", title: `Error with ${selectedAccount?.displayName}`, description: "Account is invalid or missing permissions." });
-        continue;
-      }
-
-      try {
-        if (selectedAccount.platform === 'Facebook') {
-          await postToFacebook({
-            facebookPageId: selectedAccount.accountId,
-            mediaUrl,
-            caption: content,
-            pageAccessToken: selectedAccount.pageAccessToken,
-            mediaType,
-          });
-        } else { // Instagram
-          await postToInstagram({
-            instagramUserId: selectedAccount.accountId,
-            mediaUrl,
-            caption: content,
-            pageAccessToken: selectedAccount.pageAccessToken,
-            mediaType,
-          });
+    
+    const postPromises = selectedAccountIds.map(accountId => {
+        const selectedAccount = allAccounts.find(acc => acc.id === accountId);
+        if (!selectedAccount || !selectedAccount.pageAccessToken) {
+            toast({ variant: "destructive", title: `Error with ${selectedAccount?.displayName}`, description: "Account is invalid or missing permissions." });
+            return Promise.reject(new Error(`Invalid account: ${selectedAccount?.displayName}`));
         }
-        successfulPostsCount++;
-      } catch (error: any) {
-        console.error(`Error posting to ${selectedAccount.displayName}:`, error);
-        toast({
-          variant: "destructive",
-          title: `Error Posting to ${selectedAccount.displayName}`,
-          description: error.message || 'There was an issue posting your content. Please try again.',
+
+        const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
+        const input = {
+            facebookPageId: selectedAccount.accountId, // for FB
+            instagramUserId: selectedAccount.accountId, // for IG
+            mediaUrl,
+            caption: content,
+            pageAccessToken: selectedAccount.pageAccessToken,
+            mediaType,
+        };
+
+        return postAction(input).catch(error => {
+            console.error(`Error posting to ${selectedAccount.displayName}:`, error);
+            throw new Error(`Failed to post to ${selectedAccount.displayName}: ${error.message}`);
         });
-      }
-    }
+    });
+
+    const results = await Promise.allSettled(postPromises);
+
+    let successfulPostsCount = 0;
+    results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+            successfulPostsCount++;
+        } else {
+            const accountName = allAccounts.find(acc => acc.id === selectedAccountIds[index])?.displayName || 'an account';
+            toast({
+                variant: "destructive",
+                title: `Error Posting to ${accountName}`,
+                description: result.reason.message || 'There was an issue posting your content. Please try again.',
+            });
+        }
+    });
 
     setIsPosting(false);
 
     if (successfulPostsCount > 0) {
         toast({
-            title: 'Post Successful!',
-            description: `${successfulPostsCount} post(s) have been published.`,
+            title: 'Post Summary',
+            description: `${successfulPostsCount} out of ${selectedAccountIds.length} post(s) were published successfully.`,
         });
     }
 

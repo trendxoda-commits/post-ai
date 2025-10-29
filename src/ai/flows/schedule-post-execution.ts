@@ -61,70 +61,52 @@ const executeScheduledPostsFlow = ai.defineFlow(
       return { publishedPosts, failedPosts };
     }
     
-    // 2. Get User's long-lived access token from apiCredentials (still useful for some operations)
-    const credsRef = firestore.collection(`users/${userId}/apiCredentials`);
-    const credsSnapshot = await credsRef.get();
-    if (credsSnapshot.empty) {
-        console.error(`No API credentials found for user ${userId}. Cannot process posts.`);
-        // Mark all as failed since we can't do anything
-        for (const postDoc of querySnapshot.docs) {
-          failedPosts.push(postDoc.id);
-          await postDoc.ref.delete(); // Delete failed post
-        }
-        return { publishedPosts, failedPosts };
-    }
-
-
     // 3. Iterate over due posts and publish them
     for (const postDoc of querySnapshot.docs) {
       const post = postDoc.data() as ScheduledPost;
       const postId = postDoc.id;
 
-      let allSucceeded = true;
+      const postPromises = post.socialAccountIds.map(async (accountId) => {
+        const accountDocRef = firestore.doc(`users/${userId}/socialAccounts/${accountId}`);
+        const accountDoc = await accountDocRef.get();
 
-      for (const accountId of post.socialAccountIds) {
-        try {
-            const accountDocRef = firestore.doc(`users/${userId}/socialAccounts/${accountId}`);
-            const accountDoc = await accountDocRef.get();
-
-            if (!accountDoc.exists) {
-                throw new Error(`SocialAccount with ID ${accountId} not found.`);
-            }
-            
-            const socialAccount = accountDoc.data() as SocialAccount;
-
-            if (!post.mediaUrl || !post.mediaType) {
-                throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
-            }
-
-            // Ensure we have the necessary page access token for the specific account
-            if (!socialAccount.pageAccessToken) {
-                throw new Error(`Missing Page Access Token for account ${socialAccount.displayName}.`);
-            }
-
-            if (socialAccount.platform === 'Facebook') {
-                await postToFacebook({
-                    facebookPageId: socialAccount.accountId,
-                    mediaUrl: post.mediaUrl,
-                    caption: post.content,
-                    pageAccessToken: socialAccount.pageAccessToken,
-                    mediaType: post.mediaType,
-                });
-            } else if (socialAccount.platform === 'Instagram') {
-                await postToInstagram({
-                    instagramUserId: socialAccount.accountId,
-                    mediaUrl: post.mediaUrl,
-                    caption: post.content,
-                    pageAccessToken: socialAccount.pageAccessToken,
-                    mediaType: post.mediaType,
-                });
-            }
-        } catch (error) {
-            console.error(`Failed to publish post ${postId} to account ${accountId}:`, error);
-            allSucceeded = false;
+        if (!accountDoc.exists) {
+            throw new Error(`SocialAccount with ID ${accountId} not found.`);
         }
-      }
+        
+        const socialAccount = accountDoc.data() as SocialAccount;
+
+        if (!post.mediaUrl || !post.mediaType) {
+            throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
+        }
+
+        if (!socialAccount.pageAccessToken) {
+            throw new Error(`Missing Page Access Token for account ${socialAccount.displayName}.`);
+        }
+
+        const postAction = socialAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
+        const input = {
+            facebookPageId: socialAccount.accountId, // for FB
+            instagramUserId: socialAccount.accountId, // for IG
+            mediaUrl: post.mediaUrl,
+            caption: post.content,
+            pageAccessToken: socialAccount.pageAccessToken,
+            mediaType: post.mediaType,
+        };
+        
+        return postAction(input);
+      });
+
+      const results = await Promise.allSettled(postPromises);
       
+      let allSucceeded = true;
+      results.forEach(result => {
+        if (result.status === 'rejected') {
+          console.error(`A post in batch ${postId} failed:`, result.reason);
+          allSucceeded = false;
+        }
+      });
+
       // 4. Delete the post from the schedule after attempting to publish
       await postDoc.ref.delete();
 

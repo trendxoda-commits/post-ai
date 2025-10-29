@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -10,7 +11,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { postToFacebook } from './post-to-facebook';
 import { postToInstagram } from './post-to-instagram';
-import { initializeApp, getApps, App } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -29,13 +30,15 @@ const ExecuteScheduledPostsOutputSchema = z.object({
 export type ExecuteScheduledPostsOutput = z.infer<typeof ExecuteScheduledPostsOutputSchema>;
 
 // Server-side Firebase initialization
-let adminApp: App;
-if (!getApps().length) {
-  adminApp = initializeApp({ projectId: firebaseConfig.projectId });
-} else {
-  adminApp = getApps()[0];
+function getAdminApp(): App {
+    const apps = getApps();
+    const defaultApp = apps.find(app => app.name === '[DEFAULT]');
+    if (defaultApp) {
+        return defaultApp;
+    }
+    return initializeApp({ projectId: firebaseConfig.projectId });
 }
-const firestore = getFirestore(adminApp);
+const firestore = getFirestore(getAdminApp());
 
 
 const executeScheduledPostsFlow = ai.defineFlow(
@@ -138,8 +141,13 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
 
 export async function executeScheduledPosts(input: ExecuteScheduledPostsInput): Promise<ExecuteScheduledPostsOutput> {
-  // We run this flow but don't wait for it to complete. It's a "fire-and-forget" background task.
-  executeScheduledPostsFlow(input);
-  // Immediately return a response to the client.
-  return { publishedPosts: [], failedPosts: [] };
+  // Now we await the flow and handle potential errors.
+  try {
+    const result = await executeScheduledPostsFlow(input);
+    return result;
+  } catch (error) {
+    console.error("Error executing scheduled posts flow:", error);
+    // Return a failed state to the client.
+    return { publishedPosts: [], failedPosts: [] };
+  }
 }

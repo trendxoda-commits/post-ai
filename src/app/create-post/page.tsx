@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -171,8 +172,8 @@ export default function CreatePostPage() {
         createdAt: new Date().toISOString(),
       });
       
-      // Fire-and-forget call to the scheduler agent to check for due posts
-      executeScheduledPosts({ userId: user.uid });
+      // Now we await the scheduler agent to check for due posts.
+      await executeScheduledPosts({ userId: user.uid });
 
       toast({
         title: 'Post Scheduled!',

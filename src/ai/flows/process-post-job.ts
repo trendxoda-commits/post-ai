@@ -26,13 +26,13 @@ function getAdminApp(): App {
 }
 const firestore = getFirestore(getAdminApp());
 
-const ProcessPostJobInputSchema = z.object({
+export const ProcessPostJobInputSchema = z.object({
   jobId: z.string().describe("The ID of the postJob document to process."),
   jobCreatorId: z.string().describe("The UID of the user who created the job."),
 });
 export type ProcessPostJobInput = z.infer<typeof ProcessPostJobInputSchema>;
 
-const ProcessPostJobOutputSchema = z.object({
+export const ProcessPostJobOutputSchema = z.object({
   status: z.string(),
 });
 export type ProcessPostJobOutput = z.infer<typeof ProcessPostJobOutputSchema>;
@@ -77,7 +77,7 @@ const processPostJobFlow = ai.defineFlow(
                 mediaUrl: job.mediaUrl,
                 caption: job.content,
                 pageAccessToken: socialAccount.pageAccessToken,
-                mediaType: job.mediaType,
+                mediaType: job.mediaType, // CRITICAL FIX: Pass the mediaType
             };
             
             return postAction(input);

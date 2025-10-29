@@ -77,7 +77,7 @@ export default function CreatePostPage() {
     setScheduleTime('10:00');
   };
 
-  const handlePostNow = () => {
+  const handlePostNow = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: "destructive",
@@ -88,14 +88,13 @@ export default function CreatePostPage() {
     }
     if (!user) return;
 
+    setIsPosting(true);
 
-    // Fire-and-forget: Start posting but don't wait for completion.
-    // The client UI will be free immediately.
-    selectedAccountIds.forEach(accountId => {
+    const postPromises = selectedAccountIds.map(accountId => {
         const selectedAccount = accounts?.find(acc => acc.id === accountId);
         if (!selectedAccount || !selectedAccount.pageAccessToken) {
             console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
-            return; // Skip this iteration
+            return Promise.reject(new Error(`Invalid account or permissions for ${selectedAccount?.displayName}`));
         }
 
         const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
@@ -108,19 +107,34 @@ export default function CreatePostPage() {
             mediaType,
         };
 
-        // Call the server action but DO NOT await it.
-        postAction(input).catch(error => {
-            // Log errors that happen during the server action call itself,
-            // but the actual post execution errors will be on the server logs.
-            console.error(`Error initiating post for ${selectedAccount.displayName}:`, error);
-        });
-    });
-
-    toast({
-        title: 'Posting Started',
-        description: `Your content is being published to ${selectedAccountIds.length} account(s) in the background.`,
+        return postAction(input);
     });
     
+    const results = await Promise.allSettled(postPromises);
+
+    const successfulPosts = results.filter(result => result.status === 'fulfilled').length;
+    const failedPosts = results.length - successfulPosts;
+
+    if (failedPosts === 0) {
+      toast({
+        title: 'Bulk Post Complete',
+        description: `Successfully posted to all ${successfulPosts} accounts.`,
+      });
+    } else if (successfulPosts > 0) {
+       toast({
+        variant: 'default',
+        title: 'Bulk Post Partially Complete',
+        description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check server logs for details.`,
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Bulk Post Failed',
+        description: 'All posts failed to publish. Check server logs for details.',
+      });
+    }
+    
+    setIsPosting(false);
     resetForm();
   };
   

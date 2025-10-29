@@ -147,44 +147,63 @@ export default function AdminCreatePostPage() {
     })
   };
 
-  const handlePostNow = () => {
+  const handlePostNow = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Please select at least one account and provide a media URL to post.",
+        variant: 'destructive',
+        title: 'Missing Information',
+        description: 'Please select at least one account and provide a media URL to post.',
       });
       return;
     }
 
-    selectedAccountIds.forEach(accountId => {
-        const selectedAccount = allAccounts.find(acc => acc.id === accountId);
-        if (!selectedAccount || !selectedAccount.pageAccessToken) {
-            console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
-            return;
-        }
+    setIsPosting(true);
+    
+    const postPromises = selectedAccountIds.map(accountId => {
+      const selectedAccount = allAccounts.find(acc => acc.id === accountId);
+      if (!selectedAccount || !selectedAccount.pageAccessToken) {
+        console.error(`Skipping post for ${selectedAccount?.displayName}: Account is invalid or missing permissions.`);
+        return Promise.reject(new Error(`Invalid account or permissions for ${selectedAccount?.displayName}`));
+      }
 
-        const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
-        const input = {
-            facebookPageId: selectedAccount.accountId, // for FB
-            instagramUserId: selectedAccount.accountId, // for IG
-            mediaUrl,
-            caption: content,
-            pageAccessToken: selectedAccount.pageAccessToken,
-            mediaType,
-        };
+      const postAction = selectedAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
+      const input = {
+        facebookPageId: selectedAccount.accountId, // for FB
+        instagramUserId: selectedAccount.accountId, // for IG
+        mediaUrl,
+        caption: content,
+        pageAccessToken: selectedAccount.pageAccessToken,
+        mediaType,
+      };
 
-        // Fire and forget
-        postAction(input).catch(error => {
-            console.error(`Error initiating post for ${selectedAccount.displayName}:`, error);
-        });
+      return postAction(input);
     });
+    
+    const results = await Promise.allSettled(postPromises);
 
-    toast({
-        title: 'Bulk Posting Started',
-        description: `Your content is being published to ${selectedAccountIds.length} account(s) in the background.`,
-    });
+    const successfulPosts = results.filter(result => result.status === 'fulfilled').length;
+    const failedPosts = results.length - successfulPosts;
 
+    if (failedPosts === 0) {
+      toast({
+        title: 'Bulk Post Complete',
+        description: `Successfully posted to all ${successfulPosts} accounts.`,
+      });
+    } else if (successfulPosts > 0) {
+       toast({
+        variant: 'default', // Use default for partial success
+        title: 'Bulk Post Partially Complete',
+        description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check server logs for details.`,
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Bulk Post Failed',
+        description: 'All posts failed to publish. Check server logs for details.',
+      });
+    }
+    
+    setIsPosting(false);
     resetForm();
   };
 

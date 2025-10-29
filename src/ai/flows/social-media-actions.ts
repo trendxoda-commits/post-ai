@@ -69,7 +69,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
             try {
                 if (!userAccessToken) throw new Error("User access token is required for Instagram analytics.");
                 
-                // CRITICAL FIX: Pass the correct userAccessToken to get media and its insights (video_views/plays)
+                // Pass the correct userAccessToken to get media and its insights
                 const { media } = await getInstagramMedia({ instagramUserId: accountId, accessToken: userAccessToken });
                 
                 postCount = media.length;
@@ -77,7 +77,7 @@ const getAccountAnalyticsFlow = ai.defineFlow(
                     totalLikes += post.like_count || 0;
                     totalComments += post.comments_count || 0;
                     // Correctly aggregate views/plays for videos
-                    totalViews += post.video_views || 0; // The `getInstagramMedia` flow now standardizes this field.
+                    totalViews += post.video_views || 0;
                 });
             } catch (e) {
                 console.error(`Error fetching Instagram media for analytics for ${accountId}:`, e);
@@ -86,8 +86,9 @@ const getAccountAnalyticsFlow = ai.defineFlow(
              try {
                 if (!pageAccessToken) throw new Error("Page access token is required for Facebook analytics.");
 
-                // CRITICAL FIX: Pass the correct pageAccessToken to get posts and insights
+                // Pass the correct pageAccessToken to get posts and insights
                 const { posts } = await getFacebookPosts({ facebookPageId: accountId, pageAccessToken: pageAccessToken });
+                
                 postCount = posts.length;
                 posts.forEach(post => {
                     totalLikes += post.likes?.summary.total_count || 0;
@@ -151,7 +152,7 @@ const getInstagramMediaFlow = ai.defineFlow(
   },
   async ({ instagramUserId, accessToken }) => {
     // Request basic fields first. Insights will be fetched conditionally.
-    const fields = 'id,caption,media_type,media_url,permalink,timestamp,like_count,comments_count';
+    const fields = 'id,caption,media_type,media_url,permalink,timestamp';
     const url = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media?fields=${fields}&access_token=${accessToken}`;
 
     const response = await fetch(url);
@@ -166,27 +167,35 @@ const getInstagramMediaFlow = ai.defineFlow(
     
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
         let views = 0;
+        let likes = 0;
+        let comments = 0;
         
-        // For any media type, try to fetch insights. Video and Reels will have reach/impressions.
         try {
-            // DECISIVE FIX: Request standard engagement metrics as suggested by user. Use reach as the view count.
-            const insightMetrics = 'reach,impressions';
-            // CRITICAL FIX: Always use the USER 'accessToken' for insights, not the page token.
+            // DECISIVE FIX: Request a comprehensive set of standard engagement metrics.
+            const insightMetrics = 'reach,impressions,likes,comments,saved,shares';
+            // CRITICAL FIX: Always use the USER 'accessToken' for insights.
             const insightsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}/insights?metric=${insightMetrics}&access_token=${accessToken}`;
             const insightsResponse = await fetch(insightsUrl);
             
             if (insightsResponse.ok) {
                 const insightsData: any = await insightsResponse.json();
+                const insightsMap = new Map(insightsData.data.map((insight: any) => [insight.name, insight.values[0]?.value || 0]));
                 
-                // Find the 'reach' metric to use as the definitive view count.
-                const reachMetric = insightsData.data?.find((insight: any) => insight.name === 'reach');
-
-                // Gracefully handle missing metrics and ensure a number is returned.
-                views = Number(reachMetric?.values?.[0]?.value || 0);
+                // Use 'reach' as the definitive view count.
+                views = insightsMap.get('reach') || 0;
+                likes = insightsMap.get('likes') || 0;
+                comments = insightsMap.get('comments') || 0;
 
             } else {
-                // Log a warning instead of throwing an error if a single insight call fails
                 console.warn(`Could not fetch insights for media ${item.id}:`, await insightsResponse.text());
+                // Fallback to basic counts if insights fail
+                const basicCountsUrl = `${INSTAGRAM_GRAPH_API_URL}/${item.id}?fields=like_count,comments_count&access_token=${accessToken}`;
+                const basicResponse = await fetch(basicCountsUrl);
+                if (basicResponse.ok) {
+                    const basicData: any = await basicResponse.json();
+                    likes = basicData.like_count || 0;
+                    comments = basicData.comments_count || 0;
+                }
             }
         } catch (e) {
              console.warn(`Error fetching insights for media ${item.id}:`, e);
@@ -194,7 +203,9 @@ const getInstagramMediaFlow = ai.defineFlow(
 
         return {
             ...item,
-            video_views: views, // Standardize on one field name
+            video_views: views, // Standardize on one field name for views
+            like_count: likes,
+            comments_count: comments,
         };
     });
 
@@ -234,7 +245,9 @@ const FacebookPostObjectSchema = z.object({
         })
     }).optional(),
     // Added for video views
-    insights: z.any().optional(),
+    insights: z.object({
+        post_video_views: z.number()
+    }).optional(),
 });
 
 const GetFacebookPostsOutputSchema = z.object({
@@ -274,7 +287,7 @@ const getFacebookPostsFlow = ai.defineFlow(
                 if (insightsResponse.ok) {
                     const insightsData: any = await insightsResponse.json();
                     const views = insightsData.data?.find((d: any) => d.name === 'post_video_views')?.values[0]?.value || 0;
-                    return { ...post, insights: { post_video_views: views } };
+                    return { ...post, insights: { ...post.insights, post_video_views: views } };
                 }
             } catch (e) {
                 console.warn(`Could not fetch views for FB post ${post.id}`, e);

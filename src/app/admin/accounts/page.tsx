@@ -18,15 +18,15 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useEffect, useState, useMemo } from 'react';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Loader2, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 import { SearchComponent } from './search-component';
 import { useSearchParams } from 'next/navigation';
 import { useFirebase } from '@/firebase';
 import { collection, collectionGroup, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
 import type { SocialAccount, User, ApiCredential } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getAccountAnalytics } from '@/app/actions';
+import { getAccountAnalytics, validateToken } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -35,6 +35,7 @@ interface FullAccountDetails extends SocialAccount {
     id: string;
     email?: string;
   };
+  connectionValid: boolean | null; // null: loading, true: valid, false: invalid
 }
 
 
@@ -46,58 +47,80 @@ export default function AdminAccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
+  const [userTokenStatus, setUserTokenStatus] = useState<Map<string, boolean | null>>(new Map());
 
   // We will fetch all users first, then listen to their social accounts.
   // This is a more scalable approach for admin panels.
-  useEffect(() => {
+  const fetchAllData = useCallback(async () => {
     if (!firestore) return;
 
-    const fetchAllAccounts = async () => {
-      setIsLoading(true);
-      try {
-        // 1. Fetch all users to create a map of userId -> email
-        const usersSnapshot = await getDocs(collection(firestore, 'users'));
-        const userMap = new Map<string, string | undefined>();
-        usersSnapshot.forEach(doc => {
-            const userData = doc.data() as User;
-            userMap.set(doc.id, userData.email);
-        });
+    setIsLoading(true);
+    try {
+      // 1. Fetch all users to create a map of userId -> email
+      const usersSnapshot = await getDocs(collection(firestore, 'users'));
+      const userMap = new Map<string, string | undefined>();
+      usersSnapshot.forEach(doc => {
+          const userData = doc.data() as User;
+          userMap.set(doc.id, userData.email);
+      });
 
-        // 2. Use a collectionGroup query to get all 'socialAccounts' across all users
-        const accountsQuery = collectionGroup(firestore, 'socialAccounts');
-        const accountsSnapshot = await getDocs(accountsQuery);
-        
-        const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
-          const accountData = accountDoc.data() as SocialAccount;
-          const userId = accountDoc.ref.parent.parent!.id; // Get parent user ID
+      // 2. Fetch all user API credentials to check token validity
+      const credentialsSnapshot = await getDocs(collectionGroup(firestore, 'apiCredentials'));
+      const tokenStatusMap = new Map<string, boolean | null>();
+      const tokenValidationPromises: Promise<void>[] = [];
+      const userAccessTokens = new Map<string, string>();
 
-          return {
-            ...accountData,
-            id: accountDoc.id, // The document ID of the socialAccount
-            user: {
-              id: userId,
-              email: userMap.get(userId),
-            },
-          };
-        });
-        
-        setAccounts(fetchedAccounts);
+      credentialsSnapshot.forEach(credDoc => {
+          const credential = credDoc.data() as ApiCredential;
+          const userId = credDoc.ref.parent.parent!.id;
+          if (credential.accessToken) {
+              userAccessTokens.set(userId, credential.accessToken);
+              tokenStatusMap.set(userId, null); // Set as loading
+              tokenValidationPromises.push(
+                  (async () => {
+                      const { isValid } = await validateToken({ accessToken: credential.accessToken! });
+                      tokenStatusMap.set(userId, isValid);
+                  })()
+              );
+          }
+      });
+      
+      setUserTokenStatus(new Map(tokenStatusMap)); // Initial state with loading
+      await Promise.all(tokenValidationPromises);
+      setUserTokenStatus(new Map(tokenStatusMap)); // Final state with results
+      
+      // 3. Use a collectionGroup query to get all 'socialAccounts' across all users
+      const accountsSnapshot = await getDocs(collectionGroup(firestore, 'socialAccounts'));
+      
+      const fetchedAccounts: FullAccountDetails[] = accountsSnapshot.docs.map(accountDoc => {
+        const accountData = accountDoc.data() as SocialAccount;
+        const userId = accountDoc.ref.parent.parent!.id; // Get parent user ID
 
-      } catch (error) {
-        console.error("Failed to fetch admin accounts:", error);
-        setAccounts([]); // Set to empty array on error
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchAllAccounts();
+        return {
+          ...accountData,
+          id: accountDoc.id, // The document ID of the socialAccount
+          user: {
+            id: userId,
+            email: userMap.get(userId),
+          },
+          connectionValid: tokenStatusMap.get(userId) ?? true, // Default to true if no token
+        };
+      });
+      
+      setAccounts(fetchedAccounts);
 
-    // Note: A real-time listener for a collectionGroup can be expensive on reads.
-    // For an admin panel, fetching once on load or periodically is often a better pattern.
-    // If real-time is a strict requirement, onSnapshot can be used here, but be mindful of the cost.
-
+    } catch (error) {
+      console.error("Failed to fetch admin accounts:", error);
+      setAccounts([]); // Set to empty array on error
+    } finally {
+      setIsLoading(false);
+    }
   }, [firestore]);
+  
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
 
 
   const searchQuery = searchParams.get('query')?.toLowerCase() || '';
@@ -284,6 +307,7 @@ export default function AdminAccountsPage() {
                     <TableHead>Account</TableHead>
                     <TableHead>Platform</TableHead>
                     <TableHead>User</TableHead>
+                    <TableHead>Connection Status</TableHead>
                     <TableHead className="text-right">Followers</TableHead>
                     <TableHead className="text-right">Likes</TableHead>
                     <TableHead className="text-right">Comments</TableHead>
@@ -307,13 +331,22 @@ export default function AdminAccountsPage() {
                         <TableCell>
                           <div className="text-sm text-muted-foreground">{account.user.email || 'N/A'}</div>
                         </TableCell>
+                         <TableCell>
+                           {account.connectionValid === null ? (
+                                <Badge variant="secondary"><Loader2 className="h-3 w-3 animate-spin mr-1" />Checking</Badge>
+                           ) : account.connectionValid ? (
+                                <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Healthy</Badge>
+                           ) : (
+                                <Badge variant="destructive"><AlertCircle className="h-3 w-3 mr-1" />Expired</Badge>
+                           )}
+                        </TableCell>
                         <TableCell className="text-right font-semibold">{(account.followers || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalLikes || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll || !account.connectionValid}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>
@@ -322,7 +355,7 @@ export default function AdminAccountsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={9} className="h-24 text-center">
+                      <TableCell colSpan={10} className="h-24 text-center">
                         {searchQuery ? `No accounts found for "${searchQuery}".` : "No accounts have been connected yet."}
                       </TableCell>
                     </TableRow>
@@ -336,3 +369,5 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
+
+    

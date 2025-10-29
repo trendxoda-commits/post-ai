@@ -8,22 +8,18 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
-  CheckCircle,
-  AlertCircle,
-  X,
 } from 'lucide-react';
-import { useFirebase, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import type { SocialAccount, User, PostJob } from '@/lib/types';
+import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { collection, collectionGroup, getDocs, addDoc } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { processPostJob } from '@/app/actions';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -57,12 +53,8 @@ export default function AdminCreatePostPage() {
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
 
-  // State for job report dialog
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [showReport, setShowReport] = useState(false);
-
   const { toast } = useToast();
-  const { firestore, user } = useFirebase();
+  const { firestore } = useFirebase();
 
   // Fetch all accounts for selection
   useEffect(() => {
@@ -129,7 +121,6 @@ export default function AdminCreatePostPage() {
     setMediaUrl('');
     setMediaType('IMAGE');
     setSelectedAccountIds([]);
-    setJobId(null);
   };
 
  const handlePostNow = async () => {
@@ -141,58 +132,59 @@ export default function AdminCreatePostPage() {
       });
       return;
     }
-    if (!user) return;
-
+    
     setIsPosting(true);
     
-    // Create the job document in Firestore
-    const jobData = {
-        jobCreatorId: user.uid,
-        status: 'pending' as const,
-        createdAt: new Date().toISOString(),
-        content,
-        mediaUrl,
-        mediaType,
-        targets: selectedAccountIds.map(accId => {
-            const account = allAccounts.find(a => a.id === accId);
-            return {
-                socialAccountId: accId,
-                userId: account?.user.id,
-            }
-        }),
-        totalTargets: selectedAccountIds.length,
-        successCount: 0,
-        failureCount: 0,
-        results: [],
-    };
+    const postPromises = selectedAccountIds.map(accountId => {
+        const account = allAccounts.find(a => a.id === accountId);
+        if (!account || !account.pageAccessToken) {
+             return Promise.reject(new Error(`Account details not found for ID ${accountId}`));
+        }
 
-    try {
-        const jobsRef = collection(firestore, 'users', user.uid, 'postJobs');
-        const newJobDoc = await addDoc(jobsRef, jobData);
-        
-        // Fire-and-forget the background processing
-        processPostJob({ jobId: newJobDoc.id, jobCreatorId: user.uid });
-        
-        setJobId(newJobDoc.id); // Start listening to this job
-        
-        toast({
-            title: 'Bulk Post Job Started',
-            description: 'Your posts are being published in the background. A report will appear when it is complete.',
+        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
+
+        return postAction({
+            facebookPageId: account.accountId, // for FB
+            instagramUserId: account.accountId, // for IG
+            mediaUrl,
+            mediaType,
+            caption: content,
+            pageAccessToken: account.pageAccessToken,
         });
-        
-        resetForm(); // Reset form immediately for next use
+    });
+    
+    const results = await Promise.allSettled(postPromises);
 
-    } catch (error: any) {
-        console.error('Failed to create post job:', error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not start the posting job.' });
-    } finally {
-        setIsPosting(false);
+    let successCount = 0;
+    results.forEach(result => {
+        if (result.status === 'fulfilled') {
+            successCount++;
+        } else {
+             console.error("A post failed:", result.reason);
+        }
+    });
+
+    const failureCount = selectedAccountIds.length - successCount;
+
+    if (failureCount > 0) {
+         toast({
+            variant: failureCount === selectedAccountIds.length ? 'destructive' : 'default',
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to ${successCount} accounts. ${failureCount} posts failed. Check server logs.`,
+        });
+    } else {
+         toast({
+            title: 'Bulk Post Complete',
+            description: `Successfully posted to all ${successCount} accounts.`,
+        });
     }
+
+    setIsPosting(false);
+    resetForm();
   };
 
 
   return (
-    <>
       <div className="space-y-8">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold font-headline">Create Post (Admin)</h1>
@@ -303,130 +295,12 @@ export default function AdminCreatePostPage() {
               </CardContent>
               <CardFooter>
                 <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting Job...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
                 </Button>
               </CardFooter>
             </Card>
           </div>
         </div>
       </div>
-      <JobReportDialog
-        jobId={jobId}
-        allAccounts={allAccounts}
-        show={showReport}
-        onClose={() => {
-            setShowReport(false);
-            setJobId(null);
-        }}
-        onJobComplete={() => setShowReport(true)}
-      />
-    </>
   );
 }
-
-
-// A new component to handle the job listening and report display
-function JobReportDialog({
-    jobId,
-    allAccounts,
-    show,
-    onClose,
-    onJobComplete
-}: {
-    jobId: string | null;
-    allAccounts: FullAccountDetails[];
-    show: boolean;
-    onClose: () => void;
-    onJobComplete: () => void;
-}) {
-    const { firestore, user } = useFirebase();
-    
-    // Memoize the document reference
-    const jobDocRef = useMemoFirebase(
-        () => (user && jobId ? { path: `users/${user.uid}/postJobs/${jobId}` } : null),
-        [user, jobId]
-    );
-
-    // Use useDoc to listen to the job document
-    const { data: job, isLoading } = useDoc<PostJob>(jobDocRef && { ...firestore.doc(jobDocRef.path) });
-
-    useEffect(() => {
-        if (job && (job.status === 'completed' || job.status === 'failed')) {
-            onJobComplete();
-        }
-    }, [job, onJobComplete]);
-    
-    if (!show || !job) {
-        return null;
-    }
-
-    const failedPosts = job.results?.filter(r => r.status === 'rejected') || [];
-    const successfulPosts = job.results?.filter(r => r.status === 'fulfilled') || [];
-
-    const getAccountDetails = (socialAccountId: string) => {
-        return allAccounts.find(acc => acc.id === socialAccountId);
-    }
-
-    return (
-        <Dialog open={show} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        {job.status === 'failed' && job.successCount === 0 ? (
-                             <AlertCircle className="h-6 w-6 text-destructive" />
-                        ) : (
-                             <CheckCircle className="h-6 w-6 text-green-500" />
-                        )}
-                       Bulk Post Report
-                    </DialogTitle>
-                    <DialogDescription>
-                        The background posting job has finished. Here is the summary.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid grid-cols-2 gap-4 my-4">
-                    <Card className="text-center">
-                        <CardHeader>
-                            <CardTitle className="text-4xl">{successfulPosts.length}</CardTitle>
-                            <CardDescription>Successful Posts</CardDescription>
-                        </CardHeader>
-                    </Card>
-                     <Card className="text-center">
-                        <CardHeader>
-                            <CardTitle className="text-4xl text-destructive">{failedPosts.length}</CardTitle>
-                            <CardDescription>Failed Posts</CardDescription>
-                        </CardHeader>
-                    </Card>
-                </div>
-                
-                {failedPosts.length > 0 && (
-                    <div>
-                        <h3 className="font-semibold mb-2">Failure Details:</h3>
-                        <ScrollArea className="h-48 border rounded-md p-2">
-                            <ul className="space-y-3">
-                                {failedPosts.map((failure, index) => {
-                                    const account = getAccountDetails(failure.socialAccountId);
-                                    return (
-                                        <li key={index} className="flex items-start gap-3 text-sm p-2 bg-muted/50 rounded-md">
-                                            <AlertCircle className="h-4 w-4 text-destructive mt-1 shrink-0" />
-                                            <div className="flex-grow">
-                                                <p className="font-bold">{account?.displayName || 'Unknown Account'}</p>
-                                                <p className="text-xs text-muted-foreground">User: {account?.user?.email || 'N/A'}</p>
-                                                <p className="text-destructive mt-1">{failure.reason}</p>
-                                            </div>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                        </ScrollArea>
-                    </div>
-                )}
-
-                <DialogFooter>
-                    <Button onClick={onClose}>Close Report</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
-

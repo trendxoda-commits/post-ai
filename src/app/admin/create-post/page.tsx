@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 // This interface will hold the merged account and user data
@@ -242,8 +243,6 @@ export default function AdminCreatePostPage() {
                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
                         <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        {allAccounts && allAccounts.length > 0 ? (
-                        <>
                         <DropdownMenuCheckboxItem
                             checked={selectedAccountIds.length === allAccounts.length && allAccounts.length > 0}
                             onSelect={(e) => e.preventDefault()}
@@ -254,40 +253,42 @@ export default function AdminCreatePostPage() {
                             Select All
                         </DropdownMenuCheckboxItem>
                         <DropdownMenuSeparator />
-                        {Object.entries(groupedAccounts).map(([platform, platformAccounts]) => (
-                            <div key={platform}>
-                                <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{platform}</DropdownMenuLabel>
-                                {(platformAccounts as FullAccountDetails[]).map(account => (
-                                    <DropdownMenuCheckboxItem
-                                    key={account.id}
-                                    checked={selectedAccountIds.includes(account.id)}
-                                    onSelect={(e) => e.preventDefault()}
-                                    onCheckedChange={(checked) => {
-                                        setSelectedAccountIds(prev =>
-                                        checked
-                                            ? [...prev, account.id]
-                                            : prev.filter(id => id !== account.id)
-                                        );
-                                    }}
-                                    >
-                                     <Avatar className="h-6 w-6 mr-2">
-                                        <AvatarImage src={account.avatar} alt={account.displayName} />
-                                        <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex flex-col">
-                                        <span className="font-semibold">{account.displayName}</span>
-                                        <span className="text-xs text-muted-foreground">{account.user.email}</span>
+                         <ScrollArea className="max-h-72">
+                            {allAccounts && allAccounts.length > 0 ? (
+                                Object.entries(groupedAccounts).map(([platform, platformAccounts]) => (
+                                    <div key={platform}>
+                                        <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">{platform}</DropdownMenuLabel>
+                                        {(platformAccounts as FullAccountDetails[]).map(account => (
+                                            <DropdownMenuCheckboxItem
+                                            key={account.id}
+                                            checked={selectedAccountIds.includes(account.id)}
+                                            onSelect={(e) => e.preventDefault()}
+                                            onCheckedChange={(checked) => {
+                                                setSelectedAccountIds(prev =>
+                                                checked
+                                                    ? [...prev, account.id]
+                                                    : prev.filter(id => id !== account.id)
+                                                );
+                                            }}
+                                            >
+                                            <Avatar className="h-6 w-6 mr-2">
+                                                <AvatarImage src={account.avatar} alt={account.displayName} />
+                                                <AvatarFallback>{account.displayName.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold">{account.displayName}</span>
+                                                <span className="text-xs text-muted-foreground">{account.user.email}</span>
+                                            </div>
+                                            </DropdownMenuCheckboxItem>
+                                        ))}
                                     </div>
-                                    </DropdownMenuCheckboxItem>
-                                ))}
+                                ))
+                            ) : (
+                            <div className="p-2 text-sm text-center text-muted-foreground">
+                                No accounts found.
                             </div>
-                        ))}
-                        </>
-                        ) : (
-                        <div className="p-2 text-sm text-center text-muted-foreground">
-                            No accounts found.
-                        </div>
-                        )}
+                            )}
+                         </ScrollArea>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </CardContent>

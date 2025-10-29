@@ -62,7 +62,7 @@ const processPostJobFlow = ai.defineFlow(
             const accountDoc = await firestore.doc(`users/${userId}/socialAccounts/${socialAccountId}`).get();
             
             if (!accountDoc.exists) {
-                throw new Error(`Account or credentials not found for target ${socialAccountId}.`);
+                throw new Error(`Account details not found for target ${socialAccountId}.`);
             }
             
             const socialAccount = accountDoc.data() as SocialAccount;
@@ -95,7 +95,7 @@ const processPostJobFlow = ai.defineFlow(
         const failureCount = finalResults.length - successCount;
 
         await jobDocRef.update({
-            status: failureCount > 0 ? 'failed' : 'completed',
+            status: failureCount > 0 && successCount === 0 ? 'failed' : 'completed',
             results: finalResults,
             successCount,
             failureCount,

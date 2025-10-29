@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -249,6 +250,48 @@
         "socialAccountIds"
       ]
     },
+    "PostJob": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PostJob",
+      "type": "object",
+      "description": "Represents a bulk posting job processed in the background.",
+      "properties": {
+        "id": { "type": "string" },
+        "jobCreatorId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "content": { "type": "string" },
+        "mediaUrl": { "type": "string", "format": "uri" },
+        "mediaType": { "type": "string", "enum": ["IMAGE", "VIDEO"] },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "socialAccountId": { "type": "string" },
+              "userId": { "type": "string" }
+            },
+            "required": ["socialAccountId", "userId"]
+          }
+        },
+        "totalTargets": { "type": "number" },
+        "successCount": { "type": "number" },
+        "failureCount": { "type": "number" },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "socialAccountId": { "type": "string" },
+              "status": { "type": "string", "enum": ["fulfilled", "rejected"] },
+              "reason": { "type": "string" }
+            },
+            "required": ["socialAccountId", "status"]
+          }
+        }
+      },
+      "required": ["id", "jobCreatorId", "status", "createdAt", "mediaUrl", "mediaType", "targets", "totalTargets"]
+    },
     "TrendingHashtag": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TrendingHashtag",
@@ -338,6 +381,16 @@
             "$ref": "#/backend/entities/ScheduledPost"
           },
           "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
+        }
+      },
+       {
+        "path": "/users/{userId}/postJobs/{jobId}",
+        "definition": {
+          "entityName": "PostJob",
+          "schema": {
+            "$ref": "#/backend/entities/PostJob"
+          },
+          "description": "Stores the state and results of a background bulk posting job."
         }
       },
       {

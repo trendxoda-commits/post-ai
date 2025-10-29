@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   email: string;
@@ -60,6 +61,28 @@ export type ScheduledPost = {
   socialAccountIds: string[];
   createdAt: string;
 }
+
+export type PostJobResult = {
+    socialAccountId: string;
+    status: 'fulfilled' | 'rejected';
+    reason?: string;
+};
+
+export type PostJob = {
+    id: string;
+    jobCreatorId: string;
+    status: 'pending' | 'completed' | 'failed';
+    createdAt: string;
+    content: string;
+    mediaUrl: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    targets: { socialAccountId: string, userId: string }[];
+    totalTargets: number;
+    successCount: number;
+    failureCount: number;
+    results: PostJobResult[];
+};
+
 
 export type AnalyticsData = {
   date: string;

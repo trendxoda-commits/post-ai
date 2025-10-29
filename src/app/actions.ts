@@ -39,6 +39,10 @@ import {
     type ValidateTokenInput,
     type ValidateTokenOutput,
 } from '@/ai/flows/validate-token';
+import {
+    processPostJob as processPostJobFlow,
+    type ProcessPostJobInput,
+} from '@/ai/flows/process-post-job';
 
 
 // --- Instagram Auth ---
@@ -80,6 +84,11 @@ export async function postToFacebook(
   return postToFacebookFlow(input);
 }
 
+// --- Background Job Posting ---
+export async function processPostJob(input: ProcessPostJobInput) {
+    return processPostJobFlow(input);
+}
+
 // --- Post Scheduling ---
 export async function executeScheduledPosts(input: ExecuteScheduledPostsInput) {
   return executeScheduledPostsFlow(input);
@@ -104,5 +113,4 @@ export async function getAccountAnalytics(
 ): Promise<AnalyticsOutput> {
     return getAccountAnalyticsFlow(input);
 }
-
     

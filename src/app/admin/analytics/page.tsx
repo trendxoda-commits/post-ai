@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -53,7 +52,7 @@ export default function AdminAnalyticsPage() {
     const { firestore } = useFirebase();
     const [platformData, setPlatformData] = useState<PlatformStats[]>([]);
     const [growthData, setGrowthData] = useState<GrowthData[]>([]);
-    const [totals, setTotals] = useState({ followers: 0, likes: 0, comments: 0, views: 0, posts: 0 });
+    const [totals, setTotals] = useState({ followers: 0, likes: 0, comments: 0, views: 0, posts: 0, users: 0 });
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -62,6 +61,7 @@ export default function AdminAnalyticsPage() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
+                const usersSnapshot = await getDocs(collection(firestore, 'users'));
                 const accountsQuery = collectionGroup(firestore, 'socialAccounts');
                 const accountsSnapshot = await getDocs(accountsQuery);
                 const allAccounts = accountsSnapshot.docs.map(doc => doc.data() as SocialAccount);
@@ -94,7 +94,14 @@ export default function AdminAnalyticsPage() {
                 });
 
                 setPlatformData(Object.values(stats));
-                setTotals({ followers: totalFollowers, likes: totalLikes, comments: totalComments, views: totalViews, posts: totalPosts });
+                setTotals({ 
+                    followers: totalFollowers, 
+                    likes: totalLikes, 
+                    comments: totalComments, 
+                    views: totalViews, 
+                    posts: totalPosts,
+                    users: usersSnapshot.size,
+                });
 
                 // Simulate historical growth data
                 const growth: GrowthData[] = [];
@@ -134,10 +141,10 @@ export default function AdminAnalyticsPage() {
             <h1 className="text-3xl font-bold font-headline">Platform Analytics</h1>
             
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <AdminStatsCard title="Total Users" value={totals.followers.toLocaleString()} icon={Users} />
+                <AdminStatsCard title="Total Users" value={totals.users.toLocaleString()} icon={Users} />
+                <AdminStatsCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
                 <AdminStatsCard title="Total Likes" value={totals.likes.toLocaleString()} icon={ThumbsUp} />
                 <AdminStatsCard title="Total Comments" value={totals.comments.toLocaleString()} icon={MessageCircle} />
-                <AdminStatsCard title="Total Views" value={totals.views.toLocaleString()} icon={Eye} />
                 <AdminStatsCard title="Total Posts" value={totals.posts.toLocaleString()} icon={FileText} />
             </div>
 
@@ -179,7 +186,7 @@ export default function AdminAnalyticsPage() {
                             <LineChart data={growthData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="date" />
-                                <YAxis />
+                                <YAxis yAxisId="left" />
                                 <Tooltip
                                     contentStyle={{
                                         background: "hsl(var(--card))",
@@ -187,7 +194,7 @@ export default function AdminAnalyticsPage() {
                                     }}
                                 />
                                 <Legend />
-                                <Line type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} name="Total Followers" />
+                                <Line yAxisId="left" type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} name="Total Followers" />
                             </LineChart>
                         </ResponsiveContainer>
                     </CardContent>

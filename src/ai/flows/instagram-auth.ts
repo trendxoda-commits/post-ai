@@ -39,10 +39,25 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     }
     const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
 
+    // DECISIVE FIX: Expanded scope to include all necessary permissions for posting, insights, and management.
+    // Added 'reauthenticate' to force users to grant the new permissions.
+    const comprehensiveScope = [
+        'pages_show_list',
+        'pages_read_engagement',
+        'pages_manage_posts',
+        'instagram_content_publish',
+        'instagram_manage_insights',
+        'business_management',
+        'pages_read_user_content',
+        'instagram_basic',
+        'instagram_manage_comments',
+    ].join(',');
+
+
     const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
-        scope: 'pages_show_list,pages_read_engagement,pages_manage_posts,instagram_content_publish,instagram_manage_insights,business_management,pages_read_user_content',
+        scope: comprehensiveScope,
         response_type: 'code',
         state: userId, // Pass the user's UID in the state parameter for security
         auth_type: 'reauthenticate', // Force re-authentication to ensure new permissions are granted

@@ -6,10 +6,10 @@ import { FollowerChart } from '@/components/analytics/follower-chart';
 import { EngagementChart } from '@/components/analytics/engagement-chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
-import type { SocialAccount } from '@/lib/types';
-import { Loader2 } from 'lucide-react';
+import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
+import { Loader2, RefreshCw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -20,18 +20,75 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { PostPerformance } from '@/components/analytics/post-performance';
+import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { getAccountAnalytics } from '@/app/actions';
+import { Button } from '@/components/ui/button';
 
 
 function AccountPerformance() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const { toast } = useToast();
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const socialAccountsQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
     [firestore, user]
   );
-  // Use the real-time hook
   const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const handleRefreshAnalytics = async (account: SocialAccount) => {
+    if (!user || !firestore) return;
+    
+    // Find the user access token for the user who owns this account
+    const credsRef = collection(firestore, 'users', user.uid, 'apiCredentials');
+    const credsSnapshot = await getDocs(credsRef);
+    
+    if (credsSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Error', description: `API credentials not found. Please add them in Settings.` });
+        return;
+    }
+    
+    const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
+    const userAccessToken = apiCredential.accessToken;
+
+    if (!userAccessToken || !account.pageAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `A required access token is missing. Please try reconnecting your account in Settings.` });
+        return;
+    }
+
+    setRefreshingId(account.id);
+    try {
+        const newAnalytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            pageAccessToken: account.pageAccessToken,
+            userAccessToken: userAccessToken,
+        });
+
+        const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
+        
+        // This will update the data in Firestore. The useCollection hook will automatically
+        // reflect the changes in the UI.
+        await setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
+
+        toast({
+            title: 'Refresh Successful',
+            description: `Analytics for ${account.displayName} have been updated.`,
+        });
+
+    } catch (error: any) {
+        console.error('Failed to refresh analytics:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Refresh Failed',
+            description: error.message || 'Could not update account analytics.',
+        });
+    } finally {
+        setRefreshingId(null);
+    }
+  };
 
 
   return (
@@ -57,6 +114,7 @@ function AccountPerformance() {
                     <TableHead className="text-right">Comments</TableHead>
                     <TableHead className="text-right">Views</TableHead>
                     <TableHead className="text-right">Posts</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -84,11 +142,17 @@ function AccountPerformance() {
                         <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-center">
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id}>
+                                {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                <span className="hidden sm:inline ml-2">Refresh</span>
+                            </Button>
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-24 text-center">
+                      <TableCell colSpan={8} className="h-24 text-center">
                         No accounts have been connected yet.
                       </TableCell>
                     </TableRow>

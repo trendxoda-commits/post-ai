@@ -60,10 +60,19 @@ const postToFacebookFlow = ai.defineFlow(
 
 
     if (!response.ok) {
-        const errorData: any = await response.json();
-        console.error('Failed to post to Facebook:', errorData);
-        const fbErrorMessage = errorData.error?.message || 'Unknown error';
-        throw new Error(`Failed to post to Facebook: ${fbErrorMessage}`);
+        let errorDetails = 'Unknown error';
+        try {
+            // Try to parse the error as JSON, which is the expected format.
+            const errorData: any = await response.json();
+            console.error('Failed to post to Facebook (JSON response):', errorData);
+            errorDetails = errorData.error?.message || JSON.stringify(errorData);
+        } catch (e) {
+            // If parsing as JSON fails, read the response as plain text.
+            const errorText = await response.text();
+            console.error('Failed to post to Facebook (text response):', errorText);
+            errorDetails = errorText;
+        }
+        throw new Error(`Failed to post to Facebook: ${errorDetails}`);
     }
 
     const responseData: any = await response.json();

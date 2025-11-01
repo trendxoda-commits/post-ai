@@ -27,6 +27,22 @@ export type PostToInstagramOutput = z.infer<typeof PostToInstagramOutputSchema>;
 
 const INSTAGRAM_GRAPH_API_URL = 'https://graph.facebook.com/v20.0';
 
+// Helper function for robust error handling
+async function handleInstagramError(response: Response, context: string): Promise<never> {
+    let errorDetails = 'Unknown error';
+    try {
+        const errorData: any = await response.json();
+        console.error(`${context} (JSON response):`, errorData);
+        errorDetails = errorData.error?.message || JSON.stringify(errorData);
+    } catch (e) {
+        const errorText = await response.text();
+        console.error(`${context} (text response):`, errorText);
+        errorDetails = errorText;
+    }
+    throw new Error(`${context}: ${errorDetails}`);
+}
+
+
 const postToInstagramFlow = ai.defineFlow(
   {
     name: 'postToInstagramFlow',
@@ -62,9 +78,7 @@ const postToInstagramFlow = ai.defineFlow(
     });
 
     if (!containerResponse.ok) {
-        const errorData: any = await containerResponse.json();
-        console.error('Failed to create Instagram media container:', errorData);
-        throw new Error(`Failed to create Instagram media container: ${errorData.error?.message || 'Unknown error'}`);
+        await handleInstagramError(containerResponse, 'Failed to create Instagram media container');
     }
 
     const containerData: any = await containerResponse.json();
@@ -112,9 +126,7 @@ const postToInstagramFlow = ai.defineFlow(
     });
 
     if (!publishResponse.ok) {
-        const errorData: any = await publishResponse.json();
-        console.error('Failed to publish Instagram media container:', errorData);
-        throw new Error(`Failed to publish Instagram media: ${errorData.error?.message || 'Unknown error'}`);
+        await handleInstagramError(publishResponse, 'Failed to publish Instagram media');
     }
 
     const publishData: any = await publishResponse.json();

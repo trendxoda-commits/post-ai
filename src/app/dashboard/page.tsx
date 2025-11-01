@@ -18,7 +18,10 @@ function AccountFollowers() {
   const { user } = useUser();
 
   const socialAccountsQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
+    () => {
+      if (!user) return null;
+      return query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc'));
+    },
     [firestore, user]
   );
   // Use the real-time hook

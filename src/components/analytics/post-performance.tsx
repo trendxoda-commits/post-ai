@@ -19,14 +19,20 @@ export function PostPerformance() {
 
   // Fetch the 12 most recent posts from the new collection
   const socialPostsQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'socialPosts'), orderBy('timestamp', 'desc'), limit(12)) : null,
+    () => {
+      if (!user) return null;
+      return query(collection(firestore, 'users', user.uid, 'socialPosts'), orderBy('timestamp', 'desc'), limit(12));
+    },
     [firestore, user]
   );
   const { data: posts, isLoading } = useCollection<SocialPost>(socialPostsQuery);
   
   // Fetch accounts to join author data to posts
   const socialAccountsQuery = useMemoFirebase(
-    () => user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
+    () => {
+      if (!user) return null;
+      return collection(firestore, 'users', user.uid, 'socialAccounts');
+    },
     [firestore, user]
   );
   const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
@@ -126,3 +132,4 @@ export function PostPerformance() {
     </Card>
   );
 }
+

@@ -32,7 +32,10 @@ function AccountPerformance() {
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   const socialAccountsQuery = useMemoFirebase(
-    () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
+    () => {
+      if (!user) return null;
+      return query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc'));
+    },
     [firestore, user]
   );
   const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
@@ -253,7 +256,12 @@ function AccountPerformance() {
 export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
+        <p className="text-muted-foreground">
+          A summary of your performance across all connected social media accounts.
+        </p>
+      </div>
       <StatsCards />
       <AccountPerformance />
     </div>

@@ -210,46 +210,6 @@
         "timestamp"
       ]
     },
-    "ScheduledPost": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ScheduledPost",
-      "type": "object",
-      "description": "Represents a post scheduled to be published on one or more social media accounts.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the scheduled post.",
-          "format": "uuid"
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who created this scheduled post. (Relationship: User 1:N ScheduledPost)"
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the post."
-        },
-        "scheduledTime": {
-          "type": "string",
-          "description": "The date and time when the post is scheduled to be published.",
-          "format": "date-time"
-        },
-        "socialAccountIds": {
-          "type": "array",
-          "description": "References to SocialAccounts where this post will be published. (Relationship: SocialAccount N:N ScheduledPost)",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "content",
-        "scheduledTime",
-        "socialAccountIds"
-      ]
-    },
     "TrendingHashtag": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TrendingHashtag",
@@ -332,16 +292,6 @@
         }
       },
       {
-        "path": "/users/{userId}/scheduledPosts/{scheduledPostId}",
-        "definition": {
-          "entityName": "ScheduledPost",
-          "schema": {
-            "$ref": "#/backend/entities/ScheduledPost"
-          },
-          "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
-        }
-      },
-      {
         "path": "/trendingHashtags/{trendingHashtagId}",
         "definition": {
           "entityName": "TrendingHashtag",
@@ -354,5 +304,3 @@
     ]
   }
 }
-
-    

@@ -51,26 +51,6 @@ export type SocialPost = {
 };
 
 
-export type ScheduledPost = {
-  id: string;
-  userId: string;
-  content: string;
-  mediaUrl: string;
-  mediaType: 'IMAGE' | 'VIDEO';
-  scheduledTime: string;
-  socialAccountIds: string[];
-  createdAt: any; // Can be Timestamp
-  status: 'scheduled' | 'processing' | 'completed' | 'failed';
-  isNow: boolean; // True if it was a "Post Now" job
-  // For UI Joins
-  accounts?: {
-    displayName: string;
-    platform: string;
-    avatar?: string;
-  }[];
-};
-
-
 export type AnalyticsData = {
   date: string;
   followers: number;

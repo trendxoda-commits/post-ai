@@ -8,22 +8,20 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
-  Calendar as CalendarIcon,
-  Clock,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { executeScheduledPosts } from '@/app/actions';
+import {
+  postToInstagram,
+  postToFacebook,
+} from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { collection } from 'firebase/firestore';
+
 
 export default function CreatePostPage() {
   const [content, setContent] = useState('');
@@ -31,9 +29,6 @@ export default function CreatePostPage() {
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
-  const [isScheduling, setIsScheduling] = useState(false);
-  const [scheduleDate, setScheduleDate] = useState<Date>();
-  const [scheduleTime, setScheduleTime] = useState('10:00');
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -73,8 +68,6 @@ export default function CreatePostPage() {
     setMediaUrl('');
     setMediaType('IMAGE');
     setSelectedAccountIds([]);
-    setScheduleDate(undefined);
-    setScheduleTime('10:00');
   };
 
   const handlePostNow = async () => {
@@ -86,86 +79,57 @@ export default function CreatePostPage() {
       });
       return;
     }
-    if (!user) return;
+    if (!user || !accounts) return;
     
     setIsPosting(true);
 
-    const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
-    // We create a "scheduled post" for right now to be picked up by the background processor
-    addDoc(scheduledPostsRef, {
-        userId: user.uid,
-        content: content,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        scheduledTime: new Date().toISOString(),
-        socialAccountIds: selectedAccountIds,
-        createdAt: serverTimestamp(),
-        status: 'processing', // Mark as an immediate job
-        isNow: true,
-    }).then(() => {
-        // Trigger the execution for the user
-        executeScheduledPosts({ userId: user.uid });
-    }).catch(err => {
-        console.error(`Failed to create post job for user ${user.uid}:`, err);
+    const accountsToPostTo = accounts.filter(acc => selectedAccountIds.includes(acc.id));
+    
+    const postPromises = accountsToPostTo.map(account => {
+        if (!account.pageAccessToken) {
+            console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
+            // Return a resolved promise for failed posts to not break Promise.allSettled
+            return Promise.resolve({ status: 'rejected', reason: `Missing page access token for ${account.displayName}.` });
+        }
+        
+        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
+
+        return postAction({
+            facebookPageId: account.accountId,
+            instagramUserId: account.accountId,
+            mediaUrl: mediaUrl,
+            caption: content,
+            pageAccessToken: account.pageAccessToken,
+            mediaType: mediaType,
+        });
     });
 
-    toast({
-        title: 'Posting Started',
-        description: 'Your post is being sent in the background. Check the Activity page for its status.',
-    });
+    const results = await Promise.allSettled(postPromises);
+    
+    const successfulPosts = results.filter(r => r.status === 'fulfilled').length;
+    const failedPosts = results.length - successfulPosts;
+
+    if (failedPosts > 0) {
+        toast({
+            variant: "default",
+            title: "Bulk Post Complete",
+            description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check console for details.`,
+        });
+        results.forEach(r => {
+            if (r.status === 'rejected') console.error("Post failed:", r.reason);
+        })
+
+    } else {
+        toast({
+            title: 'All Posts Successful!',
+            description: `Successfully posted to all ${successfulPosts} accounts.`,
+        });
+    }
 
     setIsPosting(false);
     resetForm();
   };
   
-    const handleSchedulePost = async () => {
-    if (selectedAccountIds.length === 0 || !mediaUrl || !scheduleDate) {
-      toast({
-        variant: 'destructive',
-        title: 'Missing Information',
-        description: 'Please select accounts, provide media URL, and choose a date and time to schedule.',
-      });
-      return;
-    }
-    if (!user) return;
-
-    setIsScheduling(true);
-
-    try {
-      const [hours, minutes] = scheduleTime.split(':').map(Number);
-      const scheduledDateTime = new Date(scheduleDate);
-      scheduledDateTime.setHours(hours, minutes);
-
-      const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
-      await addDoc(scheduledPostsRef, {
-        userId: user.uid,
-        content: content,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        scheduledTime: scheduledDateTime.toISOString(),
-        socialAccountIds: selectedAccountIds,
-        createdAt: serverTimestamp(),
-        status: 'scheduled',
-        isNow: false,
-      });
-
-      toast({
-        title: 'Post Scheduled!',
-        description: 'Your post has been successfully scheduled. Check the Activity page for status.',
-      });
-      resetForm();
-    } catch (error: any) {
-      console.error('Error scheduling post:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Schedule Post',
-        description: error.message || 'There was an issue scheduling your post. Please try again.',
-      });
-    } finally {
-      setIsScheduling(false);
-    }
-  };
-
 
   return (
     <div className="space-y-8">
@@ -176,8 +140,8 @@ export default function CreatePostPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+        <div className="lg:col-span-3 space-y-6">
           {/* Step 1: Select Accounts */}
           <Card>
             <CardHeader>
@@ -271,68 +235,19 @@ export default function CreatePostPage() {
           </Card>
         </div>
 
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           {/* Step 3: Publish */}
           <Card>
             <CardHeader>
               <CardTitle>3. Publish</CardTitle>
               <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isScheduling}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
+            <CardFooter>
+              <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
               </Button>
-            </CardContent>
+            </CardFooter>
           </Card>
-          
-          {/* Step 4: Schedule */}
-            <Card>
-                <CardHeader>
-                <CardTitle>Or Schedule for Later</CardTitle>
-                <CardDescription>Select a future date and time to publish your post automatically.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <Popover>
-                    <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !scheduleDate && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                    <Calendar
-                        mode="single"
-                        selected={scheduleDate}
-                        onSelect={setScheduleDate}
-                        initialFocus
-                        disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                    />
-                    </PopoverContent>
-                </Popover>
-
-                <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="pl-10"
-                    />
-                </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full" onClick={handleSchedulePost} disabled={isScheduling || isPosting}>
-                      {isScheduling ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scheduling...</> : 'Schedule Post'}
-                  </Button>
-                </CardFooter>
-            </Card>
-
         </div>
       </div>
     </div>

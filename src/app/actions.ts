@@ -31,10 +31,6 @@ import {
   type AnalyticsOutput,
 } from '@/ai/flows/social-media-actions';
 import {
-  executeScheduledPosts as executeScheduledPostsFlow,
-  type ExecuteScheduledPostsInput,
-} from '@/ai/flows/schedule-post-execution';
-import {
     validateToken as validateTokenFlow,
     type ValidateTokenInput,
     type ValidateTokenOutput,
@@ -78,11 +74,6 @@ export async function postToFacebook(
   input: PostToFacebookInput
 ): Promise<PostToFacebookOutput> {
   return postToFacebookFlow(input);
-}
-
-// --- Post Scheduling ---
-export async function executeScheduledPosts(input: ExecuteScheduledPostsInput) {
-  return executeScheduledPostsFlow(input);
 }
 
 

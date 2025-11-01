@@ -9,17 +9,17 @@ import {
   Link as LinkIcon,
   ChevronDown,
 } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { collection, collectionGroup, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { executeScheduledPosts } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -123,7 +123,7 @@ export default function AdminCreatePostPage() {
     setSelectedAccountIds([]);
   };
 
- const handlePostNow = async () => {
+  const handlePostNow = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: 'destructive',
@@ -136,38 +136,45 @@ export default function AdminCreatePostPage() {
     setIsPosting(true);
     
     const accountsToPostTo = allAccounts.filter(acc => selectedAccountIds.includes(acc.id));
-
-    // Non-blocking "fire-and-forget" approach
-    accountsToPostTo.forEach(account => {
+    
+    const postPromises = accountsToPostTo.map(account => {
         if (!account.pageAccessToken) {
             console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
-            return;
+            return Promise.resolve({ status: 'rejected', reason: `Missing page access token for ${account.displayName}.` });
         }
+        
+        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
 
-        const scheduledPostsRef = collection(firestore, 'users', account.user.id, 'scheduledPosts');
-        // We create a "scheduled post" for right now to be picked up by the background processor
-        addDoc(scheduledPostsRef, {
-            userId: account.user.id,
-            content: content,
+        return postAction({
+            facebookPageId: account.accountId,
+            instagramUserId: account.accountId,
             mediaUrl: mediaUrl,
+            caption: content,
+            pageAccessToken: account.pageAccessToken,
             mediaType: mediaType,
-            scheduledTime: new Date().toISOString(),
-            socialAccountIds: [account.id],
-            createdAt: serverTimestamp(),
-            status: 'processing', // Mark as an immediate job
-            isNow: true,
-        }).then(() => {
-            // Trigger the execution for the user whose account this is
-            executeScheduledPosts({ userId: account.user.id });
-        }).catch(err => {
-            console.error(`Failed to create post job for ${account.displayName}:`, err);
         });
     });
 
-    toast({
-        title: 'Posting Started',
-        description: 'Your posts are being sent in the background. Check the Activity page for status.',
-    });
+    const results = await Promise.allSettled(postPromises);
+    
+    const successfulPosts = results.filter(r => r.status === 'fulfilled').length;
+    const failedPosts = results.length - successfulPosts;
+
+    if (failedPosts > 0) {
+        toast({
+            variant: "default",
+            title: "Bulk Post Complete",
+            description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check console for details.`,
+        });
+        results.forEach(r => {
+            if (r.status === 'rejected') console.error("Post failed:", r.reason);
+        })
+    } else {
+        toast({
+            title: 'All Posts Successful!',
+            description: `Successfully posted to all ${successfulPosts} accounts.`,
+        });
+    }
 
     setIsPosting(false);
     resetForm();
@@ -285,7 +292,7 @@ export default function AdminCreatePostPage() {
               </CardContent>
               <CardFooter>
                 <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
                 </Button>
               </CardFooter>
             </Card>

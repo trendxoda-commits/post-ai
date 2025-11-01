@@ -15,9 +15,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,20 @@ function AccountPerformance() {
     [firestore, user]
   );
   const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const totals = useMemo(() => {
+    if (!accounts) {
+        return { followers: 0, totalLikes: 0, totalComments: 0, totalViews: 0, postCount: 0 };
+    }
+    return accounts.reduce((acc, account) => {
+        acc.followers += account.followers || 0;
+        acc.totalLikes += account.totalLikes || 0;
+        acc.totalComments += account.totalComments || 0;
+        acc.totalViews += account.totalViews || 0;
+        acc.postCount += account.postCount || 0;
+        return acc;
+    }, { followers: 0, totalLikes: 0, totalComments: 0, totalViews: 0, postCount: 0 });
+  }, [accounts]);
 
   const handleRefreshAnalytics = async (account: SocialAccount) => {
     if (!user || !firestore) return;
@@ -216,6 +231,17 @@ function AccountPerformance() {
                     </TableRow>
                   )}
                 </TableBody>
+                 <TableFooter>
+                    <TableRow>
+                        <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.followers).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalLikes).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalComments).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalViews).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.postCount).toLocaleString()}</TableCell>
+                        <TableCell></TableCell>
+                    </TableRow>
+                </TableFooter>
               </Table>
             </div>
         )}

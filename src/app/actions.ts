@@ -14,12 +14,10 @@ import {
 import {
   postToInstagram as postToInstagramFlow,
   type PostToInstagramInput,
-  type PostToInstagramOutput,
 } from '@/ai/flows/post-to-instagram';
 import {
   postToFacebook as postToFacebookFlow,
   type PostToFacebookInput,
-  type PostToFacebookOutput,
 } from '@/ai/flows/post-to-facebook';
 import {
   getInstagramMedia as getInstagramMediaFlow,
@@ -35,6 +33,10 @@ import {
     type ValidateTokenInput,
     type ValidateTokenOutput,
 } from '@/ai/flows/validate-token';
+import {
+  triggerBulkPostProcessing,
+  type BulkPostProcessorInput,
+} from '@/ai/flows/bulk-post-processor';
 
 
 // --- Instagram Auth ---
@@ -51,7 +53,7 @@ export async function getLongLivedToken(input: ExchangeForLongLivedTokenInput) {
 }
 
 export async function getIgUserDetails(
-  input: GetInstagramUserDetailsInput
+  input: any
 ): Promise<GetInstagramUserDetailsOutput> {
   return getIgUserDetailsFlow(input);
 }
@@ -62,17 +64,27 @@ export async function validateToken(input: ValidateTokenInput): Promise<Validate
 }
 
 
-// --- Social Media Posting ---
+// --- Social Media Posting (Fire and Forget) ---
 
-export async function postToInstagram(
-  input: PostToInstagramInput
-): Promise<PostToInstagramOutput> {
+// This is a new server action that triggers the background flow
+// and returns immediately, not waiting for the posts to complete.
+export async function triggerBulkPost(input: BulkPostProcessorInput): Promise<{ success: boolean; message: string }> {
+  try {
+    triggerBulkPostProcessing(input);
+    return { success: true, message: 'Bulk post job started successfully.' };
+  } catch (error: any) {
+    console.error('Error triggering bulk post flow:', error);
+    return { success: false, message: 'Failed to start bulk post job.' };
+  }
+}
+
+// The individual post flows are now for internal use by the processor
+// but can remain exported if needed elsewhere.
+export async function postToInstagram(input: PostToInstagramInput) {
   return postToInstagramFlow(input);
 }
 
-export async function postToFacebook(
-  input: PostToFacebookInput
-): Promise<PostToFacebookOutput> {
+export async function postToFacebook(input: PostToFacebookInput) {
   return postToFacebookFlow(input);
 }
 

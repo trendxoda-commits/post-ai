@@ -19,7 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { triggerBulkPost } from '@/app/actions';
 
 
 // This interface will hold the merged account and user data
@@ -135,46 +135,53 @@ export default function AdminCreatePostPage() {
     
     setIsPosting(true);
     
-    const accountsToPostTo = allAccounts.filter(acc => selectedAccountIds.includes(acc.id));
-    
-    const postPromises = accountsToPostTo.map(account => {
+    // Prepare the jobs for the background processor
+    const jobs = allAccounts
+      .filter(acc => selectedAccountIds.includes(acc.id))
+      .map(account => {
         if (!account.pageAccessToken) {
-            console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
-            return Promise.resolve({ status: 'rejected', reason: `Missing page access token for ${account.displayName}.` });
+          console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
+          return null;
         }
-        
-        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
+        return {
+          platform: account.platform,
+          accountId: account.accountId,
+          pageAccessToken: account.pageAccessToken,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          caption: content,
+        };
+      })
+      .filter(job => job !== null); // Filter out accounts with missing tokens
 
-        return postAction({
-            facebookPageId: account.accountId,
-            instagramUserId: account.accountId,
-            mediaUrl: mediaUrl,
-            caption: content,
-            pageAccessToken: account.pageAccessToken,
-            mediaType: mediaType,
-        });
-    });
-
-    const results = await Promise.allSettled(postPromises);
-    
-    const successfulPosts = results.filter(r => r.status === 'fulfilled').length;
-    const failedPosts = results.length - successfulPosts;
-
-    if (failedPosts > 0) {
+      if (jobs.length === 0) {
         toast({
-            variant: "default",
-            title: "Bulk Post Complete",
-            description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check console for details.`,
+            variant: 'destructive',
+            title: 'No Valid Accounts',
+            description: 'None of the selected accounts had the required access tokens to post.',
         });
-        results.forEach(r => {
-            if (r.status === 'rejected') console.error("Post failed:", r.reason);
-        })
-    } else {
+        setIsPosting(false);
+        return;
+      }
+
+    try {
+        // "Fire-and-forget" call to the server action
+        await triggerBulkPost({ jobs: jobs as any[] });
+
         toast({
-            title: 'All Posts Successful!',
-            description: `Successfully posted to all ${successfulPosts} accounts.`,
+            title: 'Bulk Post Started',
+            description: `Posting to ${jobs.length} accounts in the background. You can safely leave this page.`,
+        });
+
+    } catch (error) {
+        console.error("Error triggering bulk post:", error);
+         toast({
+            variant: 'destructive',
+            title: 'Failed to Start Posting',
+            description: 'Could not start the background posting job. Please try again.',
         });
     }
+
 
     setIsPosting(false);
     resetForm();
@@ -292,7 +299,7 @@ export default function AdminCreatePostPage() {
               </CardContent>
               <CardFooter>
                 <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
                 </Button>
               </CardFooter>
             </Card>

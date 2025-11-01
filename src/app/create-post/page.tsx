@@ -13,10 +13,7 @@ import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import {
-  postToInstagram,
-  postToFacebook,
-} from '@/app/actions';
+import { triggerBulkPost } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -83,46 +80,50 @@ export default function CreatePostPage() {
     
     setIsPosting(true);
 
-    const accountsToPostTo = accounts.filter(acc => selectedAccountIds.includes(acc.id));
-    
-    const postPromises = accountsToPostTo.map(account => {
+    // Prepare the jobs for the background processor
+    const jobs = accounts
+      .filter(acc => selectedAccountIds.includes(acc.id))
+      .map(account => {
         if (!account.pageAccessToken) {
-            console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
-            // Return a resolved promise for failed posts to not break Promise.allSettled
-            return Promise.resolve({ status: 'rejected', reason: `Missing page access token for ${account.displayName}.` });
+          console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
+          return null;
         }
-        
-        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
+        return {
+          platform: account.platform,
+          accountId: account.accountId,
+          pageAccessToken: account.pageAccessToken,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          caption: content,
+        };
+      })
+      .filter(job => job !== null); // Filter out accounts with missing tokens
 
-        return postAction({
-            facebookPageId: account.accountId,
-            instagramUserId: account.accountId,
-            mediaUrl: mediaUrl,
-            caption: content,
-            pageAccessToken: account.pageAccessToken,
-            mediaType: mediaType,
+      if (jobs.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'No Valid Accounts',
+            description: 'None of the selected accounts had the required access tokens to post.',
         });
-    });
-
-    const results = await Promise.allSettled(postPromises);
+        setIsPosting(false);
+        return;
+      }
     
-    const successfulPosts = results.filter(r => r.status === 'fulfilled').length;
-    const failedPosts = results.length - successfulPosts;
+    try {
+        // "Fire-and-forget" call to the server action
+        await triggerBulkPost({ jobs: jobs as any[] });
 
-    if (failedPosts > 0) {
         toast({
-            variant: "default",
-            title: "Bulk Post Complete",
-            description: `Successfully posted to ${successfulPosts} accounts. ${failedPosts} posts failed. Check console for details.`,
+            title: 'Bulk Post Started',
+            description: `Posting to ${jobs.length} accounts in the background. You can safely leave this page.`,
         });
-        results.forEach(r => {
-            if (r.status === 'rejected') console.error("Post failed:", r.reason);
-        })
 
-    } else {
-        toast({
-            title: 'All Posts Successful!',
-            description: `Successfully posted to all ${successfulPosts} accounts.`,
+    } catch (error) {
+        console.error("Error triggering bulk post:", error);
+         toast({
+            variant: 'destructive',
+            title: 'Failed to Start Posting',
+            description: 'Could not start the background posting job. Please try again.',
         });
     }
 
@@ -244,7 +245,7 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardFooter>
               <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
               </Button>
             </CardFooter>
           </Card>

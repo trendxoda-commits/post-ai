@@ -2,8 +2,6 @@
 'use client';
 
 import { StatsCards } from '@/components/analytics/stats-cards';
-import { FollowerChart } from '@/components/analytics/follower-chart';
-import { EngagementChart } from '@/components/analytics/engagement-chart';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
@@ -19,7 +17,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PostPerformance } from '@/components/analytics/post-performance';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
@@ -41,7 +38,6 @@ function AccountPerformance() {
   const handleRefreshAnalytics = async (account: SocialAccount) => {
     if (!user || !firestore) return;
     
-    // Find the user access token for the user who owns this account
     const credsRef = collection(firestore, 'users', user.uid, 'apiCredentials');
     const credsSnapshot = await getDocs(credsRef);
     
@@ -69,8 +65,6 @@ function AccountPerformance() {
 
         const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
         
-        // This will update the data in Firestore. The useCollection hook will automatically
-        // reflect the changes in the UI.
         await setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
 
         toast({
@@ -172,11 +166,6 @@ export default function AnalyticsPage() {
       <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
       <StatsCards />
       <AccountPerformance />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <FollowerChart />
-          <EngagementChart />
-      </div>
-       <PostPerformance />
     </div>
   );
 }

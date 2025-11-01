@@ -28,6 +28,7 @@ function AccountPerformance() {
   const { user } = useUser();
   const { toast } = useToast();
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   const socialAccountsQuery = useMemoFirebase(
     () => user ? query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc')) : null,
@@ -65,7 +66,8 @@ function AccountPerformance() {
 
         const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
         
-        await setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
+        // Non-blocking write - UI will update automatically via useCollection hook
+        setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
 
         toast({
             title: 'Refresh Successful',
@@ -83,13 +85,75 @@ function AccountPerformance() {
         setRefreshingId(null);
     }
   };
+  
+   const handleRefreshAllAnalytics = async () => {
+    if (!user || !firestore || !accounts) return;
+    
+    setIsRefreshingAll(true);
+    toast({
+      title: 'Starting Global Refresh',
+      description: 'Fetching the latest data for all your accounts.',
+    });
+    
+    const credsRef = collection(firestore, 'users', user.uid, 'apiCredentials');
+    const credsSnapshot = await getDocs(credsRef);
+    
+    if (credsSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Error', description: `API credentials not found.` });
+        setIsRefreshingAll(false);
+        return;
+    }
+    
+    const userAccessToken = (credsSnapshot.docs[0].data() as ApiCredential).accessToken;
+    if (!userAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `Your main access token is missing. Please reconnect.` });
+        setIsRefreshingAll(false);
+        return;
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const account of accounts) {
+      if (!account.pageAccessToken) {
+        failCount++;
+        continue;
+      }
+      try {
+        const newAnalytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            pageAccessToken: account.pageAccessToken,
+            userAccessToken: userAccessToken,
+        });
+        const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
+        setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to refresh account ${account.displayName}:`, error);
+        failCount++;
+      }
+    }
+    
+    toast({
+      title: 'Global Refresh Complete',
+      description: `Successfully refreshed ${successCount} accounts. ${failCount} failed.`,
+    });
+    setIsRefreshingAll(false);
+  };
 
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Account Performance</CardTitle>
-        <CardDescription>A complete overview of your connected accounts.</CardDescription>
+      <CardHeader className="flex flex-row items-start sm:items-center justify-between">
+         <div>
+            <CardTitle>Account Performance</CardTitle>
+            <CardDescription>A complete overview of your connected accounts.</CardDescription>
+        </div>
+         <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
+            {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <span className="hidden sm:inline ml-2">Refresh All</span>
+        </Button>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -137,7 +201,7 @@ function AccountPerformance() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id}>
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
                                 {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                 <span className="hidden sm:inline ml-2">Refresh</span>
                             </Button>

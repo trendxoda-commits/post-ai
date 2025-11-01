@@ -51,69 +51,82 @@ const executeScheduledPostsFlow = ai.defineFlow(
     const publishedPosts: string[] = [];
     const failedPosts: string[] = [];
 
-    // 1. Fetch all pending scheduled posts for the user that are due
     const now = new Date().toISOString();
-    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`).where('scheduledTime', '<=', now);
+    const postsQuery = firestore.collection(`users/${userId}/scheduledPosts`)
+        .where('scheduledTime', '<=', now)
+        .where('status', 'in', ['scheduled', 'processing']); // Get scheduled posts and immediate jobs
 
     const querySnapshot = await postsQuery.get();
     if (querySnapshot.empty) {
-      // No posts are due, so we can exit.
       return { publishedPosts, failedPosts };
     }
     
-    // 3. Iterate over due posts and publish them
     for (const postDoc of querySnapshot.docs) {
       const post = postDoc.data() as ScheduledPost;
       const postId = postDoc.id;
 
-      const postPromises = post.socialAccountIds.map(async (accountId) => {
-        const accountDocRef = firestore.doc(`users/${userId}/socialAccounts/${accountId}`);
-        const accountDoc = await accountDocRef.get();
+      // Mark the job as processing
+      await postDoc.ref.update({ status: 'processing' });
 
-        if (!accountDoc.exists) {
-            throw new Error(`SocialAccount with ID ${accountId} not found.`);
-        }
+      try {
+        const postPromises = post.socialAccountIds.map(async (accountId) => {
+            const accountDocRef = firestore.doc(`users/${userId}/socialAccounts/${accountId}`);
+            const accountDoc = await accountDocRef.get();
+
+            if (!accountDoc.exists) {
+                throw new Error(`SocialAccount with ID ${accountId} not found.`);
+            }
+            
+            const socialAccount = accountDoc.data() as SocialAccount;
+
+            if (!post.mediaUrl || !post.mediaType) {
+                throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
+            }
+
+            if (!socialAccount.pageAccessToken) {
+                throw new Error(`Missing Page Access Token for account ${socialAccount.displayName}.`);
+            }
+
+            const postAction = socialAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
+            const input = {
+                facebookPageId: socialAccount.accountId,
+                instagramUserId: socialAccount.accountId,
+                mediaUrl: post.mediaUrl,
+                caption: post.content,
+                pageAccessToken: socialAccount.pageAccessToken,
+                mediaType: post.mediaType,
+            };
+            
+            return postAction(input);
+        });
+
+        const results = await Promise.allSettled(postPromises);
         
-        const socialAccount = accountDoc.data() as SocialAccount;
+        let allSucceeded = true;
+        results.forEach(result => {
+            if (result.status === 'rejected') {
+            console.error(`A post in batch ${postId} failed:`, result.reason);
+            allSucceeded = false;
+            }
+        });
 
-        if (!post.mediaUrl || !post.mediaType) {
-            throw new Error(`Post ${postId} is missing mediaUrl or mediaType.`);
+        if (allSucceeded) {
+            await postDoc.ref.update({ status: 'completed' });
+            publishedPosts.push(postId);
+        } else {
+            await postDoc.ref.update({ status: 'failed' });
+            failedPosts.push(postId);
         }
 
-        if (!socialAccount.pageAccessToken) {
-            throw new Error(`Missing Page Access Token for account ${socialAccount.displayName}.`);
+        // If it was a "Post Now" job, delete it after completion/failure
+        if (post.isNow) {
+            await postDoc.ref.delete();
         }
 
-        const postAction = socialAccount.platform === 'Facebook' ? postToFacebook : postToInstagram;
-        const input = {
-            facebookPageId: socialAccount.accountId, // for FB
-            instagramUserId: socialAccount.accountId, // for IG
-            mediaUrl: post.mediaUrl,
-            caption: post.content,
-            pageAccessToken: socialAccount.pageAccessToken,
-            mediaType: post.mediaType,
-        };
-        
-        return postAction(input);
-      });
-
-      const results = await Promise.allSettled(postPromises);
-      
-      let allSucceeded = true;
-      results.forEach(result => {
-        if (result.status === 'rejected') {
-          console.error(`A post in batch ${postId} failed:`, result.reason);
-          allSucceeded = false;
-        }
-      });
-
-      // 4. Delete the post from the schedule after attempting to publish
-      await postDoc.ref.delete();
-
-      if (allSucceeded) {
-        publishedPosts.push(postId);
-      } else {
-        failedPosts.push(postId);
+      } catch(e) {
+          console.error(`Critical error processing post ${postId}:`, e);
+          await postDoc.ref.update({ status: 'failed' });
+          failedPosts.push(postId);
       }
     }
 
@@ -123,13 +136,8 @@ const executeScheduledPostsFlow = ai.defineFlow(
 
 
 export async function executeScheduledPosts(input: ExecuteScheduledPostsInput): Promise<ExecuteScheduledPostsOutput> {
-  // Now we await the flow and handle potential errors.
-  try {
-    const result = await executeScheduledPostsFlow(input);
-    return result;
-  } catch (error) {
-    console.error("Error executing scheduled posts flow:", error);
-    // Return a failed state to the client.
-    return { publishedPosts: [], failedPosts: [] };
-  }
+  // This is a fire-and-forget call. We don't await the flow.
+  // The client will get an immediate response.
+  executeScheduledPostsFlow(input);
+  return { publishedPosts: [], failedPosts: [] };
 }

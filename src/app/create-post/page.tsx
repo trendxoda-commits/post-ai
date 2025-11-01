@@ -12,12 +12,12 @@ import {
   Clock,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { postToInstagram, postToFacebook, executeScheduledPosts } from '@/app/actions';
+import { executeScheduledPosts } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -86,51 +86,33 @@ export default function CreatePostPage() {
       });
       return;
     }
+    if (!user) return;
+    
     setIsPosting(true);
 
-    const postPromises = selectedAccountIds.map(accountId => {
-        const account = accounts?.find(a => a.id === accountId);
-        if (!account || !account.pageAccessToken) {
-            return Promise.reject(new Error(`Account details not found for ID ${accountId}`));
-        }
-
-        const postAction = account.platform === 'Facebook' ? postToFacebook : postToInstagram;
-        
-        return postAction({
-            facebookPageId: account.accountId, // for FB
-            instagramUserId: account.accountId, // for IG
-            mediaUrl,
-            mediaType,
-            caption: content,
-            pageAccessToken: account.pageAccessToken,
-        });
+    const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
+    // We create a "scheduled post" for right now to be picked up by the background processor
+    addDoc(scheduledPostsRef, {
+        userId: user.uid,
+        content: content,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        scheduledTime: new Date().toISOString(),
+        socialAccountIds: selectedAccountIds,
+        createdAt: serverTimestamp(),
+        status: 'processing', // Mark as an immediate job
+        isNow: true,
+    }).then(() => {
+        // Trigger the execution for the user
+        executeScheduledPosts({ userId: user.uid });
+    }).catch(err => {
+        console.error(`Failed to create post job for user ${user.uid}:`, err);
     });
 
-    const results = await Promise.allSettled(postPromises);
-    
-    let successCount = 0;
-    results.forEach(result => {
-        if (result.status === 'fulfilled') {
-            successCount++;
-        } else {
-            console.error('A post failed:', result.reason);
-        }
+    toast({
+        title: 'Posting Started',
+        description: 'Your post is being sent in the background. Check the Activity page for its status.',
     });
-
-    const failureCount = selectedAccountIds.length - successCount;
-
-    if (failureCount > 0) {
-        toast({
-            variant: failureCount === selectedAccountIds.length ? "destructive" : "default",
-            title: "Bulk Post Complete",
-            description: `Successfully posted to ${successCount} accounts. ${failureCount} posts failed. Check console for errors.`,
-        });
-    } else {
-         toast({
-            title: "Bulk Post Complete",
-            description: `Successfully posted to all ${successCount} accounts.`,
-        });
-    }
 
     setIsPosting(false);
     resetForm();
@@ -162,15 +144,14 @@ export default function CreatePostPage() {
         mediaType: mediaType,
         scheduledTime: scheduledDateTime.toISOString(),
         socialAccountIds: selectedAccountIds,
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        status: 'scheduled',
+        isNow: false,
       });
-      
-      // Now we await the scheduler agent to check for due posts.
-      await executeScheduledPosts({ userId: user.uid });
 
       toast({
         title: 'Post Scheduled!',
-        description: 'Your post has been successfully scheduled and will be published automatically.',
+        description: 'Your post has been successfully scheduled. Check the Activity page for status.',
       });
       resetForm();
     } catch (error: any) {
@@ -299,7 +280,7 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardContent>
               <Button variant="secondary" size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting || isScheduling}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
               </Button>
             </CardContent>
           </Card>

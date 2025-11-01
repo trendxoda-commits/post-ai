@@ -72,7 +72,7 @@ const bulkPostProcessorFlow = ai.defineFlow(
 
 // This is the wrapper function that will be called from the server action.
 // It initiates the flow but does NOT wait for it to complete.
-export function triggerBulkPostProcessing(input: BulkPostProcessorInput) {
+export async function triggerBulkPostProcessing(input: BulkPostProcessorInput) {
   // Fire-and-forget: we call the flow but don't await its result.
   // The flow will run in the background on the Genkit/server environment.
   bulkPostProcessorFlow(input);

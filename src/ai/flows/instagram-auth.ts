@@ -44,7 +44,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     const comprehensiveScope = [
         'pages_show_list',
         'pages_read_engagement',
-        'pages_manage_posts',
+        'pages_manage_posts', // CRITICAL PERMISSION FOR FACEBOOK POSTING
         'instagram_content_publish',
         'instagram_manage_insights',
         'business_management',

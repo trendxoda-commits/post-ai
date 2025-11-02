@@ -121,7 +121,21 @@ export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebo
                 data={chartData}
                 margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
             >
-                <CartesianGrid vertical={false} />
+                <defs>
+                  <linearGradient id="fillEngagement" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="5%"
+                      stopColor="var(--color-engagement)"
+                      stopOpacity={0.8}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor="var(--color-engagement)"
+                      stopOpacity={0.2}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis
                 dataKey="date"
                 tickLine={false}
@@ -134,11 +148,14 @@ export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebo
                 tickMargin={8}
                 tickFormatter={(value) => `${value}%`}
                 />
-                <Tooltip content={<ChartTooltipContent indicator="dot" />} />
+                <Tooltip 
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="dot" />} 
+                />
                 <Bar
-                dataKey="engagement"
-                fill="var(--color-engagement)"
-                radius={[4, 4, 0, 0]}
+                  dataKey="engagement"
+                  fill="url(#fillEngagement)"
+                  radius={[8, 8, 0, 0]}
                 />
             </BarChart>
             </ChartContainer>

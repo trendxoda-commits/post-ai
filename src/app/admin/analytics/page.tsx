@@ -101,9 +101,22 @@ const PlatformAnalytics = ({ accounts, totalUsers }: { accounts: SocialAccount[]
                 <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={growthData}>
+                             <defs>
+                                <linearGradient id="adminFollowersGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8}/>
+                                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                                </linearGradient>
+                            </defs>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="date" />
-                            <YAxis yAxisId="left" />
+                            <YAxis 
+                                 tickFormatter={(value) =>
+                                    new Intl.NumberFormat('en-US', {
+                                    notation: 'compact',
+                                    compactDisplay: 'short',
+                                    }).format(value)
+                                }
+                            />
                             <Tooltip
                                 contentStyle={{
                                     background: "hsl(var(--card))",
@@ -111,7 +124,7 @@ const PlatformAnalytics = ({ accounts, totalUsers }: { accounts: SocialAccount[]
                                 }}
                             />
                             <Legend />
-                            <Line yAxisId="left" type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} name="Total Followers" />
+                            <Line type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={3} name="Total Followers" dot={false} activeDot={{r: 6}} />
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>

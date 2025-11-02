@@ -284,15 +284,15 @@ export default function AdminAccountsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
+            <div className='w-full sm:w-auto'>
               <CardTitle>All Accounts</CardTitle>
               <CardDescription>A complete list of all connected accounts from all users.</CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <SearchComponent />
-                <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
+                <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading} className="w-full sm:w-auto">
                     {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    <span className="hidden sm:inline ml-2">Refresh All</span>
+                    <span className="sm:hidden lg:inline ml-2">Refresh All</span>
                 </Button>
             </div>
           </div>
@@ -303,7 +303,7 @@ export default function AdminAccountsPage() {
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -372,3 +372,5 @@ export default function AdminAccountsPage() {
     </div>
   );
 }
+
+    

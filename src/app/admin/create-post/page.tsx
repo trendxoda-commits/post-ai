@@ -203,8 +203,8 @@ export default function AdminCreatePostPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 items-start">
+          <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>1. Select Accounts</CardTitle>
@@ -278,7 +278,7 @@ export default function AdminCreatePostPage() {
           </div>
 
           {/* Right Column: Post Composer */}
-          <div className="lg:col-span-3">
+          <div className="md:col-span-3">
             <Card>
               <CardHeader>
                 <CardTitle>2. Craft & Publish</CardTitle>
@@ -314,3 +314,5 @@ export default function AdminCreatePostPage() {
       </div>
   );
 }
+
+    

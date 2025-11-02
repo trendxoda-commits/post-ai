@@ -161,37 +161,41 @@ export default function AdminDashboardPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
                      ) : (
-                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Connected Accounts</TableHead>
-                                    <TableHead className="text-right">Sign-up Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentUsers.length > 0 ? recentUsers.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{user.email || 'N/A'}</div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="secondary">{user.connectedAccounts}</Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{user.createdAt}</TableCell>
-                                    </TableRow>
-                                )) : (
+                        <div className="overflow-x-auto">
+                             <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={3} className="text-center h-24">No users found.</TableCell>
+                                        <TableHead>User</TableHead>
+                                        <TableHead>Connected Accounts</TableHead>
+                                        <TableHead className="text-right">Sign-up Date</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {recentUsers.length > 0 ? recentUsers.map((user) => (
+                                        <TableRow key={user.id}>
+                                            <TableCell>
+                                                <div className="font-medium">{user.email || 'N/A'}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="secondary">{user.connectedAccounts}</Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right text-muted-foreground">{user.createdAt}</TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center h-24">No users found.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
                      )}
                 </CardContent>
             </Card>
         </div>
     );
 }
+
+    

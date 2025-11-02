@@ -138,7 +138,6 @@ export default function CreatePostPage() {
     }
 
     setIsPosting(false);
-    resetForm();
   };
   
 
@@ -173,7 +172,7 @@ export default function CreatePostPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent position="popper">
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {accounts && accounts.length > 0 ? (

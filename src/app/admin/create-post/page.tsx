@@ -184,7 +184,6 @@ export default function AdminCreatePostPage() {
 
 
     setIsPosting(false);
-    resetForm();
   };
 
 
@@ -216,7 +215,7 @@ export default function AdminCreatePostPage() {
                               <ChevronDown className="h-4 w-4" />
                           </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-full md:w-auto">
+                      <DropdownMenuContent position="popper" className="w-[--radix-dropdown-menu-trigger-width]">
                           <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem

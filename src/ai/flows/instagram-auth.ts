@@ -39,19 +39,18 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
     }
     const redirectUri = `${process.env.NEXT_PUBLIC_URL}${process.env.NEXT_PUBLIC_INSTAGRAM_REDIRECT_URI}`;
 
-    // DECISIVE FIX: Expanded scope to include all necessary permissions for posting, insights, and management.
-    // Added 'reauthenticate' to force users to grant the new permissions.
+    // DECISIVE FIX: Replaced 'pages_messaging' with 'instagram_manage_messages'
     const comprehensiveScope = [
         'pages_show_list',
         'pages_read_engagement',
-        'pages_manage_posts', // CRITICAL PERMISSION FOR FACEBOOK POSTING
+        'pages_manage_posts',
         'instagram_content_publish',
         'instagram_manage_insights',
         'business_management',
         'pages_read_user_content',
         'instagram_basic',
         'instagram_manage_comments',
-        'pages_messaging', // CRITICAL PERMISSION FOR DMs
+        'instagram_manage_messages', // CRITICAL PERMISSION FOR INSTAGRAM DMs
     ].join(',');
 
 

@@ -167,14 +167,14 @@ function AccountPerformance() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-start sm:items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
          <div>
             <CardTitle>Account Performance</CardTitle>
             <CardDescription>A detailed overview of all your connected accounts.</CardDescription>
         </div>
-         <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
+         <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading} className="w-full sm:w-auto">
             {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            <span className="hidden sm:inline ml-2">Refresh All</span>
+            <span className="sm:hidden lg:inline ml-2">Refresh All</span>
         </Button>
       </CardHeader>
       <CardContent>
@@ -183,7 +183,7 @@ function AccountPerformance() {
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         ) : (
-            <div className="rounded-lg border">
+            <div className="rounded-lg border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -209,11 +209,11 @@ function AccountPerformance() {
                                 {account.displayName.charAt(0).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">{account.displayName}</span>
+                            <span className="font-medium whitespace-nowrap">{account.displayName}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">
+                          <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500 whitespace-nowrap">
                             {account.platform}
                           </Badge>
                         </TableCell>
@@ -226,10 +226,12 @@ function AccountPerformance() {
                             <div className="flex items-center justify-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
                                     {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                    <span className="hidden lg:inline ml-2">Refresh</span>
                                 </Button>
                                 <Button variant="outline" size="sm" asChild>
                                     <Link href={`/create-post?accountId=${account.id}`}>
                                         <PlusSquare className="h-4 w-4" />
+                                        <span className="hidden lg:inline ml-2">Post</span>
                                     </Link>
                                 </Button>
                             </div>

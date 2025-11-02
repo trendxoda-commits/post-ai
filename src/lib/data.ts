@@ -5,11 +5,13 @@
 import {
     getInstagramMedia as getInstagramMediaFlow,
     getFacebookPosts as getFacebookPostsFlow,
+    getInstagramComments,
+    getFacebookComments,
 } from '@/ai/flows/social-media-actions';
 import { getFirestore as getAdminFirestore, WriteBatch } from 'firebase-admin/firestore';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { collection, query, where, getDocs, doc, writeBatch, Firestore, getFirestore } from 'firebase/firestore';
-import type { SocialAccount, SocialPost } from './types';
+import type { SocialAccount, SocialPost, SocialComment } from './types';
 import { firebaseConfig } from '@/firebase/config';
 
 // This function is now client-side and uses the client SDK
@@ -48,6 +50,8 @@ export async function clientSideSyncUserPosts(
 
             if (fetchedPosts.length > 0) {
                 await syncPostsToFirestoreClient(firestore, userId, account.id, account.platform, fetchedPosts);
+                // After syncing posts, sync their comments
+                await clientSideSyncAllCommentsForAccount(firestore, userId, account, userAccessToken);
             }
 
         } catch (error) {
@@ -55,7 +59,6 @@ export async function clientSideSyncUserPosts(
         }
     }
 }
-
 
 /**
  * Syncs a batch of fetched posts to the socialPosts subcollection in Firestore using the CLIENT SDK.
@@ -112,4 +115,96 @@ async function syncPostsToFirestoreClient(
     console.log(`Synced ${posts.length} posts for account ${socialAccountId}.`);
 }
 
+
+/**
+ * Fetches all posts for a given account, then fetches and syncs all comments for each of those posts.
+ * This is a client-side function.
+ */
+async function clientSideSyncAllCommentsForAccount(
+    firestore: Firestore,
+    userId: string,
+    account: SocialAccount,
+    userAccessToken: string
+) {
+    console.log(`Starting comment sync for account: ${account.displayName}`);
+    const postsRef = collection(firestore, 'users', userId, 'socialPosts');
+    const q = query(postsRef, where("socialAccountId", "==", account.id));
+    const postsSnapshot = await getDocs(q);
+
+    if (postsSnapshot.empty) {
+        console.log(`No posts found for account ${account.displayName} to sync comments from.`);
+        return;
+    }
+
+    for (const postDoc of postsSnapshot.docs) {
+        const post = postDoc.data() as SocialPost;
+        try {
+            let fetchedComments: any[] = [];
+            const accessToken = account.pageAccessToken || userAccessToken;
+
+            if (account.platform === 'Instagram') {
+                const { comments } = await getInstagramComments({ mediaId: post.postId, accessToken });
+                fetchedComments = comments;
+            } else if (account.platform === 'Facebook') {
+                const { comments } = await getFacebookComments({ mediaId: post.postId, accessToken });
+                fetchedComments = comments;
+            }
+
+            if (fetchedComments.length > 0) {
+                await syncCommentsToFirestoreClient(firestore, userId, account.id, postDoc.id, account.platform, fetchedComments);
+            }
+        } catch (error) {
+            console.error(`Failed to sync comments for post ${post.postId}:`, error);
+        }
+    }
+    console.log(`Finished comment sync for account: ${account.displayName}`);
+}
+
+/**
+ * Syncs a batch of fetched comments to the socialComments subcollection in Firestore using the CLIENT SDK.
+ */
+async function syncCommentsToFirestoreClient(
+    firestore: Firestore,
+    userId: string,
+    socialAccountId: string,
+    socialPostId: string, // This is our internal Firestore post ID
+    platform: 'Instagram' | 'Facebook',
+    comments: any[]
+) {
+    const commentsRef = collection(firestore, `users/${userId}/socialComments`);
+    const batch = writeBatch(firestore);
+
+    for (const comment of comments) {
+        const commentId = comment.id;
+        if (!commentId) continue;
+
+        const commentData: Omit<SocialComment, 'id'> = {
+            userId,
+            socialAccountId,
+            socialPostId,
+            platform,
+            commentId: comment.id,
+            text: comment.text,
+            timestamp: comment.timestamp,
+            from: {
+                id: comment.from?.id,
+                name: comment.from?.username || comment.from?.name,
+            },
+            isHidden: comment.is_hidden || false,
+        };
+
+        const q = query(commentsRef, where("commentId", "==", commentId));
+        const existingDocs = await getDocs(q);
+
+        if (existingDocs.empty) {
+            const newDocRef = doc(commentsRef);
+            batch.set(newDocRef, commentData);
+        } else {
+            const docToUpdateRef = existingDocs.docs[0].ref;
+            batch.update(docToUpdateRef, commentData);
+        }
+    }
     
+    await batch.commit();
+    console.log(`Synced ${comments.length} comments for post ${socialPostId}.`);
+}

@@ -3,7 +3,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, BarChart2, Settings, PlusSquare, Shield } from 'lucide-react';
+import { LayoutDashboard, BarChart2, Settings, PlusSquare, Shield, MessageSquare } from 'lucide-react';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -14,6 +14,7 @@ import { useUser } from '@/firebase';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/inbox', label: 'Inbox', icon: MessageSquare },
   { href: '/create-post', label: 'Create Post', icon: PlusSquare },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },

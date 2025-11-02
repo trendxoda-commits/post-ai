@@ -210,45 +210,24 @@
         "timestamp"
       ]
     },
-    "ScheduledPost": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ScheduledPost",
-      "type": "object",
-      "description": "Represents a post scheduled to be published on one or more social media accounts.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the scheduled post.",
-          "format": "uuid"
+    "SocialComment": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SocialComment",
+        "type": "object",
+        "description": "Represents a single comment on a social media post.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique Firestore document ID." },
+            "userId": { "type": "string", "description": "Reference to the User who owns the account this comment belongs to." },
+            "socialAccountId": { "type": "string", "description": "Reference to the SocialAccount this comment belongs to." },
+            "socialPostId": { "type": "string", "description": "Reference to the SocialPost this comment is on." },
+            "platform": { "type": "string", "enum": ["Instagram", "Facebook"], "description": "The social media platform." },
+            "commentId": { "type": "string", "description": "The original comment ID from the social media platform." },
+            "from": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
+            "text": { "type": "string", "description": "The text content of the comment." },
+            "timestamp": { "type": "string", "format": "date-time", "description": "The original creation time of the comment." },
+            "isHidden": { "type": "boolean", "description": "Whether the comment is hidden." }
         },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who created this scheduled post. (Relationship: User 1:N ScheduledPost)"
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the post."
-        },
-        "scheduledTime": {
-          "type": "string",
-          "description": "The date and time when the post is scheduled to be published.",
-          "format": "date-time"
-        },
-        "socialAccountIds": {
-          "type": "array",
-          "description": "References to SocialAccounts where this post will be published. (Relationship: SocialAccount N:N ScheduledPost)",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "id",
-        "userId",
-        "content",
-        "scheduledTime",
-        "socialAccountIds"
-      ]
+        "required": ["id", "userId", "socialAccountId", "socialPostId", "platform", "commentId", "text", "timestamp"]
     },
     "TrendingHashtag": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -331,14 +310,14 @@
           "description": "Stores fetched posts from a user's social accounts, including their analytics. Path-based ownership."
         }
       },
-      {
-        "path": "/users/{userId}/scheduledPosts/{scheduledPostId}",
+       {
+        "path": "/users/{userId}/socialComments/{commentId}",
         "definition": {
-          "entityName": "ScheduledPost",
+          "entityName": "SocialComment",
           "schema": {
-            "$ref": "#/backend/entities/ScheduledPost"
+            "$ref": "#/backend/entities/SocialComment"
           },
-          "description": "Stores scheduled posts for a user. Path-based ownership ensures posts are private."
+          "description": "Stores comments from a user's social media posts for the unified inbox."
         }
       },
       {

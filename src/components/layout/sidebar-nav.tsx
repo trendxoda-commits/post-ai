@@ -14,7 +14,7 @@ import { useUser } from '@/firebase';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/inbox', label: 'Inbox', icon: MessageSquare },
+  { href: '/inbox', label: 'Comments Inbox', icon: MessageSquare },
   { href: '/create-post', label: 'Create Post', icon: PlusSquare },
   { href: '/analytics', label: 'Analytics', icon: BarChart2 },
   { href: '/settings', label: 'Settings', icon: Settings },

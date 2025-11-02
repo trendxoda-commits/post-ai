@@ -51,6 +51,7 @@ const getInstagramAuthUrlFlow = ai.defineFlow(
         'pages_read_user_content',
         'instagram_basic',
         'instagram_manage_comments',
+        'pages_messaging', // CRITICAL PERMISSION FOR DMs
     ].join(',');
 
 

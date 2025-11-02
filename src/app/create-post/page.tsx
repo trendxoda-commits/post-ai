@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { collection } from 'firebase/firestore';
+import { useSearchParams } from 'next/navigation';
 
 
 export default function CreatePostPage() {
@@ -30,12 +31,21 @@ export default function CreatePostPage() {
   const { toast } = useToast();
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const searchParams = useSearchParams();
 
   const socialAccountsQuery = useMemoFirebase(() =>
     user ? collection(firestore, 'users', user.uid, 'socialAccounts') : null,
     [firestore, user]
   );
   const { data: accounts, isLoading: isLoadingAccounts } = useCollection<SocialAccount>(socialAccountsQuery);
+  
+  // Handle pre-selection from URL parameter
+  useEffect(() => {
+    const accountIdFromUrl = searchParams.get('accountId');
+    if (accountIdFromUrl) {
+      setSelectedAccountIds([accountIdFromUrl]);
+    }
+  }, [searchParams]);
 
   // Group accounts by platform
   const groupedAccounts = useMemo(() => {
@@ -163,7 +173,7 @@ export default function CreatePostPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-full md:w-auto">
+                <DropdownMenuContent>
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {accounts && accounts.length > 0 ? (

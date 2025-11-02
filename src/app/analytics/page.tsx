@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, PlusSquare } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,6 +22,7 @@ import { useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 
 function AccountPerformance() {
@@ -219,10 +220,16 @@ function AccountPerformance() {
                         <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
                         <TableCell className="text-center">
-                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
-                                {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                                <span className="hidden sm:inline ml-2">Refresh</span>
-                            </Button>
+                            <div className="flex items-center justify-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
+                                    {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/create-post?accountId=${account.id}`}>
+                                        <PlusSquare className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            </div>
                         </TableCell>
                       </TableRow>
                     ))

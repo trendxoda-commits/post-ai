@@ -61,8 +61,9 @@ const postToInstagramFlow = ai.defineFlow(
         access_token: pageAccessToken,
     });
 
+    // DECISIVE FIX: Correctly set media_type for videos at the container creation step.
     if (mediaType === 'VIDEO') {
-        containerParams.append('media_type', 'REELS'); // Instagram now requires REELS for most videos
+        containerParams.append('media_type', 'REELS');
         containerParams.append('video_url', mediaUrl);
     } else { // IMAGE
         containerParams.append('image_url', mediaUrl);
@@ -115,11 +116,15 @@ const postToInstagramFlow = ai.defineFlow(
              // The container failed to process on Instagram's side.
              // It's helpful to fetch the error details from the container status endpoint.
              const errorDetailsUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=error_message&access_token=${pageAccessToken}`;
-             const errorDetailsResponse = await fetch(errorDetailsUrl);
              let errorMessage = 'Media container processing failed on Instagram.';
-             if(errorDetailsResponse.ok) {
-                const errorDetailsData: any = await errorDetailsResponse.json();
-                errorMessage = errorDetailsData.error_message || errorMessage;
+             try {
+                const errorDetailsResponse = await fetch(errorDetailsUrl);
+                if(errorDetailsResponse.ok) {
+                    const errorDetailsData: any = await errorDetailsResponse.json();
+                    errorMessage = errorDetailsData.error_message || errorMessage;
+                }
+             } catch(e) {
+                // Ignore if we can't get the specific error message
              }
              throw new Error(errorMessage);
         }

@@ -181,7 +181,7 @@ export default function CreatePostPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent position="popper">
+                <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto" position="popper">
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {accounts && accounts.length > 0 ? (

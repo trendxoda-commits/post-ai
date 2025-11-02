@@ -18,7 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { postToFacebook, postToInstagram } from '@/app/actions';
 
 
@@ -223,7 +222,7 @@ export default function AdminCreatePostPage() {
                               <ChevronDown className="h-4 w-4" />
                           </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent position="popper" className="w-[--radix-dropdown-menu-trigger-width]">
+                      <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto" position="popper">
                           <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
@@ -236,7 +235,7 @@ export default function AdminCreatePostPage() {
                               Select All
                           </DropdownMenuCheckboxItem>
                           <DropdownMenuSeparator />
-                          <ScrollArea className="max-h-72">
+                          
                               {allAccounts && allAccounts.length > 0 ? (
                                   Object.entries(groupedAccounts).map(([platform, platformAccounts]) => (
                                       <div key={platform}>
@@ -271,7 +270,7 @@ export default function AdminCreatePostPage() {
                                   No accounts found.
                               </div>
                               )}
-                          </ScrollArea>
+                          
                       </DropdownMenuContent>
                   </DropdownMenu>
               </CardContent>

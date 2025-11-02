@@ -86,10 +86,11 @@ const PlatformAnalytics = ({ accounts, totalUsers }: { accounts: SocialAccount[]
 
     return (
         <div className="space-y-8">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <AdminStatsCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
                 <AdminStatsCard title="Total Likes" value={totals.likes.toLocaleString()} icon={ThumbsUp} />
                 <AdminStatsCard title="Total Comments" value={totals.comments.toLocaleString()} icon={MessageCircle} />
+                <AdminStatsCard title="Total Views" value={totals.views.toLocaleString()} icon={Eye} />
                 <AdminStatsCard title="Total Posts" value={totals.posts.toLocaleString()} icon={FileText} />
             </div>
 

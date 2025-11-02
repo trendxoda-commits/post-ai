@@ -11,6 +11,7 @@ import { useFirebase } from '@/firebase';
 import { collection, getDocs, collectionGroup } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import type { User } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface DashboardStats {
@@ -110,7 +111,15 @@ export default function AdminDashboardPage() {
             {isLoading ? (
                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {[...Array(3)].map((_, i) => (
-                        <Card key={i}><CardHeader><div className="h-4 bg-muted rounded w-2/4" /></CardHeader><CardContent><div className="h-7 bg-muted rounded w-1/3 mb-2" /><div className="h-3 bg-muted rounded w-3/4" /></CardContent></Card>
+                        <Card key={i}>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <Skeleton className="h-4 w-2/4" />
+                            </CardHeader>
+                            <CardContent>
+                               <Skeleton className="h-7 w-1/3 mb-2" />
+                               <Skeleton className="h-3 w-3/4" />
+                            </CardContent>
+                        </Card>
                     ))}
                  </div>
             ) : stats ? (
@@ -197,5 +206,3 @@ export default function AdminDashboardPage() {
         </div>
     );
 }
-
-    

@@ -7,6 +7,7 @@ import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase
 import { collection } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { useEffect, useState, useMemo } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface OverallStats {
@@ -86,11 +87,11 @@ export function StatsCards({ platform }: { platform?: 'Instagram' | 'Facebook' }
             {[...Array(4)].map((_, i) => (
                  <Card key={i}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <div className="h-4 bg-muted rounded w-2/4" />
+                        <Skeleton className="h-4 w-2/4" />
                     </CardHeader>
                     <CardContent>
-                       <div className="h-7 bg-muted rounded w-1/3 mb-2" />
-                       <div className="h-3 bg-muted rounded w-3/4" />
+                       <Skeleton className="h-7 w-1/3 mb-2" />
+                       <Skeleton className="h-3 w-3/4" />
                     </CardContent>
                 </Card>
             ))}

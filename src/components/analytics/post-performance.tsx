@@ -1,135 +1,300 @@
-
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { StatsCards } from '@/components/analytics/stats-cards';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { Loader2, MessageSquare, ThumbsUp, Eye } from 'lucide-react';
-import type { SocialPost, SocialAccount } from '@/lib/types';
-import Image from 'next/image';
-import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
+import type { SocialAccount, ApiCredential } from '@/lib/types';
+import { Loader2, RefreshCw, PlusSquare } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableFooter,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { useState, useMemo } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { getAccountAnalytics } from '@/app/actions';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FollowerChart } from '@/components/analytics/follower-chart';
+import { EngagementChart } from '@/components/analytics/engagement-chart';
 
 
-export function PostPerformance() {
+function AccountPerformance() {
   const { firestore } = useFirebase();
   const { user } = useUser();
+  const { toast } = useToast();
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
-  // Fetch the 12 most recent posts from the new collection
-  const socialPostsQuery = useMemoFirebase(
-    () => {
-      if (!user) return null;
-      return query(collection(firestore, 'users', user.uid, 'socialPosts'), orderBy('timestamp', 'desc'), limit(12));
-    },
-    [firestore, user]
-  );
-  const { data: posts, isLoading } = useCollection<SocialPost>(socialPostsQuery);
-  
-  // Fetch accounts to join author data to posts
   const socialAccountsQuery = useMemoFirebase(
     () => {
       if (!user) return null;
-      return collection(firestore, 'users', user.uid, 'socialAccounts');
+      return query(collection(firestore, 'users', user.uid, 'socialAccounts'), orderBy('followers', 'desc'));
     },
     [firestore, user]
   );
-  const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
+  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
 
+  const totals = useMemo(() => {
+    if (!accounts) {
+        return { followers: 0, totalLikes: 0, totalComments: 0, totalViews: 0, postCount: 0 };
+    }
+    return accounts.reduce((acc, account) => {
+        acc.followers += account.followers || 0;
+        acc.totalLikes += account.totalLikes || 0;
+        acc.totalComments += account.totalComments || 0;
+        acc.totalViews += account.totalViews || 0;
+        acc.postCount += account.postCount || 0;
+        return acc;
+    }, { followers: 0, totalLikes: 0, totalComments: 0, totalViews: 0, postCount: 0 });
+  }, [accounts]);
 
-  // Join account data with posts
-  const postsWithAccountData = useMemo(() => {
-    if (!posts || !accounts) return posts;
-    const accountsMap = new Map(accounts.map(acc => [acc.id, acc]));
-    return posts.map(post => ({
-      ...post,
-      account: {
-        displayName: accountsMap.get(post.socialAccountId)?.displayName || 'Unknown',
-        avatar: accountsMap.get(post.socialAccountId)?.avatar
+  const handleRefreshAnalytics = async (account: SocialAccount) => {
+    if (!user || !firestore) return;
+    
+    const credsRef = collection(firestore, 'users', user.uid, 'apiCredentials');
+    const credsSnapshot = await getDocs(credsRef);
+    
+    if (credsSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Error', description: `API credentials not found. Please add them in Settings.` });
+        return;
+    }
+    
+    const apiCredential = credsSnapshot.docs[0].data() as ApiCredential;
+    const userAccessToken = apiCredential.accessToken;
+
+    if (!userAccessToken || !account.pageAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `A required access token is missing. Please try reconnecting your account in Settings.` });
+        return;
+    }
+
+    setRefreshingId(account.id);
+    try {
+        const newAnalytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            pageAccessToken: account.pageAccessToken,
+            userAccessToken: userAccessToken,
+        });
+
+        const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
+        
+        // Non-blocking write - UI will update automatically via useCollection hook
+        setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
+
+        toast({
+            title: 'Refresh Successful',
+            description: `Analytics for ${account.displayName} have been updated.`,
+        });
+
+    } catch (error: any) {
+        console.error('Failed to refresh analytics:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Refresh Failed',
+            description: error.message || 'Could not update account analytics.',
+        });
+    } finally {
+        setRefreshingId(null);
+    }
+  };
+  
+   const handleRefreshAllAnalytics = async () => {
+    if (!user || !firestore || !accounts) return;
+    
+    setIsRefreshingAll(true);
+    toast({
+      title: 'Starting Global Refresh',
+      description: 'Fetching the latest data for all your accounts.',
+    });
+    
+    const credsRef = collection(firestore, 'users', user.uid, 'apiCredentials');
+    const credsSnapshot = await getDocs(credsRef);
+    
+    if (credsSnapshot.empty) {
+        toast({ variant: 'destructive', title: 'Error', description: `API credentials not found.` });
+        setIsRefreshingAll(false);
+        return;
+    }
+    
+    const userAccessToken = (credsSnapshot.docs[0].data() as ApiCredential).accessToken;
+    if (!userAccessToken) {
+        toast({ variant: 'destructive', title: 'Error', description: `Your main access token is missing. Please reconnect.` });
+        setIsRefreshingAll(false);
+        return;
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const account of accounts) {
+      if (!account.pageAccessToken) {
+        failCount++;
+        continue;
       }
-    }));
-  }, [posts, accounts]);
+      try {
+        const newAnalytics = await getAccountAnalytics({
+            accountId: account.accountId,
+            platform: account.platform,
+            pageAccessToken: account.pageAccessToken,
+            userAccessToken: userAccessToken,
+        });
+        const accountDocRef = doc(firestore, 'users', user.uid, 'socialAccounts', account.id);
+        setDocumentNonBlocking(accountDocRef, newAnalytics, { merge: true });
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to refresh account ${account.displayName}:`, error);
+        failCount++;
+      }
+    }
+    
+    toast({
+      title: 'Global Refresh Complete',
+      description: `Successfully refreshed ${successCount} accounts. ${failCount} failed.`,
+    });
+    setIsRefreshingAll(false);
+  };
 
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Post Performance</CardTitle>
-        <CardDescription>
-          Detailed statistics for each of your recent posts.
-        </CardDescription>
+      <CardHeader className="flex flex-row items-start sm:items-center justify-between">
+         <div>
+            <CardTitle>Account Performance</CardTitle>
+            <CardDescription>A detailed overview of all your connected accounts.</CardDescription>
+        </div>
+         <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
+            {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <span className="hidden sm:inline ml-2">Refresh All</span>
+        </Button>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : postsWithAccountData && postsWithAccountData.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {postsWithAccountData.map((post) => (
-              <Card key={post.id} className="flex flex-col overflow-hidden">
-                <CardHeader className="flex-row gap-3 items-center p-4">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src={post.account?.avatar} alt={post.account?.displayName} />
-                        <AvatarFallback>{post.account?.displayName.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-grow">
-                        <CardTitle className="text-base">{post.account?.displayName}</CardTitle>
-                         <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
-                        </p>
-                    </div>
-                     <Badge variant={post.platform === 'Instagram' ? 'destructive' : 'default'} className="ml-auto bg-blue-500 shrink-0">
-                        {post.platform}
-                    </Badge>
-                </CardHeader>
-                <CardContent className="p-4 pt-0 space-y-4 flex-grow">
-                  {post.mediaUrl && (
-                     <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="block relative aspect-square w-full rounded-md overflow-hidden group">
-                        <Image
-                            src={post.mediaUrl}
-                            alt="Post media"
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                            className="object-cover transition-transform group-hover:scale-105"
-                        />
-                     </a>
-                  )}
-                  <p className="text-sm text-muted-foreground line-clamp-3 flex-grow">
-                    {post.content || 'No caption'}
-                  </p>
-                </CardContent>
-                <div className="p-4 border-t flex justify-around items-center text-xs text-muted-foreground font-semibold">
-                  <div className="flex items-center gap-1.5">
-                    <ThumbsUp className="h-4 w-4 text-blue-500" />
-                    <span>{post.likes.toLocaleString()}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <MessageSquare className="h-4 w-4 text-green-500" />
-                    <span>{post.comments.toLocaleString()}</span>
-                  </div>
-                  {post.views > 0 && (
-                     <div className="flex items-center gap-1.5">
-                        <Eye className="h-4 w-4 text-purple-500" />
-                        <span>{post.views.toLocaleString()}</span>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            ))}
-          </div>
+            <div className="flex justify-center items-center h-48">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
         ) : (
-          <div className="text-center py-20">
-            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No Posts Found</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Connect an account or create a new post to see its performance here.
-            </p>
-          </div>
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account</TableHead>
+                    <TableHead>Platform</TableHead>
+                    <TableHead className="text-right">Followers</TableHead>
+                    <TableHead className="text-right">Likes</TableHead>
+                    <TableHead className="text-right">Comments</TableHead>
+                    <TableHead className="text-right">Views</TableHead>
+                    <TableHead className="text-right">Posts</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accounts && accounts.length > 0 ? (
+                    accounts.map((account) => (
+                      <TableRow key={account.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-9 w-9">
+                              <AvatarImage src={account.avatar} alt={account.displayName} />
+                              <AvatarFallback>
+                                {account.displayName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{account.displayName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500">
+                            {account.platform}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">{(account.followers || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalLikes || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalComments || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.totalViews || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-semibold">{(account.postCount || 0).toLocaleString()}</TableCell>
+                        <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                                <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll}>
+                                    {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                </Button>
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/create-post?accountId=${account.id}`}>
+                                        <PlusSquare className="h-4 w-4" />
+                                    </Link>
+                                </Button>
+                            </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="h-24 text-center">
+                        No accounts have been connected yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+                 <TableFooter>
+                    <TableRow>
+                        <TableCell colSpan={2} className="font-bold">Total</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.followers).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalLikes).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalComments).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.totalViews).toLocaleString()}</TableCell>
+                        <TableCell className="text-right font-bold">{(totals.postCount).toLocaleString()}</TableCell>
+                        <TableCell></TableCell>
+                    </TableRow>
+                </TableFooter>
+              </Table>
+            </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
+const PlatformAnalytics = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => (
+    <div className="space-y-6">
+        <StatsCards platform={platform} />
+        <div className="grid gap-6 md:grid-cols-2">
+            <FollowerChart platform={platform} />
+            <EngagementChart platform={platform} />
+        </div>
+        <AccountPerformance />
+    </div>
+);
+
+export default function AnalyticsPage() {
+  return (
+    <div className="space-y-8">
+        <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
+            <p className="text-muted-foreground">
+            A summary of your performance across all connected social media accounts.
+            </p>
+        </div>
+
+        <Tabs defaultValue="instagram">
+            <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="instagram">Instagram</TabsTrigger>
+            <TabsTrigger value="facebook">Facebook</TabsTrigger>
+            </TabsList>
+            <TabsContent value="instagram" className="mt-6">
+                <PlatformAnalytics platform="Instagram" />
+            </TabsContent>
+            <TabsContent value="facebook" className="mt-6">
+                <PlatformAnalytics platform="Facebook" />
+            </TabsContent>
+        </Tabs>
+    </div>
+  );
+}

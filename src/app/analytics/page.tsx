@@ -4,7 +4,7 @@
 import { StatsCards } from '@/components/analytics/stats-cards';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2, RefreshCw, PlusSquare } from 'lucide-react';
@@ -26,7 +26,6 @@ import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FollowerChart } from '@/components/analytics/follower-chart';
 import { EngagementChart } from '@/components/analytics/engagement-chart';
-import { PostPerformance } from '@/components/analytics/post-performance';
 
 
 function AccountPerformance() {
@@ -271,7 +270,6 @@ const PlatformAnalytics = ({ platform }: { platform: 'Instagram' | 'Facebook' })
             <FollowerChart platform={platform} />
             <EngagementChart platform={platform} />
         </div>
-        <PostPerformance />
         <AccountPerformance />
     </div>
 );
@@ -301,3 +299,5 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+    

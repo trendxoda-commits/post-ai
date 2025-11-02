@@ -41,10 +41,6 @@ import {
     type ValidateTokenInput,
     type ValidateTokenOutput,
 } from '@/ai/flows/validate-token';
-import {
-  triggerBulkPostProcessing,
-  type BulkPostProcessorInput,
-} from '@/ai/flows/bulk-post-processor';
 
 
 // --- Instagram Auth ---
@@ -72,22 +68,7 @@ export async function validateToken(input: ValidateTokenInput): Promise<Validate
 }
 
 
-// --- Social Media Posting (Fire and Forget) ---
-
-// This is a new server action that triggers the background flow
-// and returns immediately, not waiting for the posts to complete.
-export async function triggerBulkPost(input: BulkPostProcessorInput): Promise<{ success: boolean; message: string }> {
-  try {
-    await triggerBulkPostProcessing(input);
-    return { success: true, message: 'Bulk post job started successfully.' };
-  } catch (error: any) {
-    console.error('Error triggering bulk post flow:', error);
-    return { success: false, message: 'Failed to start bulk post job.' };
-  }
-}
-
-// The individual post flows are now for internal use by the processor
-// but can remain exported if needed elsewhere.
+// --- Social Media Posting (Direct) ---
 export async function postToInstagram(input: PostToInstagramInput) {
   return postToInstagramFlow(input);
 }

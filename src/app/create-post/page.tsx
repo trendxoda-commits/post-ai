@@ -13,7 +13,7 @@ import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { triggerBulkPost } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -69,14 +69,6 @@ export default function CreatePostPage() {
     }
   }, [mediaUrl]);
 
-
-  const resetForm = () => {
-    setContent('');
-    setMediaUrl('');
-    setMediaType('IMAGE');
-    setSelectedAccountIds([]);
-  };
-
   const handlePostNow = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
@@ -89,55 +81,72 @@ export default function CreatePostPage() {
     if (!user || !accounts) return;
     
     setIsPosting(true);
-
-    // Prepare the jobs for the background processor
-    const jobs = accounts
-      .filter(acc => selectedAccountIds.includes(acc.id))
-      .map(account => {
-        if (!account.pageAccessToken) {
-          console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
-          return null;
-        }
-        return {
-          platform: account.platform,
-          accountId: account.accountId,
-          pageAccessToken: account.pageAccessToken,
-          mediaUrl: mediaUrl,
-          mediaType: mediaType,
-          caption: content,
-        };
-      })
-      .filter(job => job !== null); // Filter out accounts with missing tokens
-
-      if (jobs.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'No Valid Accounts',
-            description: 'None of the selected accounts had the required access tokens to post.',
-        });
-        setIsPosting(false);
-        return;
-      }
     
-    try {
-        // "Fire-and-forget" call to the server action
-        await triggerBulkPost({ jobs: jobs as any[] });
+    const accountsToPost = accounts.filter(acc => selectedAccountIds.includes(acc.id));
 
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const account of accountsToPost) {
+        if (!account.pageAccessToken) {
+            console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
+            toast({
+                variant: 'destructive',
+                title: `Post Failed: ${account.displayName}`,
+                description: 'Required Page Access Token is missing.',
+            });
+            errorCount++;
+            continue;
+        }
+
+        try {
+            if (account.platform === 'Facebook') {
+                await postToFacebook({
+                    facebookPageId: account.accountId,
+                    mediaUrl: mediaUrl,
+                    mediaType: mediaType,
+                    caption: content,
+                    pageAccessToken: account.pageAccessToken,
+                });
+            } else if (account.platform === 'Instagram') {
+                await postToInstagram({
+                    instagramUserId: account.accountId,
+                    mediaUrl: mediaUrl,
+                    mediaType: mediaType,
+                    caption: content,
+                    pageAccessToken: account.pageAccessToken,
+                });
+            }
+            successCount++;
+            toast({
+                title: 'Post Successful!',
+                description: `Content successfully posted to ${account.displayName}.`,
+            });
+        } catch (error: any) {
+            errorCount++;
+            console.error(`Failed to post to ${account.displayName}:`, error);
+            toast({
+                variant: 'destructive',
+                title: `Post Failed: ${account.displayName}`,
+                description: error.message || 'An unknown error occurred.',
+            });
+        }
+    }
+    
+    setIsPosting(false);
+
+    if (errorCount === 0) {
         toast({
-            title: 'Bulk Post Started',
-            description: `Posting to ${jobs.length} accounts in the background. You can safely leave this page.`,
+            title: 'All Posts Successful',
+            description: `Successfully posted to all ${successCount} selected accounts.`,
         });
-
-    } catch (error) {
-        console.error("Error triggering bulk post:", error);
-         toast({
+    } else {
+        toast({
             variant: 'destructive',
-            title: 'Failed to Start Posting',
-            description: 'Could not start the background posting job. Please try again.',
+            title: 'Bulk Post Complete with Errors',
+            description: `${successCount} posts succeeded, but ${errorCount} failed.`,
         });
     }
-
-    setIsPosting(false);
   };
   
 
@@ -254,7 +263,7 @@ export default function CreatePostPage() {
             </CardHeader>
             <CardFooter>
               <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting...</> : 'Post Now'}
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
               </Button>
             </CardFooter>
           </Card>

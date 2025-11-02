@@ -120,6 +120,8 @@ export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebo
             <BarChart
                 data={chartData}
                 margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                isAnimationActive={true}
+                animationDuration={500}
             >
                 <defs>
                   <linearGradient id="fillEngagement" x1="0" y1="0" x2="0" y2="1">
@@ -156,6 +158,8 @@ export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebo
                   dataKey="engagement"
                   fill="url(#fillEngagement)"
                   radius={[8, 8, 0, 0]}
+                  isAnimationActive={true}
+                  animationDuration={800}
                 />
             </BarChart>
             </ChartContainer>

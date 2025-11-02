@@ -26,6 +26,7 @@ import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FollowerChart } from '@/components/analytics/follower-chart';
 import { EngagementChart } from '@/components/analytics/engagement-chart';
+import { cn } from '@/lib/utils';
 
 
 function AccountPerformance() {
@@ -35,6 +36,7 @@ function AccountPerformance() {
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [mobileAccountIndex, setMobileAccountIndex] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right');
 
   const socialAccountsQuery = useMemoFirebase(
     () => {
@@ -164,6 +166,20 @@ function AccountPerformance() {
     setIsRefreshingAll(false);
   };
 
+  const handleNextAccount = () => {
+    if (accounts && mobileAccountIndex < accounts.length - 1) {
+        setSlideDirection('left');
+        setMobileAccountIndex(prev => prev + 1);
+    }
+  }
+
+  const handlePrevAccount = () => {
+      if (mobileAccountIndex > 0) {
+          setSlideDirection('right');
+          setMobileAccountIndex(prev => prev - 1);
+      }
+  }
+
   const currentMobileAccount = accounts ? accounts[mobileAccountIndex] : null;
 
   return (
@@ -201,8 +217,12 @@ function AccountPerformance() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {accounts.map((account) => (
-                      <TableRow key={account.id}>
+                    {accounts.map((account, index) => (
+                      <TableRow 
+                        key={account.id}
+                        className="animate-fade-in"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-9 w-9">
@@ -256,65 +276,74 @@ function AccountPerformance() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden">
-              {currentMobileAccount && (
-                 <div className="border rounded-lg p-4 space-y-4">
-                   <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={currentMobileAccount.avatar} alt={currentMobileAccount.displayName} />
-                        <AvatarFallback>
-                          {currentMobileAccount.displayName.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">{currentMobileAccount.displayName}</div>
-                        <Badge variant={currentMobileAccount.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500 whitespace-nowrap mt-1">
-                          {currentMobileAccount.platform}
-                        </Badge>
-                      </div>
+            <div className="md:hidden relative overflow-x-hidden h-64">
+              {accounts.map((account, index) => (
+                 <div
+                    key={account.id}
+                    className={cn("absolute w-full top-0 transition-transform duration-300 ease-in-out",
+                        index === mobileAccountIndex ? "transform-none" :
+                        index < mobileAccountIndex ? "-translate-x-full" : "translate-x-full"
+                    )}
+                 >
+                   <div className="border rounded-lg p-4 space-y-4">
+                       <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={account.avatar} alt={account.displayName} />
+                            <AvatarFallback>
+                              {account.displayName.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{account.displayName}</div>
+                            <Badge variant={account.platform === 'Instagram' ? 'destructive' : 'default'} className="bg-blue-500 whitespace-nowrap mt-1">
+                              {account.platform}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <p className="font-bold text-lg">{(account.followers || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Followers</p>
+                            </div>
+                             <div>
+                                <p className="font-bold text-lg">{(account.totalLikes || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Likes</p>
+                            </div>
+                             <div>
+                                <p className="font-bold text-lg">{(account.totalComments || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Comments</p>
+                            </div>
+                             <div>
+                                <p className="font-bold text-lg">{(account.totalViews || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Views</p>
+                            </div>
+                             <div>
+                                <p className="font-bold text-lg">{(account.postCount || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Posts</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                            <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(account)} disabled={refreshingId === account.id || isRefreshingAll} className="flex-1">
+                                {refreshingId === account.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                <span className="ml-2">Refresh</span>
+                            </Button>
+                            <Button variant="outline" size="sm" asChild className="flex-1">
+                                <Link href={`/create-post?accountId=${account.id}`}>
+                                    <PlusSquare className="h-4 w-4" />
+                                    <span className="ml-2">Post</span>
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
-                    
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                            <p className="font-bold text-lg">{(currentMobileAccount.followers || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Followers</p>
-                        </div>
-                         <div>
-                            <p className="font-bold text-lg">{(currentMobileAccount.totalLikes || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Likes</p>
-                        </div>
-                         <div>
-                            <p className="font-bold text-lg">{(currentMobileAccount.totalComments || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Comments</p>
-                        </div>
-                         <div>
-                            <p className="font-bold text-lg">{(currentMobileAccount.totalViews || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Views</p>
-                        </div>
-                         <div>
-                            <p className="font-bold text-lg">{(currentMobileAccount.postCount || 0).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Posts</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-center gap-2 pt-2">
-                        <Button variant="outline" size="sm" onClick={() => handleRefreshAnalytics(currentMobileAccount)} disabled={refreshingId === currentMobileAccount.id || isRefreshingAll} className="flex-1">
-                            {refreshingId === currentMobileAccount.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                            <span className="ml-2">Refresh</span>
-                        </Button>
-                        <Button variant="outline" size="sm" asChild className="flex-1">
-                            <Link href={`/create-post?accountId=${currentMobileAccount.id}`}>
-                                <PlusSquare className="h-4 w-4" />
-                                <span className="ml-2">Post</span>
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
-              )}
-               <div className="flex items-center justify-between mt-4">
+                 </div>
+              ))}
+              </div>
+               <div className="flex items-center justify-between mt-4 md:hidden">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setMobileAccountIndex(prev => Math.max(0, prev - 1))}
+                    onClick={handlePrevAccount}
                     disabled={mobileAccountIndex === 0}
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
@@ -326,14 +355,14 @@ function AccountPerformance() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setMobileAccountIndex(prev => Math.min(accounts.length - 1, prev + 1))}
+                    onClick={handleNextAccount}
                     disabled={mobileAccountIndex === accounts.length - 1}
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
-            </div>
+            
           </>
         ) : (
             <div className="text-center py-10">

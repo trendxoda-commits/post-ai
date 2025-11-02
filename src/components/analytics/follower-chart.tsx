@@ -110,6 +110,8 @@ export function FollowerChart({ platform }: { platform?: 'Instagram' | 'Facebook
               <LineChart
                 data={chartData}
                 margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                isAnimationActive={true}
+                animationDuration={500}
               >
                  <defs>
                   <linearGradient
@@ -156,9 +158,11 @@ export function FollowerChart({ platform }: { platform?: 'Instagram' | 'Facebook
                 <Line
                   dataKey="followers"
                   type="monotone"
-                  stroke="url(#fillFollowers)"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={3}
                   dot={false}
+                  isAnimationActive={true}
+                  animationDuration={800}
                   activeDot={{
                     r: 6,
                     style: { fill: "var(--color-followers)", opacity: 0.75 },

@@ -174,7 +174,7 @@ export default function InstagramCallbackPage() {
             }
         }
         
-        // 7. Trigger a CLIENT-SIDE sync of posts for the user
+        // 7. Trigger a CLIENT-SIDE sync of posts and comments for the user
         // This is a "fire-and-forget" call. We don't wait for it to finish.
         clientSideSyncUserPosts(firestore, user.uid, longLivedToken);
 

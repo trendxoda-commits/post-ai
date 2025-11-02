@@ -20,10 +20,11 @@ function CommentReply({ comment }: { comment: SocialComment }) {
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
     const { toast } = useToast();
+    const { firestore } = useFirebase();
 
     const socialAccountsQuery = useMemoFirebase(
-        () => comment.userId ? collection(useFirebase().firestore, 'users', comment.userId, 'socialAccounts') : null,
-        [comment.userId]
+        () => comment.userId ? collection(firestore, 'users', comment.userId, 'socialAccounts') : null,
+        [firestore, comment.userId]
     );
     const { data: accounts } = useCollection<SocialAccount>(socialAccountsQuery);
     
@@ -178,11 +179,11 @@ export default function InboxPage() {
                                         <div className="flex items-start gap-4">
                                             <Avatar className="h-9 w-9">
                                                 {/* Placeholder for commenter avatar */}
-                                                <AvatarFallback>{comment.from.name.charAt(0)}</AvatarFallback>
+                                                <AvatarFallback>{comment.from?.name?.charAt(0) || '?'}</AvatarFallback>
                                             </Avatar>
                                             <div className="grid w-full">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="font-semibold">{comment.from.name}</div>
+                                                    <div className="font-semibold">{comment.from?.name || 'Unknown User'}</div>
                                                     <div className="text-xs text-muted-foreground">
                                                         {formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}
                                                     </div>
@@ -203,7 +204,7 @@ export default function InboxPage() {
                             <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
                             <h3 className="mt-4 text-lg font-semibold">No Comments Yet</h3>
                             <p className="mt-2 text-sm text-muted-foreground">
-                                We haven't found any comments on your recent posts.
+                                We haven't found any comments on your recent posts. Try reconnecting your account.
                             </p>
                         </div>
                     )}

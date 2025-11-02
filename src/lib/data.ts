@@ -10,7 +10,7 @@ import {
 } from '@/ai/flows/social-media-actions';
 import { getFirestore as getAdminFirestore, WriteBatch } from 'firebase-admin/firestore';
 import { initializeApp, getApps, App } from 'firebase-admin/app';
-import { collection, query, where, getDocs, doc, writeBatch, Firestore, getFirestore } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch, Firestore } from 'firebase/firestore';
 import type { SocialAccount, SocialPost, SocialComment } from './types';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -198,7 +198,7 @@ async function syncCommentsToFirestoreClient(
 
         if (existingDocs.empty) {
             const newDocRef = doc(commentsRef);
-            batch.set(newDocRef, commentData);
+            batch.set(newDocRef, { ...commentData, id: newDocRef.id });
         } else {
             const docToUpdateRef = existingDocs.docs[0].ref;
             batch.update(docToUpdateRef, commentData);

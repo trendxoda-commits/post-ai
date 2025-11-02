@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
-import { Loader2, RefreshCw, PlusSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, RefreshCw, PlusSquare, ChevronLeft, ChevronRight, Users, ThumbsUp, MessageCircle, Eye, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -28,6 +28,17 @@ import { FollowerChart } from '@/components/analytics/follower-chart';
 import { EngagementChart } from '@/components/analytics/engagement-chart';
 import { cn } from '@/lib/utils';
 
+const TotalStatCard = ({ title, value, icon: Icon }: { title: string, value: string, icon: React.ElementType }) => (
+    <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            <Icon className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+            <div className="text-2xl font-bold">{value}</div>
+        </CardContent>
+    </Card>
+);
 
 function AccountPerformance() {
   const { firestore } = useFirebase();
@@ -176,13 +187,23 @@ function AccountPerformance() {
   const handlePrevAccount = () => {
       if (mobileAccountIndex > 0) {
           setSlideDirection('right');
-          setMobileAccountIndex(prev => prev - 1);
+          setMobileAccountIndex(prev => prev + 1);
       }
   }
 
   const currentMobileAccount = accounts ? accounts[mobileAccountIndex] : null;
 
   return (
+    <>
+    {accounts && accounts.length > 0 && (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
+          <TotalStatCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
+          <TotalStatCard title="Total Likes" value={totals.totalLikes.toLocaleString()} icon={ThumbsUp} />
+          <TotalStatCard title="Total Comments" value={totals.totalComments.toLocaleString()} icon={MessageCircle} />
+          <TotalStatCard title="Total Views" value={totals.totalViews.toLocaleString()} icon={Eye} />
+          <TotalStatCard title="Total Posts" value={totals.postCount.toLocaleString()} icon={FileText} />
+      </div>
+    )}
     <Card>
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
          <div>
@@ -374,6 +395,7 @@ function AccountPerformance() {
         )}
       </CardContent>
     </Card>
+    </>
   );
 }
 
@@ -413,3 +435,5 @@ export default function AnalyticsPage() {
     </div>
   );
 }
+
+    

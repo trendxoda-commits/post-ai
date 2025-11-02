@@ -51,32 +51,6 @@ export type SocialPost = {
 };
 
 
-export type SocialComment = {
-  id: string; // Firestore document ID
-  userId: string;
-  socialAccountId: string;
-  socialPostId: string; // The ID of the post this comment is on (our Firestore ID)
-  platform: 'Instagram' | 'Facebook';
-  commentId: string; // The original comment ID from the platform
-  from: {
-    id: string;
-    name: string;
-  };
-  text: string;
-  timestamp: string;
-  isHidden: boolean;
-  // For UI joins
-  post?: {
-    content?: string | null;
-    mediaUrl?: string;
-  },
-  account?: {
-    displayName: string;
-    avatar?: string;
-  }
-};
-
-
 export type AnalyticsData = {
   date: string;
   followers: number;

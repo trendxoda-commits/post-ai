@@ -23,18 +23,10 @@ import {
   getInstagramMedia as getInstagramMediaFlow,
   getFacebookPosts as getFacebookPostsFlow,
   getAccountAnalytics as getAccountAnalyticsFlow,
-  getInstagramComments as getInstagramCommentsFlow,
-  getFacebookComments as getFacebookCommentsFlow,
-  replyToInstagramComment as replyToInstagramCommentFlow,
-  replyToFacebookComment as replyToFacebookCommentFlow,
   type GetInstagramMediaOutput,
   type GetFacebookPostsOutput,
   type GetAccountAnalyticsInput,
   type AnalyticsOutput,
-  type GetCommentsInput,
-  type GetCommentsOutput,
-  type ReplyToCommentInput,
-  type ReplyToCommentOutput,
 } from '@/ai/flows/social-media-actions';
 import {
     validateToken as validateTokenFlow,
@@ -95,22 +87,4 @@ export async function getAccountAnalytics(
     input: GetAccountAnalyticsInput
 ): Promise<AnalyticsOutput> {
     return getAccountAnalyticsFlow(input);
-}
-
-
-// --- Unified Inbox Actions ---
-export async function getInstagramComments(input: GetCommentsInput): Promise<GetCommentsOutput> {
-    return getInstagramCommentsFlow(input);
-}
-
-export async function getFacebookComments(input: GetCommentsInput): Promise<GetCommentsOutput> {
-    return getFacebookCommentsFlow(input);
-}
-
-export async function replyToInstagramComment(input: ReplyToCommentInput): Promise<ReplyToCommentOutput> {
-    return replyToInstagramCommentFlow(input);
-}
-
-export async function replyToFacebookComment(input: ReplyToCommentInput): Promise<ReplyToCommentOutput> {
-    return replyToFacebookCommentFlow(input);
 }

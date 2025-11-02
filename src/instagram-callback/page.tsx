@@ -174,7 +174,7 @@ export default function InstagramCallbackPage() {
             }
         }
         
-        // 7. Trigger a CLIENT-SIDE sync of posts and comments for the user
+        // 7. Trigger a CLIENT-SIDE sync of posts for the user
         // This is a "fire-and-forget" call. We don't wait for it to finish.
         clientSideSyncUserPosts(firestore, user.uid, longLivedToken);
 
@@ -183,12 +183,12 @@ export default function InstagramCallbackPage() {
         if (newAccountsCount > 0) {
             toast({
               title: 'Connection Successful!',
-              description: `${newAccountsCount} new account(s) have been connected. Fetching recent posts and comments in the background.`,
+              description: `${newAccountsCount} new account(s) have been connected. Fetching recent posts in the background.`,
             });
         } else {
             toast({
               title: 'Accounts Updated',
-              description: 'Your existing accounts have been refreshed. Fetching recent posts and comments in the background.',
+              description: 'Your existing accounts have been refreshed. Fetching recent posts in the background.',
             });
         }
         

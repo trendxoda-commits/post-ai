@@ -210,25 +210,6 @@
         "timestamp"
       ]
     },
-    "SocialComment": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SocialComment",
-        "type": "object",
-        "description": "Represents a single comment on a social media post.",
-        "properties": {
-            "id": { "type": "string", "description": "Unique Firestore document ID." },
-            "userId": { "type": "string", "description": "Reference to the User who owns the account this comment belongs to." },
-            "socialAccountId": { "type": "string", "description": "Reference to the SocialAccount this comment belongs to." },
-            "socialPostId": { "type": "string", "description": "Reference to the SocialPost this comment is on." },
-            "platform": { "type": "string", "enum": ["Instagram", "Facebook"], "description": "The social media platform." },
-            "commentId": { "type": "string", "description": "The original comment ID from the social media platform." },
-            "from": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
-            "text": { "type": "string", "description": "The text content of the comment." },
-            "timestamp": { "type": "string", "format": "date-time", "description": "The original creation time of the comment." },
-            "isHidden": { "type": "boolean", "description": "Whether the comment is hidden." }
-        },
-        "required": ["id", "userId", "socialAccountId", "socialPostId", "platform", "commentId", "text", "timestamp"]
-    },
     "TrendingHashtag": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TrendingHashtag",
@@ -308,16 +289,6 @@
             "$ref": "#/backend/entities/SocialPost"
           },
           "description": "Stores fetched posts from a user's social accounts, including their analytics. Path-based ownership."
-        }
-      },
-       {
-        "path": "/users/{userId}/socialComments/{commentId}",
-        "definition": {
-          "entityName": "SocialComment",
-          "schema": {
-            "$ref": "#/backend/entities/SocialComment"
-          },
-          "description": "Stores comments from a user's social media posts for the unified inbox."
         }
       },
       {

@@ -98,13 +98,30 @@ const postToInstagramFlow = ai.defineFlow(
         
         const statusUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=status_code&access_token=${pageAccessToken}`;
         const statusResponse = await fetch(statusUrl);
+        
+        if (!statusResponse.ok) {
+             // If polling fails, it might be a temporary issue, but we should log it.
+             console.error(`Polling attempt ${pollingAttempts + 1} failed:`, await statusResponse.text());
+             pollingAttempts++;
+             continue; // Continue to the next attempt
+        }
+
         const statusData: any = await statusResponse.json();
         
         containerStatus = statusData.status_code;
         pollingAttempts++;
 
         if (containerStatus === 'ERROR') {
-             throw new Error('Media container processing failed on Instagram.');
+             // The container failed to process on Instagram's side.
+             // It's helpful to fetch the error details from the container status endpoint.
+             const errorDetailsUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=error_message&access_token=${pageAccessToken}`;
+             const errorDetailsResponse = await fetch(errorDetailsUrl);
+             let errorMessage = 'Media container processing failed on Instagram.';
+             if(errorDetailsResponse.ok) {
+                const errorDetailsData: any = await errorDetailsResponse.json();
+                errorMessage = errorDetailsData.error_message || errorMessage;
+             }
+             throw new Error(errorMessage);
         }
     }
 

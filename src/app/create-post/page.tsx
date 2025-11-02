@@ -163,7 +163,7 @@ export default function CreatePostPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                <DropdownMenuContent className="w-full md:w-auto">
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {accounts && accounts.length > 0 ? (

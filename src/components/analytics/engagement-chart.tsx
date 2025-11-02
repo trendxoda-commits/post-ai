@@ -35,7 +35,7 @@ const chartConfig = {
   },
 };
 
-export function EngagementChart() {
+export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebook' }) {
   const [chartData, setChartData] = useState<AnalyticsData[]>([]);
   const { firestore } = useFirebase();
   const { user } = useUser();
@@ -45,8 +45,15 @@ export function EngagementChart() {
     [firestore, user]
   );
   // Use real-time listener
-  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+  const { data: allAccounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
   
+  const accounts = useMemo(() => {
+    if (!allAccounts) return [];
+    if (platform) {
+      return allAccounts.filter(acc => acc.platform === platform);
+    }
+    return allAccounts;
+  }, [allAccounts, platform]);
 
   useEffect(() => {
     // Simulate historical data for the chart based on real-time data.
@@ -108,7 +115,7 @@ export function EngagementChart() {
             <div className="h-[250px] w-full flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-         ) : chartData.length > 0 ? (
+         ) : chartData.length > 0 && accounts.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
             <BarChart
                 data={chartData}
@@ -137,7 +144,7 @@ export function EngagementChart() {
             </ChartContainer>
         ) : (
             <div className="h-[250px] w-full flex items-center justify-center">
-                <p className="text-sm text-muted-foreground">No data to display.</p>
+                <p className="text-sm text-muted-foreground">No data to display. Connect an account.</p>
             </div>
         )}
       </CardContent>

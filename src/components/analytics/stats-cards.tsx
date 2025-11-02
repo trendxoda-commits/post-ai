@@ -16,7 +16,7 @@ interface OverallStats {
   totalAccounts: number;
 }
 
-export function StatsCards() {
+export function StatsCards({ platform }: { platform?: 'Instagram' | 'Facebook' }) {
   const { firestore } = useFirebase();
   const { user } = useUser();
   const [stats, setStats] = useState<OverallStats | null>(null);
@@ -26,7 +26,15 @@ export function StatsCards() {
     [firestore, user]
   );
   // Use the real-time hook
-  const { data: accounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+  const { data: allAccounts, isLoading } = useCollection<SocialAccount>(socialAccountsQuery);
+
+  const accounts = useMemo(() => {
+    if (!allAccounts) return [];
+    if (platform) {
+      return allAccounts.filter(acc => acc.platform === platform);
+    }
+    return allAccounts;
+  }, [allAccounts, platform]);
 
 
   useEffect(() => {
@@ -90,7 +98,7 @@ export function StatsCards() {
     );
   }
 
-  if (!stats) {
+  if (!stats || accounts.length === 0) {
     return (
          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>

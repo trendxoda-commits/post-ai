@@ -20,6 +20,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { subMonths, format } from 'date-fns';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface PlatformStats {
   name: string;
@@ -28,6 +29,7 @@ interface PlatformStats {
   comments: number;
   views: number;
   posts: number;
+  users: number; // Add users to track platform-specific user connections if needed
 }
 
 interface GrowthData {
@@ -47,12 +49,82 @@ const AdminStatsCard = ({ title, value, icon: Icon }: { title: string, value: st
     </Card>
 );
 
+const PlatformAnalytics = ({ accounts, totalUsers }: { accounts: SocialAccount[], totalUsers: number }) => {
+    
+    const totals = useMemo(() => {
+        let stats: Omit<PlatformStats, 'name' | 'users'> = { followers: 0, likes: 0, comments: 0, views: 0, posts: 0 };
+        accounts.forEach(account => {
+            stats.followers += account.followers || 0;
+            stats.likes += account.totalLikes || 0;
+            stats.comments += account.totalComments || 0;
+            stats.views += account.totalViews || 0;
+            stats.posts += account.postCount || 0;
+        });
+        return stats;
+    }, [accounts]);
+
+    const growthData = useMemo(() => {
+        const growth: GrowthData[] = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = subMonths(today, i);
+            const randomFactor = (1 - (Math.random() * 0.15 * (i / 6)));
+            const followers = Math.round(totals.followers * randomFactor * (1 - (i * 0.05)));
+            growth.push({
+                date: format(date, 'MMM'),
+                followers: Math.max(0, followers),
+            });
+        }
+        return growth;
+    }, [totals.followers]);
+
+
+     if (accounts.length === 0) {
+        return <p className="text-center text-muted-foreground py-10">No accounts connected for this platform yet.</p>;
+    }
+
+
+    return (
+        <div className="space-y-8">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <AdminStatsCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
+                <AdminStatsCard title="Total Likes" value={totals.likes.toLocaleString()} icon={ThumbsUp} />
+                <AdminStatsCard title="Total Comments" value={totals.comments.toLocaleString()} icon={MessageCircle} />
+                <AdminStatsCard title="Total Posts" value={totals.posts.toLocaleString()} icon={FileText} />
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Follower Growth</CardTitle>
+                    <CardDescription>Simulated growth of total followers over time for this platform.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={growthData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" />
+                            <YAxis yAxisId="left" />
+                            <Tooltip
+                                contentStyle={{
+                                    background: "hsl(var(--card))",
+                                    borderColor: "hsl(var(--border))",
+                                }}
+                            />
+                            <Legend />
+                            <Line yAxisId="left" type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} name="Total Followers" />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
 
 export default function AdminAnalyticsPage() {
     const { firestore } = useFirebase();
-    const [platformData, setPlatformData] = useState<PlatformStats[]>([]);
-    const [growthData, setGrowthData] = useState<GrowthData[]>([]);
-    const [totals, setTotals] = useState({ followers: 0, likes: 0, comments: 0, views: 0, posts: 0, users: 0 });
+    const [allAccounts, setAllAccounts] = useState<SocialAccount[]>([]);
+    const [totalUsers, setTotalUsers] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -62,60 +134,12 @@ export default function AdminAnalyticsPage() {
             setIsLoading(true);
             try {
                 const usersSnapshot = await getDocs(collection(firestore, 'users'));
+                setTotalUsers(usersSnapshot.size);
+
                 const accountsQuery = collectionGroup(firestore, 'socialAccounts');
                 const accountsSnapshot = await getDocs(accountsQuery);
-                const allAccounts = accountsSnapshot.docs.map(doc => doc.data() as SocialAccount);
-
-                const stats: Record<string, PlatformStats> = {
-                    'Instagram': { name: 'Instagram', followers: 0, likes: 0, comments: 0, views: 0, posts: 0 },
-                    'Facebook': { name: 'Facebook', followers: 0, likes: 0, comments: 0, views: 0, posts: 0 },
-                };
-                
-                let totalFollowers = 0;
-                let totalLikes = 0;
-                let totalComments = 0;
-                let totalViews = 0;
-                let totalPosts = 0;
-
-                allAccounts.forEach(account => {
-                    if (stats[account.platform]) {
-                        stats[account.platform].followers += account.followers || 0;
-                        stats[account.platform].likes += account.totalLikes || 0;
-                        stats[account.platform].comments += account.totalComments || 0;
-                        stats[account.platform].views += account.totalViews || 0;
-                        stats[account.platform].posts += account.postCount || 0;
-                        
-                        totalFollowers += account.followers || 0;
-                        totalLikes += account.totalLikes || 0;
-                        totalComments += account.totalComments || 0;
-                        totalViews += account.totalViews || 0;
-                        totalPosts += account.postCount || 0;
-                    }
-                });
-
-                setPlatformData(Object.values(stats));
-                setTotals({ 
-                    followers: totalFollowers, 
-                    likes: totalLikes, 
-                    comments: totalComments, 
-                    views: totalViews, 
-                    posts: totalPosts,
-                    users: usersSnapshot.size,
-                });
-
-                // Simulate historical growth data
-                const growth: GrowthData[] = [];
-                const today = new Date();
-                for (let i = 6; i >= 0; i--) {
-                    const date = subMonths(today, i);
-                    const randomFactor = (1 - (Math.random() * 0.15 * (i / 6)));
-                    const followers = Math.round(totalFollowers * randomFactor * (1 - (i * 0.05)));
-                    growth.push({
-                        date: format(date, 'MMM'),
-                        followers: Math.max(0, followers),
-                    });
-                }
-                setGrowthData(growth);
+                const fetchedAccounts = accountsSnapshot.docs.map(doc => doc.data() as SocialAccount);
+                setAllAccounts(fetchedAccounts);
 
             } catch (error) {
                 console.error("Failed to fetch admin analytics:", error);
@@ -126,6 +150,13 @@ export default function AdminAnalyticsPage() {
 
         fetchData();
     }, [firestore]);
+
+    const { instagramAccounts, facebookAccounts } = useMemo(() => {
+        return {
+            instagramAccounts: allAccounts.filter(a => a.platform === 'Instagram'),
+            facebookAccounts: allAccounts.filter(a => a.platform === 'Facebook'),
+        };
+    }, [allAccounts]);
 
 
     if (isLoading) {
@@ -138,69 +169,30 @@ export default function AdminAnalyticsPage() {
 
     return (
         <div className="space-y-8">
-            <h1 className="text-3xl font-bold font-headline">Platform Analytics</h1>
+            <div className="space-y-2">
+                <h1 className="text-3xl font-bold font-headline">Platform Analytics</h1>
+                <p className="text-muted-foreground">
+                  A high-level overview of platform performance across all users.
+                </p>
+            </div>
             
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <AdminStatsCard title="Total Users" value={totals.users.toLocaleString()} icon={Users} />
-                <AdminStatsCard title="Total Followers" value={totals.followers.toLocaleString()} icon={Users} />
-                <AdminStatsCard title="Total Likes" value={totals.likes.toLocaleString()} icon={ThumbsUp} />
-                <AdminStatsCard title="Total Comments" value={totals.comments.toLocaleString()} icon={MessageCircle} />
-                <AdminStatsCard title="Total Posts" value={totals.posts.toLocaleString()} icon={FileText} />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+                 <AdminStatsCard title="Total Users" value={totalUsers.toLocaleString()} icon={Users} />
+                 <AdminStatsCard title="Total Connected Accounts" value={allAccounts.length.toLocaleString()} icon={BarChart} />
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Platform Performance</CardTitle>
-                        <CardDescription>Comparison of key metrics between platforms.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <RechartsBarChart data={platformData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip
-                                    contentStyle={{
-                                        background: "hsl(var(--card))",
-                                        borderColor: "hsl(var(--border))",
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="followers" fill="hsl(var(--chart-1))" name="Followers" />
-                                <Bar dataKey="likes" fill="hsl(var(--chart-2))" name="Likes" />
-                                <Bar dataKey="comments" fill="hsl(var(--chart-3))" name="Comments" />
-                                <Bar dataKey="posts" fill="hsl(var(--chart-4))" name="Posts" />
-                            </RechartsBarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Total Follower Growth</CardTitle>
-                        <CardDescription>Simulated growth of total followers over time.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={growthData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis yAxisId="left" />
-                                <Tooltip
-                                    contentStyle={{
-                                        background: "hsl(var(--card))",
-                                        borderColor: "hsl(var(--border))",
-                                    }}
-                                />
-                                <Legend />
-                                <Line yAxisId="left" type="monotone" dataKey="followers" stroke="hsl(var(--primary))" strokeWidth={2} name="Total Followers" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </CardContent>
-                </Card>
-            </div>
-
+            
+            <Tabs defaultValue="instagram">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="instagram">Instagram</TabsTrigger>
+                    <TabsTrigger value="facebook">Facebook</TabsTrigger>
+                </TabsList>
+                <TabsContent value="instagram" className="mt-6">
+                   <PlatformAnalytics accounts={instagramAccounts} totalUsers={totalUsers} />
+                </TabsContent>
+                 <TabsContent value="facebook" className="mt-6">
+                    <PlatformAnalytics accounts={facebookAccounts} totalUsers={totalUsers} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

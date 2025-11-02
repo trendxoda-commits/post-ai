@@ -4,7 +4,7 @@
 import { StatsCards } from '@/components/analytics/stats-cards';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useFirebase, useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc, getDocs } from 'firebase/firestore';
 import type { SocialAccount, ApiCredential } from '@/lib/types';
 import { Loader2, RefreshCw, PlusSquare } from 'lucide-react';
@@ -23,6 +23,10 @@ import { useToast } from '@/hooks/use-toast';
 import { getAccountAnalytics } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FollowerChart } from '@/components/analytics/follower-chart';
+import { EngagementChart } from '@/components/analytics/engagement-chart';
+import { PostPerformance } from '@/components/analytics/post-performance';
 
 
 function AccountPerformance() {
@@ -167,7 +171,7 @@ function AccountPerformance() {
       <CardHeader className="flex flex-row items-start sm:items-center justify-between">
          <div>
             <CardTitle>Account Performance</CardTitle>
-            <CardDescription>A complete overview of your connected accounts.</CardDescription>
+            <CardDescription>A detailed overview of all your connected accounts.</CardDescription>
         </div>
          <Button variant="outline" onClick={handleRefreshAllAnalytics} disabled={isRefreshingAll || isLoading}>
             {isRefreshingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -260,17 +264,40 @@ function AccountPerformance() {
   );
 }
 
+const PlatformAnalytics = ({ platform }: { platform: 'Instagram' | 'Facebook' }) => (
+    <div className="space-y-6">
+        <StatsCards platform={platform} />
+        <div className="grid gap-6 md:grid-cols-2">
+            <FollowerChart platform={platform} />
+            <EngagementChart platform={platform} />
+        </div>
+        <PostPerformance />
+        <AccountPerformance />
+    </div>
+);
+
 export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
-        <p className="text-muted-foreground">
-          A summary of your performance across all connected social media accounts.
-        </p>
-      </div>
-      <StatsCards />
-      <AccountPerformance />
+        <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-headline">Analytics Overview</h1>
+            <p className="text-muted-foreground">
+            A summary of your performance across all connected social media accounts.
+            </p>
+        </div>
+
+        <Tabs defaultValue="instagram">
+            <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="instagram">Instagram</TabsTrigger>
+            <TabsTrigger value="facebook">Facebook</TabsTrigger>
+            </TabsList>
+            <TabsContent value="instagram" className="mt-6">
+                <PlatformAnalytics platform="Instagram" />
+            </TabsContent>
+            <TabsContent value="facebook" className="mt-6">
+                <PlatformAnalytics platform="Facebook" />
+            </TabsContent>
+        </Tabs>
     </div>
   );
 }

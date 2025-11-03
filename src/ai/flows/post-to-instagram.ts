@@ -139,11 +139,6 @@ const postToInstagramFlow = ai.defineFlow(
       access_token: pageAccessToken,
     });
     
-    // DECISIVE FIX 3: Also include media_type on the publish call for Reels
-    if (mediaType === 'VIDEO') {
-        publishParams.append('media_type', 'REELS');
-    }
-
     const publishResponse = await fetch(publishUrl, {
         method: 'POST',
         body: publishParams,

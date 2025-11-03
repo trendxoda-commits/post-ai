@@ -9,9 +9,8 @@ import {
   Link as LinkIcon,
   ChevronDown,
   CalendarIcon,
-  ClockIcon,
 } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase, useUser, addDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -20,7 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { postToFacebook, postToInstagram, schedulePost } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format, set } from 'date-fns';
@@ -153,7 +152,7 @@ export default function AdminCreatePostPage() {
   };
   
   const handleSchedulePost = async () => {
-    if (!scheduleDate || !user) return;
+    if (!scheduleDate || !user || !firestore) return;
 
     // Combine date and time
     const scheduledAt = set(scheduleDate, {
@@ -161,31 +160,47 @@ export default function AdminCreatePostPage() {
       minutes: parseInt(scheduleMinute),
     });
 
-    try {
-      await schedulePost({
-        userId: user.uid, // Note: In admin, maybe we want to associate with the account's user? For now, admin is the scheduler.
-        socialAccountIds: selectedAccountIds,
-        content: content,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        scheduledAt: scheduledAt.toISOString(),
-      });
+    const accountsToSchedule = allAccounts.filter(acc => selectedAccountIds.includes(acc.id));
+    
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const account of accountsToSchedule) {
+      const scheduledPostsRef = collection(firestore, 'users', account.user.id, 'scheduledPosts');
+      try {
+        await addDocumentNonBlocking(scheduledPostsRef, {
+          userId: account.user.id, 
+          socialAccountIds: [account.id], // Schedule one by one for clarity
+          content: content,
+          mediaUrl: mediaUrl,
+          mediaType: mediaType,
+          scheduledAt: scheduledAt.toISOString(),
+          status: 'scheduled',
+          createdAt: new Date().toISOString(),
+        });
+        successCount++;
+      } catch (error: any) {
+        errorCount++;
+        console.error('Failed to schedule post for account:', account.displayName, error);
+      }
+    }
+
+    if (errorCount === 0) {
       toast({
-        title: 'Post Scheduled!',
-        description: `Your post has been scheduled for ${format(scheduledAt, 'PPP p')}.`,
+        title: 'Posts Scheduled!',
+        description: `Your post has been scheduled for ${successCount} account(s) for ${format(scheduledAt, 'PPP p')}.`,
       });
       // Reset form
       setContent('');
       setMediaUrl('');
       setSelectedAccountIds([]);
       setScheduleDate(undefined);
-    } catch (error: any) {
-      console.error('Failed to schedule post:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Scheduling Failed',
-        description: error.message || 'An unknown error occurred.',
-      });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Partial Scheduling Failed',
+            description: `Could not schedule for ${errorCount} account(s). ${successCount} succeeded.`
+        })
     }
   }
 

@@ -9,17 +9,16 @@ import {
   Link as LinkIcon,
   ChevronDown,
   CalendarIcon,
-  ClockIcon,
 } from 'lucide-react';
-import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram, schedulePost } from '@/app/actions';
+import { postToFacebook, postToInstagram } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -103,22 +102,27 @@ export default function CreatePostPage() {
   };
   
   const handleSchedulePost = async () => {
-    if (!scheduleDate || !user) return;
+    if (!scheduleDate || !user || !firestore) return;
 
     const scheduledAt = set(scheduleDate, {
       hours: parseInt(scheduleHour),
       minutes: parseInt(scheduleMinute),
     });
 
+    const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
+
     try {
-      await schedulePost({
+      await addDocumentNonBlocking(scheduledPostsRef, {
         userId: user.uid,
         socialAccountIds: selectedAccountIds,
         content: content,
         mediaUrl: mediaUrl,
         mediaType: mediaType,
         scheduledAt: scheduledAt.toISOString(),
+        status: 'scheduled',
+        createdAt: new Date().toISOString(),
       });
+
       toast({
         title: 'Post Scheduled!',
         description: `Your post has been scheduled for ${format(scheduledAt, 'PPP p')}.`,
@@ -130,11 +134,7 @@ export default function CreatePostPage() {
       setScheduleDate(undefined);
     } catch (error: any) {
       console.error('Failed to schedule post:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Scheduling Failed',
-        description: error.message || 'An unknown error occurred.',
-      });
+      // The non-blocking function will emit a global error, which the listener will catch
     }
   }
 

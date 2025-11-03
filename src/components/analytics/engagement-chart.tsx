@@ -82,10 +82,19 @@ export function EngagementChart({ platform }: { platform?: 'Instagram' | 'Facebo
 
       const data: AnalyticsData[] = [];
       const today = new Date();
-      for (let i = 6; i >= 0; i--) {
+      // Use a consistent seed for the random-like variation
+      let pseudoRandom = 0.9; 
+      const months = 6;
+
+      for (let i = months; i >= 0; i--) {
           const date = subMonths(today, i);
-          const randomFactor = (1 - (Math.random() * 0.4 * (i / 6)));
-          const simulatedRate = currentEngagementRate * randomFactor;
+          // Create a gentle, more logical variation
+          pseudoRandom = (pseudoRandom * 100 + 5) % 100 / 100; // a simple pseudo-random generator
+          const variation = 1 - (pseudoRandom * 0.15); // Fluctuate by max 15%
+          
+          // Create a base rate that slightly increases over time to show growth
+          const baseRate = currentEngagementRate * (1 - (i / months) * 0.2); // Older data is slightly lower
+          const simulatedRate = baseRate * variation;
           
           data.push({
             date: format(date, 'MMM'),

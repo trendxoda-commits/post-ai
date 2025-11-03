@@ -68,14 +68,19 @@ export function FollowerChart({ platform }: { platform?: 'Instagram' | 'Facebook
         totalFollowers += account.followers || 0;
       });
 
-      // Simulate historical data based on current followers from real-time data
+      // Simulate historical data with a consistent growth trend.
       const data: AnalyticsData[] = [];
       const today = new Date();
-      for (let i = 6; i >= 0; i--) {
+      const months = 6;
+      // Start from a lower base, e.g., 70% of the current total.
+      const baseFollowers = totalFollowers * 0.7; 
+      // Calculate a steady monthly growth to reach the current total.
+      const monthlyGrowth = (totalFollowers - baseFollowers) / months;
+
+      for (let i = months; i >= 0; i--) {
         const date = subMonths(today, i);
-        // Simulate a growth factor, less growth for older months
-        const randomFactor = (1 - (Math.random() * 0.15 * (i / 6))); 
-        const followers = Math.round(totalFollowers * randomFactor * (1 - (i * 0.05)));
+        // Calculate followers for the month, ensuring a steady increase.
+        const followers = Math.round(baseFollowers + (monthlyGrowth * (months - i)));
         
         data.push({
           date: format(date, 'MMM'),

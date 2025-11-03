@@ -53,7 +53,7 @@ const scheduleInstagramPostFlow = ai.defineFlow(
     // Step 1: Create a container for the media. This is the same for scheduled posts.
     const containerUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media`;
     
-    const containerParams = new URLSearchParams({ access_token: pageAccessToken });
+    const containerParams = new URLSearchParams();
 
     if (mediaType === 'VIDEO') {
         containerParams.append('media_type', 'REELS');
@@ -65,7 +65,7 @@ const scheduleInstagramPostFlow = ai.defineFlow(
         containerParams.append('caption', caption);
     }
 
-    const containerResponse = await fetch(containerUrl, {
+    const containerResponse = await fetch(`${containerUrl}?access_token=${pageAccessToken}`, {
       method: 'POST',
       body: containerParams,
     });
@@ -109,12 +109,11 @@ const scheduleInstagramPostFlow = ai.defineFlow(
     const publishUrl = `${INSTAGRAM_GRAPH_API_URL}/${instagramUserId}/media_publish`;
     const publishParams = new URLSearchParams({
       creation_id: creationId,
-      access_token: pageAccessToken,
       // The key difference for scheduling is adding this parameter
       scheduled_publish_time: scheduledPublishTime.toString(),
     });
     
-    const publishResponse = await fetch(publishUrl, {
+    const publishResponse = await fetch(`${publishUrl}?access_token=${pageAccessToken}`, {
         method: 'POST',
         body: publishParams,
     });

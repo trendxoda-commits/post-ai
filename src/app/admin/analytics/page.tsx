@@ -66,10 +66,14 @@ const PlatformAnalytics = ({ accounts, totalUsers }: { accounts: SocialAccount[]
     const growthData = useMemo(() => {
         const growth: GrowthData[] = [];
         const today = new Date();
+        const baseFollowers = totals.followers * 0.7; // Start from 70% of current total
+        const monthlyGrowth = (totals.followers * 0.3) / 6; // Distribute the remaining 30% over 6 months
+
         for (let i = 6; i >= 0; i--) {
             const date = subMonths(today, i);
-            const randomFactor = (1 - (Math.random() * 0.15 * (i / 6)));
-            const followers = Math.round(totals.followers * randomFactor * (1 - (i * 0.05)));
+            // This logic ensures a steady, logical growth progression
+            const followers = Math.round(baseFollowers + (monthlyGrowth * (6 - i)));
+            
             growth.push({
                 date: format(date, 'MMM'),
                 followers: Math.max(0, followers),

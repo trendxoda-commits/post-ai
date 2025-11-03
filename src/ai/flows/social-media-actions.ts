@@ -166,9 +166,9 @@ const getInstagramMediaFlow = ai.defineFlow(
     const data: any = await response.json();
     
     const processedMediaPromises = (data.data || []).map(async (item: any) => {
-        let views = 0;
-        let likes = 0;
-        let comments = 0;
+        let views = item.video_views || 0;
+        let likes = item.like_count || 0;
+        let comments = item.comments_count || 0;
         
         try {
             const insightMetrics = 'reach,likes,comments,saved,shares';
@@ -178,12 +178,19 @@ const getInstagramMediaFlow = ai.defineFlow(
             
             if (insightsResponse.ok) {
                 const insightsData: any = await insightsResponse.json();
-                const insightsMap = new Map(insightsData.data.map((insight: any) => [insight.name, insight.values[0]?.value || 0]));
+                const insightsMap = new Map(insightsData.data.map((insight: any) => [insight.name, insight.values[0]?.value]));
                 
                 // Use 'reach' as the definitive view count.
-                views = insightsMap.get('reach') || 0;
-                likes = insightsMap.get('likes') || 0;
-                comments = insightsMap.get('comments') || 0;
+                // IMPORTANT FIX: Only update if the value is a valid number, otherwise keep the old value.
+                if (typeof insightsMap.get('reach') === 'number') {
+                    views = insightsMap.get('reach');
+                }
+                 if (typeof insightsMap.get('likes') === 'number') {
+                    likes = insightsMap.get('likes');
+                }
+                 if (typeof insightsMap.get('comments') === 'number') {
+                    comments = insightsMap.get('comments');
+                }
 
             } else {
                 console.warn(`Could not fetch insights for media ${item.id}:`, await insightsResponse.text());

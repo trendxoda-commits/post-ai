@@ -33,7 +33,8 @@ async function handleInstagramError(response: Response, context: string): Promis
     try {
         const errorData: any = await response.json();
         console.error(`${context} (JSON response):`, errorData);
-        errorDetails = errorData.error?.message || JSON.stringify(errorData);
+        // Attempt to find the most specific error message
+        errorDetails = errorData.error?.error_user_title || errorData.error?.message || JSON.stringify(errorData);
     } catch (e) {
         const errorText = await response.text();
         console.error(`${context} (text response):`, errorText);
@@ -61,7 +62,6 @@ const postToInstagramFlow = ai.defineFlow(
         access_token: pageAccessToken,
     });
 
-    // DECISIVE FIX: Correctly set media_type for videos at the container creation step.
     if (mediaType === 'VIDEO') {
         containerParams.append('media_type', 'REELS');
         containerParams.append('video_url', mediaUrl);
@@ -101,10 +101,9 @@ const postToInstagramFlow = ai.defineFlow(
         const statusResponse = await fetch(statusUrl);
         
         if (!statusResponse.ok) {
-             // If polling fails, it might be a temporary issue, but we should log it.
              console.error(`Polling attempt ${pollingAttempts + 1} failed:`, await statusResponse.text());
              pollingAttempts++;
-             continue; // Continue to the next attempt
+             continue; 
         }
 
         const statusData: any = await statusResponse.json();
@@ -113,8 +112,6 @@ const postToInstagramFlow = ai.defineFlow(
         pollingAttempts++;
 
         if (containerStatus === 'ERROR') {
-             // The container failed to process on Instagram's side.
-             // It's helpful to fetch the error details from the container status endpoint.
              const errorDetailsUrl = `${INSTAGRAM_GRAPH_API_URL}/${creationId}?fields=error_message&access_token=${pageAccessToken}`;
              let errorMessage = 'Media container processing failed on Instagram.';
              try {
@@ -142,6 +139,11 @@ const postToInstagramFlow = ai.defineFlow(
       access_token: pageAccessToken,
     });
     
+    // DECISIVE FIX 3: Also include media_type on the publish call for Reels
+    if (mediaType === 'VIDEO') {
+        publishParams.append('media_type', 'REELS');
+    }
+
     const publishResponse = await fetch(publishUrl, {
         method: 'POST',
         body: publishParams,
@@ -164,6 +166,5 @@ const postToInstagramFlow = ai.defineFlow(
 
 
 export async function postToInstagram(input: PostToInstagramInput): Promise<PostToInstagramOutput> {
-    // This is a wrapper function to call the Genkit flow.
     return postToInstagramFlow(input);
 }

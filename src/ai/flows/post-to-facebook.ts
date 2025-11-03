@@ -35,28 +35,27 @@ const postToFacebookFlow = ai.defineFlow(
   async ({ facebookPageId, mediaUrl, mediaType, caption, pageAccessToken }) => {
     
     let endpoint: string;
-    const params = new URLSearchParams({
-        access_token: pageAccessToken,
-    });
+    const bodyParams = new URLSearchParams();
 
     if (mediaType === 'VIDEO') {
         endpoint = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/videos`;
-        params.append('file_url', mediaUrl);
+        bodyParams.append('file_url', mediaUrl);
         if (caption) {
-            params.append('description', caption);
+            bodyParams.append('description', caption);
         }
     } else { // IMAGE
         endpoint = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
-        params.append('url', mediaUrl);
+        bodyParams.append('url', mediaUrl);
         if (caption) {
-            params.append('caption', caption);
+            bodyParams.append('caption', caption);
         }
     }
     
-    const postUrl = `${endpoint}?${params.toString()}`;
+    const postUrl = `${endpoint}?access_token=${pageAccessToken}`;
 
     const response = await fetch(postUrl, {
         method: 'POST',
+        body: bodyParams,
     });
 
     if (!response.ok) {

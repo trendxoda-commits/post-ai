@@ -65,14 +65,12 @@ const postToInstagramFlow = ai.defineFlow(
     if (mediaType === 'VIDEO') {
         containerParams.append('media_type', 'REELS');
         containerParams.append('video_url', mediaUrl);
-        if (caption) {
-            containerParams.append('caption', caption);
-        }
     } else { // IMAGE
         containerParams.append('image_url', mediaUrl);
-        if (caption) {
-            containerParams.append('caption', caption);
-        }
+    }
+
+    if (caption) {
+        containerParams.append('caption', caption);
     }
 
     const containerResponse = await fetch(containerUrl, {

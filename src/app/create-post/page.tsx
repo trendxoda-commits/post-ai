@@ -10,15 +10,15 @@ import {
   ChevronDown,
   CalendarIcon,
 } from 'lucide-react';
-import { useFirebase, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
+import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { postToFacebook, postToInstagram, scheduleFacebookPost, scheduleInstagramPost } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { collection, doc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -88,126 +88,98 @@ export default function CreatePostPage() {
       });
       return;
     }
-    if (!user) return;
+    if (!user || !accounts) return;
 
     setIsPosting(true);
 
-    if (isScheduling) {
-      await handleSchedulePost();
-    } else {
-      await handlePostNow();
-    }
-    
-    setIsPosting(false);
-  };
-  
-  const handleSchedulePost = async () => {
-    if (!scheduleDate || !user || !firestore) return;
-
-    const scheduledAt = set(scheduleDate, {
-      hours: parseInt(scheduleHour),
-      minutes: parseInt(scheduleMinute),
-    });
-
-    const scheduledPostsRef = collection(firestore, 'users', user.uid, 'scheduledPosts');
-
-    try {
-      await addDocumentNonBlocking(scheduledPostsRef, {
-        userId: user.uid,
-        socialAccountIds: selectedAccountIds,
-        content: content,
-        mediaUrl: mediaUrl,
-        mediaType: mediaType,
-        scheduledAt: scheduledAt.toISOString(),
-        status: 'scheduled',
-        createdAt: new Date().toISOString(),
-      });
-
-      toast({
-        title: 'Post Scheduled!',
-        description: `Your post has been scheduled for ${format(scheduledAt, 'PPP p')}.`,
-      });
-      // Reset form
-      setContent('');
-      setMediaUrl('');
-      setSelectedAccountIds([]);
-      setScheduleDate(undefined);
-    } catch (error: any) {
-      console.error('Failed to schedule post:', error);
-      // The non-blocking function will emit a global error, which the listener will catch
-    }
-  }
-
-  const handlePostNow = async () => {
-    if (!user || !accounts) return;
-    
     const accountsToPost = accounts.filter(acc => selectedAccountIds.includes(acc.id));
-
     let successCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
+
+    const scheduleTimestamp = isScheduling
+      ? set(scheduleDate, {
+          hours: parseInt(scheduleHour),
+          minutes: parseInt(scheduleMinute),
+        }).getTime() / 1000 // Unix timestamp in seconds
+      : undefined;
 
     for (const account of accountsToPost) {
-        if (!account.pageAccessToken) {
-            console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
-            toast({
-                variant: 'destructive',
-                title: `Post Failed: ${account.displayName}`,
-                description: 'Required Page Access Token is missing.',
-            });
-            errorCount++;
-            continue;
-        }
+      if (!account.pageAccessToken) {
+        console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
+        errors.push(`Skipped ${account.displayName}: Missing token.`);
+        errorCount++;
+        continue;
+      }
 
-        try {
-            if (account.platform === 'Facebook') {
-                await postToFacebook({
-                    facebookPageId: account.accountId,
-                    mediaUrl: mediaUrl,
-                    mediaType: mediaType,
-                    caption: content,
-                    pageAccessToken: account.pageAccessToken,
-                });
-            } else if (account.platform === 'Instagram') {
-                await postToInstagram({
-                    instagramUserId: account.accountId,
-                    mediaUrl: mediaUrl,
-                    mediaType: mediaType,
-                    caption: content,
-                    pageAccessToken: account.pageAccessToken,
-                });
-            }
-            successCount++;
-            toast({
-                title: 'Post Successful!',
-                description: `Content successfully posted to ${account.displayName}.`,
+      try {
+        if (account.platform === 'Facebook') {
+          if (isScheduling && scheduleTimestamp) {
+            await scheduleFacebookPost({
+              facebookPageId: account.accountId,
+              mediaUrl,
+              mediaType,
+              caption: content,
+              pageAccessToken: account.pageAccessToken,
+              scheduledPublishTime: Math.floor(scheduleTimestamp),
             });
-        } catch (error: any) {
-            errorCount++;
-            console.error(`Failed to post to ${account.displayName}:`, error);
-            toast({
-                variant: 'destructive',
-                title: `Post Failed: ${account.displayName}`,
-                description: error.message || 'An unknown error occurred.',
+          } else {
+            await postToFacebook({
+              facebookPageId: account.accountId,
+              mediaUrl,
+              mediaType,
+              caption: content,
+              pageAccessToken: account.pageAccessToken,
             });
+          }
+        } else if (account.platform === 'Instagram') {
+          if (isScheduling && scheduleTimestamp) {
+            await scheduleInstagramPost({
+              instagramUserId: account.accountId,
+              mediaUrl,
+              mediaType,
+              caption: content,
+              pageAccessToken: account.pageAccessToken,
+              scheduledPublishTime: Math.floor(scheduleTimestamp),
+            });
+          } else {
+            await postToInstagram({
+              instagramUserId: account.accountId,
+              mediaUrl,
+              mediaType,
+              caption: content,
+              pageAccessToken: account.pageAccessToken,
+            });
+          }
         }
+        successCount++;
+      } catch (error: any) {
+        console.error(`Failed to post/schedule for ${account.displayName}:`, error);
+        errors.push(`${account.displayName}: ${error.message}`);
+        errorCount++;
+      }
     }
-    
+
+    // Consolidated Toast Logic
     if (errorCount === 0) {
         toast({
-            title: 'All Posts Successful',
-            description: `Successfully posted to all ${successCount} selected accounts.`,
+            title: isScheduling ? 'All Posts Scheduled!' : 'All Posts Successful!',
+            description: `Successfully ${isScheduling ? 'scheduled' : 'posted'} to ${successCount} account(s).`,
         });
         // Reset form on full success
         setContent('');
         setMediaUrl('');
         setSelectedAccountIds([]);
+        setScheduleDate(undefined);
     } else {
         toast({
             variant: 'destructive',
-            title: 'Bulk Post Complete with Errors',
-            description: `${successCount} posts succeeded, but ${errorCount} failed.`,
+            title: `Complete with ${errorCount} Error(s)`,
+            description: `Succeeded: ${successCount}. Failed: ${errorCount}. Check console for details.`,
         });
     }
+    
+    setIsPosting(false);
   };
   
 

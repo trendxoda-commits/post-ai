@@ -8,9 +8,8 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
-  CalendarIcon,
 } from 'lucide-react';
-import { useFirebase, useUser } from '@/firebase';
+import { useFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -19,12 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { scheduleFacebookPost, scheduleInstagramPost, postToFacebook, postToInstagram } from '@/app/actions';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { format, set } from 'date-fns';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { postToFacebook, postToInstagram } from '@/app/actions';
 
 // This interface will hold the merged account and user data
 interface FullAccountDetails extends SocialAccount {
@@ -56,9 +50,6 @@ export default function AdminCreatePostPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
-  const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
-  const [scheduleHour, setScheduleHour] = useState<string>('12');
-  const [scheduleMinute, setScheduleMinute] = useState<string>('00');
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -121,8 +112,6 @@ export default function AdminCreatePostPage() {
   }, [mediaUrl]);
   
   const groupedAccounts = useMemo(() => groupAccountsByPlatform(allAccounts), [allAccounts]);
-  
-  const isScheduling = !!scheduleDate;
 
   const handleSubmit = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
@@ -141,13 +130,6 @@ export default function AdminCreatePostPage() {
     let errorCount = 0;
     const errors: string[] = [];
 
-    const scheduleTimestamp = isScheduling
-      ? set(scheduleDate, {
-          hours: parseInt(scheduleHour),
-          minutes: parseInt(scheduleMinute),
-        }).getTime() / 1000 // Unix timestamp in seconds
-      : undefined;
-
     for (const account of accountsToPost) {
       if (!account.pageAccessToken) {
         console.error(`Skipping post for ${account.displayName}: Missing page access token.`);
@@ -158,16 +140,6 @@ export default function AdminCreatePostPage() {
 
       try {
         if (account.platform === 'Facebook') {
-          if (isScheduling && scheduleTimestamp) {
-            await scheduleFacebookPost({
-              facebookPageId: account.accountId,
-              mediaUrl,
-              mediaType,
-              caption: content,
-              pageAccessToken: account.pageAccessToken,
-              scheduledPublishTime: Math.floor(scheduleTimestamp),
-            });
-          } else {
             await postToFacebook({
               facebookPageId: account.accountId,
               mediaUrl,
@@ -175,18 +147,7 @@ export default function AdminCreatePostPage() {
               caption: content,
               pageAccessToken: account.pageAccessToken,
             });
-          }
         } else if (account.platform === 'Instagram') {
-          if (isScheduling && scheduleTimestamp) {
-            await scheduleInstagramPost({
-              instagramUserId: account.accountId,
-              mediaUrl,
-              mediaType,
-              caption: content,
-              pageAccessToken: account.pageAccessToken,
-              scheduledPublishTime: Math.floor(scheduleTimestamp),
-            });
-          } else {
             await postToInstagram({
               instagramUserId: account.accountId,
               mediaUrl,
@@ -194,11 +155,10 @@ export default function AdminCreatePostPage() {
               caption: content,
               pageAccessToken: account.pageAccessToken,
             });
-          }
         }
         successCount++;
       } catch (error: any) {
-        console.error(`Failed to post/schedule for ${account.displayName}:`, error);
+        console.error(`Failed to post for ${account.displayName}:`, error);
         errors.push(`${account.displayName}: ${error.message}`);
         errorCount++;
       }
@@ -207,14 +167,13 @@ export default function AdminCreatePostPage() {
     // Consolidated Toast Logic
     if (errorCount === 0) {
         toast({
-            title: isScheduling ? 'All Posts Scheduled!' : 'All Posts Successful!',
-            description: `Successfully ${isScheduling ? 'scheduled' : 'posted'} to ${successCount} account(s).`,
+            title: 'All Posts Successful!',
+            description: `Successfully posted to ${successCount} account(s).`,
         });
         // Reset form on full success
         setContent('');
         setMediaUrl('');
         setSelectedAccountIds([]);
-        setScheduleDate(undefined);
     } else {
         toast({
             variant: 'destructive',
@@ -335,57 +294,6 @@ export default function AdminCreatePostPage() {
                       <Input id="media-url" placeholder="Add a public media URL (e.g., .../image.jpg or .../video.mp4)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10" />
                   </div>
                 </div>
-
-                {isScheduling && (
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                    <div className="space-y-2">
-                      <Label>Date</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal">
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {scheduleDate ? format(scheduleDate, 'PPP') : <span>Pick a date</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={scheduleDate}
-                            onSelect={setScheduleDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Time</Label>
-                      <div className="flex gap-2">
-                        <Select value={scheduleHour} onValueChange={setScheduleHour}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Hour" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
-                              <SelectItem key={hour} value={hour}>{hour}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Minute" />
-                          </SelectTrigger>
-                          <SelectContent>
-                             {['00', '15', '30', '45'].map(min => (
-                              <SelectItem key={min} value={min}>{min}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row gap-2">
                  <Button
@@ -395,18 +303,10 @@ export default function AdminCreatePostPage() {
                     disabled={isPosting}
                   >
                     {isPosting ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isScheduling ? 'Scheduling...' : 'Posting...'}</>
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</>
                     ) : (
-                      isScheduling ? `Schedule for ${selectedAccountIds.length} Account(s)` : `Post to ${selectedAccountIds.length} Account(s)`
+                      `Post to ${selectedAccountIds.length} Account(s)`
                     )}
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setScheduleDate(isScheduling ? undefined : new Date())}
-                >
-                   {isScheduling ? 'Cancel Schedule' : 'Schedule for Later'}
                 </Button>
               </CardFooter>
             </Card>

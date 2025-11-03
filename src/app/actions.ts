@@ -33,14 +33,6 @@ import {
     type ValidateTokenInput,
     type ValidateTokenOutput,
 } from '@/ai/flows/validate-token';
-import {
-  scheduleInstagramPost as scheduleInstagramPostFlow,
-  type ScheduleInstagramPostInput,
-} from '@/ai/flows/schedule-instagram-post';
-import {
-  scheduleFacebookPost as scheduleFacebookPostFlow,
-  type ScheduleFacebookPostInput,
-} from '@/ai/flows/schedule-facebook-post';
 
 
 // --- Instagram Auth ---
@@ -76,16 +68,6 @@ export async function postToInstagram(input: PostToInstagramInput) {
 export async function postToFacebook(input: PostToFacebookInput) {
   return postToFacebookFlow(input);
 }
-
-// --- Social Media Scheduling ---
-export async function scheduleInstagramPost(input: ScheduleInstagramPostInput) {
-  return scheduleInstagramPostFlow(input);
-}
-
-export async function scheduleFacebookPost(input: ScheduleFacebookPostInput) {
-  return scheduleFacebookPostFlow(input);
-}
-
 
 // --- Social Media Data Fetching ---
 export async function fetchInstagramMedia(

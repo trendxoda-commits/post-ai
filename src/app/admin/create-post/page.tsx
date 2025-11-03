@@ -8,8 +8,10 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
+  CalendarIcon,
+  ClockIcon,
 } from 'lucide-react';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount, User } from '@/lib/types';
 import { Input } from '@/components/ui/input';
@@ -18,7 +20,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Label } from '@/components/ui/label';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { postToFacebook, postToInstagram, schedulePost } from '@/app/actions';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, set } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 // This interface will hold the merged account and user data
@@ -51,9 +57,13 @@ export default function AdminCreatePostPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true);
   const [allAccounts, setAllAccounts] = useState<FullAccountDetails[]>([]);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
+  const [scheduleHour, setScheduleHour] = useState<string>('12');
+  const [scheduleMinute, setScheduleMinute] = useState<string>('00');
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
+  const { user } = useUser();
 
   // Fetch all accounts for selection
   useEffect(() => {
@@ -113,8 +123,10 @@ export default function AdminCreatePostPage() {
   }, [mediaUrl]);
   
   const groupedAccounts = useMemo(() => groupAccountsByPlatform(allAccounts), [allAccounts]);
+  
+  const isScheduling = !!scheduleDate;
 
-  const handlePostNow = async () => {
+  const handleSubmit = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: 'destructive',
@@ -123,9 +135,62 @@ export default function AdminCreatePostPage() {
       });
       return;
     }
-    
+
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in.' });
+        return;
+    }
+
     setIsPosting(true);
-    
+
+    if (isScheduling) {
+      await handleSchedulePost();
+    } else {
+      await handlePostNow();
+    }
+
+    setIsPosting(false);
+  };
+  
+  const handleSchedulePost = async () => {
+    if (!scheduleDate || !user) return;
+
+    // Combine date and time
+    const scheduledAt = set(scheduleDate, {
+      hours: parseInt(scheduleHour),
+      minutes: parseInt(scheduleMinute),
+    });
+
+    try {
+      await schedulePost({
+        userId: user.uid, // Note: In admin, maybe we want to associate with the account's user? For now, admin is the scheduler.
+        socialAccountIds: selectedAccountIds,
+        content: content,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        scheduledAt: scheduledAt.toISOString(),
+      });
+      toast({
+        title: 'Post Scheduled!',
+        description: `Your post has been scheduled for ${format(scheduledAt, 'PPP p')}.`,
+      });
+      // Reset form
+      setContent('');
+      setMediaUrl('');
+      setSelectedAccountIds([]);
+      setScheduleDate(undefined);
+    } catch (error: any) {
+      console.error('Failed to schedule post:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Scheduling Failed',
+        description: error.message || 'An unknown error occurred.',
+      });
+    }
+  }
+
+
+  const handlePostNow = async () => {
     const accountsToPost = allAccounts.filter(acc => selectedAccountIds.includes(acc.id));
 
     let successCount = 0;
@@ -177,8 +242,6 @@ export default function AdminCreatePostPage() {
         }
     }
 
-    setIsPosting(false);
-
     if (errorCount === 0) {
         toast({
             title: 'All Posts Successful',
@@ -222,7 +285,7 @@ export default function AdminCreatePostPage() {
                               <ChevronDown className="h-4 w-4" />
                           </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto" position="popper">
+                      <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto">
                           <DropdownMenuLabel>All Accounts</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuCheckboxItem
@@ -302,10 +365,78 @@ export default function AdminCreatePostPage() {
                       <Input id="media-url" placeholder="Add a public media URL (e.g., .../image.jpg or .../video.mp4)" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="pl-10" />
                   </div>
                 </div>
+
+                {isScheduling && (
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label>Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {scheduleDate ? format(scheduleDate, 'PPP') : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={scheduleDate}
+                            onSelect={setScheduleDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Time</Label>
+                      <div className="flex gap-2">
+                        <Select value={scheduleHour} onValueChange={setScheduleHour}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                              <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Minute" />
+                          </SelectTrigger>
+                          <SelectContent>
+                             {['00', '15', '30', '45'].map(min => (
+                              <SelectItem key={min} value={min}>{min}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+
               </CardContent>
-              <CardFooter>
-                <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                  {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : `Post to ${selectedAccountIds.length} Account(s)`}
+              <CardFooter className="flex flex-col sm:flex-row gap-2">
+                 <Button
+                    size="lg"
+                    className="w-full"
+                    onClick={handleSubmit}
+                    disabled={isPosting}
+                  >
+                    {isPosting ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isScheduling ? 'Scheduling...' : 'Posting...'}</>
+                    ) : (
+                      isScheduling ? `Schedule for ${selectedAccountIds.length} Account(s)` : `Post to ${selectedAccountIds.length} Account(s)`
+                    )}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setScheduleDate(isScheduling ? undefined : new Date())}
+                >
+                   {isScheduling ? 'Cancel Schedule' : 'Schedule for Later'}
                 </Button>
               </CardFooter>
             </Card>
@@ -314,5 +445,3 @@ export default function AdminCreatePostPage() {
       </div>
   );
 }
-
-    

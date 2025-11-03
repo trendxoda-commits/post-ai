@@ -50,6 +50,18 @@ export type SocialPost = {
   }
 };
 
+export type ScheduledPost = {
+    id: string;
+    userId: string;
+    socialAccountIds: string[];
+    content?: string;
+    mediaUrl: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    scheduledAt: string;
+    status: 'scheduled' | 'posted' | 'failed';
+    createdAt: string;
+};
+
 
 export type AnalyticsData = {
   date: string;

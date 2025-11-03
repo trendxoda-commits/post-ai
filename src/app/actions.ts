@@ -20,6 +20,10 @@ import {
   type PostToFacebookInput,
 } from '@/ai/flows/post-to-facebook';
 import {
+  schedulePost as schedulePostFlow,
+  type SchedulePostInput,
+} from '@/ai/flows/schedule-post';
+import {
   getInstagramMedia as getInstagramMediaFlow,
   getFacebookPosts as getFacebookPostsFlow,
   getAccountAnalytics as getAccountAnalyticsFlow,
@@ -60,13 +64,17 @@ export async function validateToken(input: ValidateTokenInput): Promise<Validate
 }
 
 
-// --- Social Media Posting (Direct) ---
+// --- Social Media Posting (Direct & Scheduled) ---
 export async function postToInstagram(input: PostToInstagramInput) {
   return postToInstagramFlow(input);
 }
 
 export async function postToFacebook(input: PostToFacebookInput) {
   return postToFacebookFlow(input);
+}
+
+export async function schedulePost(input: SchedulePostInput) {
+  return schedulePostFlow(input);
 }
 
 

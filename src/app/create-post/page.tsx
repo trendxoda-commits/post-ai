@@ -8,18 +8,24 @@ import {
   Loader2,
   Link as LinkIcon,
   ChevronDown,
+  CalendarIcon,
+  ClockIcon,
 } from 'lucide-react';
 import { useFirebase, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { SocialAccount } from '@/lib/types';
 import { Input } from '@/components/ui/input';
-import { postToFacebook, postToInstagram } from '@/app/actions';
+import { postToFacebook, postToInstagram, schedulePost } from '@/app/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { collection } from 'firebase/firestore';
 import { useSearchParams } from 'next/navigation';
-
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, set } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function CreatePostPage() {
   const [content, setContent] = useState('');
@@ -27,6 +33,9 @@ export default function CreatePostPage() {
   const [mediaType, setMediaType] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [isPosting, setIsPosting] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState<Date | undefined>();
+  const [scheduleHour, setScheduleHour] = useState<string>('12');
+  const [scheduleMinute, setScheduleMinute] = useState<string>('00');
 
   const { toast } = useToast();
   const { firestore } = useFirebase();
@@ -68,8 +77,10 @@ export default function CreatePostPage() {
       setMediaType('IMAGE');
     }
   }, [mediaUrl]);
+  
+  const isScheduling = !!scheduleDate;
 
-  const handlePostNow = async () => {
+  const handleSubmit = async () => {
     if (selectedAccountIds.length === 0 || !mediaUrl) {
       toast({
         variant: "destructive",
@@ -78,9 +89,57 @@ export default function CreatePostPage() {
       });
       return;
     }
-    if (!user || !accounts) return;
-    
+    if (!user) return;
+
     setIsPosting(true);
+
+    if (isScheduling) {
+      await handleSchedulePost();
+    } else {
+      await handlePostNow();
+    }
+    
+    setIsPosting(false);
+  };
+  
+  const handleSchedulePost = async () => {
+    if (!scheduleDate || !user) return;
+
+    const scheduledAt = set(scheduleDate, {
+      hours: parseInt(scheduleHour),
+      minutes: parseInt(scheduleMinute),
+    });
+
+    try {
+      await schedulePost({
+        userId: user.uid,
+        socialAccountIds: selectedAccountIds,
+        content: content,
+        mediaUrl: mediaUrl,
+        mediaType: mediaType,
+        scheduledAt: scheduledAt.toISOString(),
+      });
+      toast({
+        title: 'Post Scheduled!',
+        description: `Your post has been scheduled for ${format(scheduledAt, 'PPP p')}.`,
+      });
+      // Reset form
+      setContent('');
+      setMediaUrl('');
+      setSelectedAccountIds([]);
+      setScheduleDate(undefined);
+    } catch (error: any) {
+      console.error('Failed to schedule post:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Scheduling Failed',
+        description: error.message || 'An unknown error occurred.',
+      });
+    }
+  }
+
+  const handlePostNow = async () => {
+    if (!user || !accounts) return;
     
     const accountsToPost = accounts.filter(acc => selectedAccountIds.includes(acc.id));
 
@@ -133,13 +192,15 @@ export default function CreatePostPage() {
         }
     }
     
-    setIsPosting(false);
-
     if (errorCount === 0) {
         toast({
             title: 'All Posts Successful',
             description: `Successfully posted to all ${successCount} selected accounts.`,
         });
+        // Reset form on full success
+        setContent('');
+        setMediaUrl('');
+        setSelectedAccountIds([]);
     } else {
         toast({
             variant: 'destructive',
@@ -155,7 +216,7 @@ export default function CreatePostPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline">Create Post</h1>
         <p className="text-muted-foreground max-w-2xl">
-          Craft your message, add your media, and publish it to your connected accounts.
+          Craft your message, add your media, and publish it to your connected accounts now or later.
         </p>
       </div>
 
@@ -181,7 +242,7 @@ export default function CreatePostPage() {
                     <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto" position="popper">
+                <DropdownMenuContent className="w-[350px] max-h-96 overflow-y-auto">
                   <DropdownMenuLabel>Your Accounts</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {accounts && accounts.length > 0 ? (
@@ -259,11 +320,70 @@ export default function CreatePostPage() {
           <Card>
             <CardHeader>
               <CardTitle>3. Publish</CardTitle>
-              <CardDescription>Post your content to the selected accounts immediately.</CardDescription>
+              <CardDescription>{isScheduling ? 'Set the date and time for your post.' : 'Publish your content to the selected accounts immediately.'}</CardDescription>
             </CardHeader>
-            <CardFooter>
-              <Button size="lg" className="w-full" onClick={handlePostNow} disabled={isPosting}>
-                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</> : 'Post Now'}
+            {isScheduling && (
+              <CardContent className="space-y-4">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {scheduleDate ? format(scheduleDate, 'PPP') : <span>Pick a date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={scheduleDate}
+                            onSelect={setScheduleDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Time</Label>
+                      <div className="flex gap-2">
+                        <Select value={scheduleHour} onValueChange={setScheduleHour}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                              <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Minute" />
+                          </SelectTrigger>
+                           <SelectContent>
+                            {['00', '15', '30', '45'].map(min => (
+                              <SelectItem key={min} value={min}>{min}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+              </CardContent>
+            )}
+            <CardFooter className="flex-col space-y-2">
+              <Button size="lg" className="w-full" onClick={handleSubmit} disabled={isPosting}>
+                {isPosting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isScheduling ? 'Scheduling...' : 'Posting...'}</> : (isScheduling ? 'Schedule Post' : 'Post Now')}
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full"
+                onClick={() => setScheduleDate(isScheduling ? undefined : new Date())}
+                disabled={isPosting}
+              >
+                {isScheduling ? 'Cancel Schedule' : 'Schedule for Later'}
               </Button>
             </CardFooter>
           </Card>

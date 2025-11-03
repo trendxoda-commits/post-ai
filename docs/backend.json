@@ -210,6 +210,68 @@
         "timestamp"
       ]
     },
+    "ScheduledPost": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ScheduledPost",
+      "type": "object",
+      "description": "Represents a post that is scheduled to be published at a future time.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the scheduled post job."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who scheduled the post."
+        },
+        "socialAccountIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "An array of SocialAccount document IDs to post to."
+        },
+        "content": {
+          "type": "string",
+          "description": "The caption or text content of the post."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the post's primary image or video."
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["IMAGE", "VIDEO"],
+          "description": "The type of media."
+        },
+        "scheduledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The ISO 8601 timestamp when the post should be published."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["scheduled", "posted", "failed"],
+          "description": "The current status of the scheduled post."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp when the post was scheduled."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "socialAccountIds",
+        "mediaUrl",
+        "mediaType",
+        "scheduledAt",
+        "status",
+        "createdAt"
+      ]
+    },
     "TrendingHashtag": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TrendingHashtag",
@@ -289,6 +351,16 @@
             "$ref": "#/backend/entities/SocialPost"
           },
           "description": "Stores fetched posts from a user's social accounts, including their analytics. Path-based ownership."
+        }
+      },
+      {
+        "path": "/users/{userId}/scheduledPosts/{scheduledPostId}",
+        "definition": {
+          "entityName": "ScheduledPost",
+          "schema": {
+            "$ref": "#/backend/entities/ScheduledPost"
+          },
+          "description": "Stores posts that are scheduled for future publication. Path-based ownership."
         }
       },
       {

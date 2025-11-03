@@ -34,40 +34,38 @@ const postToFacebookFlow = ai.defineFlow(
   },
   async ({ facebookPageId, mediaUrl, mediaType, caption, pageAccessToken }) => {
     
-    let postUrl: string;
+    let endpoint: string;
     const params = new URLSearchParams({
         access_token: pageAccessToken,
     });
 
     if (mediaType === 'VIDEO') {
-        postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/videos`;
+        endpoint = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/videos`;
         params.append('file_url', mediaUrl);
         if (caption) {
             params.append('description', caption);
         }
     } else { // IMAGE
-        postUrl = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
+        endpoint = `${FACEBOOK_GRAPH_API_URL}/${facebookPageId}/photos`;
         params.append('url', mediaUrl);
         if (caption) {
             params.append('caption', caption);
         }
     }
     
+    const postUrl = `${endpoint}?${params.toString()}`;
+
     const response = await fetch(postUrl, {
         method: 'POST',
-        body: params,
     });
-
 
     if (!response.ok) {
         let errorDetails = 'Unknown error';
         try {
-            // Try to parse the error as JSON, which is the expected format.
             const errorData: any = await response.json();
             console.error('Failed to post to Facebook (JSON response):', errorData);
             errorDetails = errorData.error?.message || JSON.stringify(errorData);
         } catch (e) {
-            // If parsing as JSON fails, read the response as plain text.
             const errorText = await response.text();
             console.error('Failed to post to Facebook (text response):', errorText);
             errorDetails = errorText;
@@ -77,7 +75,6 @@ const postToFacebookFlow = ai.defineFlow(
 
     const responseData: any = await response.json();
     
-    // The post ID can be in `post_id` for videos or `id` for photos.
     const postId = responseData.post_id || responseData.id;
     if (!postId) {
         throw new Error('Failed to get post ID from Facebook after publishing.');
